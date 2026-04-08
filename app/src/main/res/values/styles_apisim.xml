@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Widget.Apisim.Login.TextInput" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/login_box_stroke</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxCornerRadiusTopStart">20dp</item>
+        <item name="boxCornerRadiusTopEnd">20dp</item>
+        <item name="boxCornerRadiusBottomStart">20dp</item>
+        <item name="boxCornerRadiusBottomEnd">20dp</item>
+        <item name="hintEnabled">false</item>
+    </style>
+
+    <style name="TextAppearance.Apisim.LoginFieldLabel" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:textColor">@color/login_text_muted</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.06</item>
+    </style>
+
+    <style name="TextAppearance.Apisim.BrandTitle" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:textColor">@color/login_text_dark</item>
+        <item name="android:textStyle">bold</item>
+        <item name="fontFamily">sans-serif-black</item>
+    </style>
+
+    <style name="TextAppearance.Apisim.BrandSubtitle" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textColor">@color/login_text_muted</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.08</item>
+    </style>
+
+    <!-- Miniatura flora en detalle colmena (recorte redondeado) -->
+    <style name="ShapeAppearanceOverlay.Apisim.FloraThumb" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <style name="ShapeAppearanceOverlay.Apisim.FloraThumbSmall" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">8dp</item>
+    </style>
+
+    <style name="Widget.Apisim.HiveActionCompact" parent="Widget.MaterialComponents.Button">
+        <item name="android:minHeight">40dp</item>
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:paddingBottom">2dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:maxLines">2</item>
+        <item name="android:gravity">center_vertical|start</item>
+        <item name="iconSize">18dp</item>
+        <item name="iconPadding">4dp</item>
+        <item name="cornerRadius">8dp</item>
+    </style>
+</resources>

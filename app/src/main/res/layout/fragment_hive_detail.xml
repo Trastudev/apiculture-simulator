@@ -1,0 +1,1535 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/dash_bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Cabecera colmena -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/ic_compracolmena"
+                android:contentDescription="@string/dashboard_my_hives"
+                android:scaleType="fitCenter" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tv_hive_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:paddingVertical="2dp"
+                        android:text="Colmena Delta"
+                        android:textColor="@color/login_text_dark"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:id="@+id/iv_hive_honey_cap_warn"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="@string/hive_detail_honey_cap_warn_cd"
+                        android:visibility="gone"
+                        android:src="@drawable/ic_honey_cap_alert"
+                        app:tint="@color/dash_warning" />
+
+                    <ImageView
+                        android:id="@+id/iv_hive_swarm_danger_icon"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginStart="4dp"
+                        android:contentDescription="@string/hive_detail_swarm_icon_cd"
+                        android:visibility="gone"
+                        android:src="@drawable/ic_swarm_danger_alert"
+                        app:tint="@null" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_hive_honey_cap_warn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_honey_cap_warn_pill"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:text="@string/hive_detail_honey_cap_warn_text"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tv_hive_swarm_warn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_swarm_warn_pill"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:text="@string/hive_detail_swarm_warn_text"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:contentDescription="@string/cd_hive_header_honey"
+                        android:src="@drawable/ic_recolectar" />
+
+                    <TextView
+                        android:id="@+id/tv_hive_header_honey"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        tools:text="12,4 kg" />
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_marginStart="14dp"
+                        android:contentDescription="@string/cd_stat_bees"
+                        android:src="@drawable/ic_abeja" />
+
+                    <TextView
+                        android:id="@+id/tv_hive_header_bees"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        tools:text="5.200" />
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_marginStart="14dp"
+                        android:contentDescription="@string/cd_hive_header_health"
+                        android:src="@drawable/ic_health_cross_red" />
+
+                    <TextView
+                        android:id="@+id/tv_hive_header_health"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        tools:text="85 %" />
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_marginStart="14dp"
+                        android:contentDescription="@string/cd_hive_header_varroa"
+                        android:src="@drawable/ic_varroa" />
+
+                    <TextView
+                        android:id="@+id/tv_hive_header_varroa"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        tools:text="2,5 %" />
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_marginStart="14dp"
+                        android:contentDescription="@string/cd_hive_header_supers"
+                        android:src="@drawable/ic_alza"
+                        app:tint="@null" />
+
+                    <TextView
+                        android:id="@+id/tv_hive_header_supers"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        tools:text="1" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_hive_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_dash_pill_day"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="4dp"
+                android:text="Próspera"
+                android:textColor="@color/login_text_dark"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Acciones rápidas -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_hive_actions_top"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="@color/dash_card_bg"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="2dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_harvest_top"
+                        style="@style/Widget.Apisim.HiveActionCompact"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/hive_action_harvest"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_soft_orange"
+                        app:icon="@drawable/ic_recolectar"
+                        app:iconGravity="textStart"
+                        app:iconTint="@null" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_feed_top"
+                        style="@style/Widget.Apisim.HiveActionCompact"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/hive_action_feed"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_soft_green"
+                        app:icon="@drawable/ic_alimento"
+                        app:iconGravity="textStart"
+                        app:iconTint="@null" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_treat_top"
+                        style="@style/Widget.Apisim.HiveActionCompact"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:textColor="@color/dash_text_card"
+                        android:text="@string/hive_action_varroa"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_soft_red"
+                        app:icon="@drawable/ic_tratamientovarroa"
+                        app:iconGravity="textStart"
+                        app:iconTint="@null" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="0.5" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_split_top"
+                        style="@style/Widget.Apisim.HiveActionCompact"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/hive_action_split"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_soft_yellow"
+                        app:icon="@drawable/ic_compracolmena"
+                        app:iconGravity="textStart"
+                        app:iconTint="@null" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_replace_queen_top"
+                        style="@style/Widget.Apisim.HiveActionCompact"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:text="@string/hive_action_replace_queen"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_soft_blue"
+                        app:icon="@drawable/ic_abeja"
+                        app:iconGravity="textStart"
+                        app:iconTint="@null" />
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="0.5" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_buy_super_top"
+                    style="@style/Widget.Apisim.HiveActionCompact"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/hive_card_buy_super"
+                    android:textAllCaps="false"
+                    app:backgroundTint="@color/dash_header_bar"
+                    app:icon="@drawable/ic_alza"
+                    app:iconGravity="textStart"
+                    app:iconTint="@null" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Resumen compacto -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_honey_flora"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/dash_card_bg"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:minHeight="154dp"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="6dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="6dp">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/iv_honey_flora_hero"
+                        android:layout_width="100dp"
+                        android:layout_height="100dp"
+                        android:layout_gravity="center_horizontal"
+                        android:contentDescription="@string/cd_honey_flora_illustration"
+                        android:scaleType="centerCrop"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Apisim.FloraThumbSmall"
+                        app:strokeColor="@android:color/transparent"
+                        app:strokeWidth="0dp" />
+
+                    <TextView
+                        android:id="@+id/tv_honey_flora_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="2"
+                        android:text="Miel de romero"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="9sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_elevation"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginHorizontal="4dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/dash_card_bg"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_horizontal|center_vertical"
+                    android:minHeight="96dp"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="8dp">
+
+                    <ImageView
+                        android:id="@+id/iv_elevation_hero"
+                        android:layout_width="85dp"
+                        android:layout_height="85dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/cd_elevation_mountain"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_montanya" />
+
+                    <TextView
+                        android:id="@+id/tv_elevation_meters"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="2"
+                        android:text="812 m s.n.m."
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_elevation_band"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="2"
+                        android:text="Cota media"
+                        android:textColor="@color/dash_muted"
+                        android:textSize="8sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_population_compact"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginHorizontal="4dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/dash_card_bg"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_horizontal"
+                    android:minHeight="154dp"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="5dp"
+                    android:paddingVertical="7dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="Población"
+                        android:textColor="@color/dash_muted"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="5dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="@string/hive_detail_compact_pop_eggs"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_pop_compact_eggs"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="1.200" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="@string/hive_detail_compact_pop_larvae"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_pop_compact_larvae"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="800" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="@string/hive_detail_compact_pop_pupae"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_pop_compact_pupae"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="600" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="@string/hive_detail_compact_pop_workers"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_pop_compact_workers"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="24.500" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_health_compact"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                app:cardBackgroundColor="@color/dash_card_bg"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_horizontal"
+                    android:minHeight="154dp"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="5dp"
+                    android:paddingVertical="7dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="@string/hive_detail_compact_growth_title"
+                        android:textColor="@color/dash_muted"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_compact_last_eggs"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="5dp"
+                        android:gravity="center"
+                        android:lineSpacingExtra="3dp"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        tools:text="Última puesta de huevos:\n1.234" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="7dp"
+                        android:gravity="center"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/iv_compact_worker_trend"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:contentDescription="@string/cd_worker_trend_up"
+                            android:visibility="gone"
+                            tools:src="@drawable/ic_trend_arrow_up"
+                            tools:visibility="visible" />
+
+                        <TextView
+                            android:id="@+id/tv_compact_worker_change"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:gravity="center"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            tools:text="Aumento de obreras: +120" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_hive_actions"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:visibility="gone"
+                app:cardBackgroundColor="@color/dash_card_bg"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:minHeight="128dp"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="4dp"
+                    android:paddingVertical="6dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_harvest"
+                        style="@style/Widget.Apisim.HiveActionCompact"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="4dp"
+                        android:text="@string/hive_action_harvest"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_soft_orange"
+                        app:icon="@drawable/ic_recolectar"
+                        app:iconGravity="textStart"
+                        app:iconTint="@color/dash_text_card" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_feed"
+                        style="@style/Widget.Apisim.HiveActionCompact"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="4dp"
+                        android:text="@string/hive_action_feed"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_soft_green"
+                        app:icon="@drawable/ic_abeja"
+                        app:iconGravity="textStart"
+                        app:iconTint="@color/dash_text_card" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_treat"
+                        style="@style/Widget.Apisim.HiveActionCompact"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="4dp"
+                        android:text="@string/hive_action_varroa"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_bad"
+                        app:icon="@drawable/ic_nav_events"
+                        app:iconGravity="textStart" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_split"
+                        style="@style/Widget.Apisim.HiveActionCompact"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="4dp"
+                        android:text="@string/hive_action_split"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_soft_yellow"
+                        app:icon="@drawable/ic_compracolmena"
+                        app:iconGravity="textStart"
+                        app:iconTint="@color/dash_text_card" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_replace_queen"
+                        style="@style/Widget.Apisim.HiveActionCompact"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/hive_action_replace_queen"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_soft_blue"
+                        app:icon="@drawable/ic_abeja"
+                        app:iconGravity="textStart"
+                        app:iconTint="@color/dash_text_card" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- Pastilla: población simulada -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_population"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="@color/dash_card_bg"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="3dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Población"
+                    android:textColor="@color/dash_text_card"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_pop_headline"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="@color/dash_text_card"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_stat_bar_track"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Huevo"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_brood_egg"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <Space
+                        android:layout_width="8dp"
+                        android:layout_height="wrap_content" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_stat_bar_track"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Larva"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_brood_larva"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <Space
+                        android:layout_width="8dp"
+                        android:layout_height="wrap_content" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_stat_bar_track"
+                        android:orientation="vertical"
+                        android:padding="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Pupa"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_brood_pupa"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_pop_queen_trend"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:textColor="@color/dash_muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Pastilla: salud y varroa -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_health"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="@color/dash_card_bg"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="3dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Salud y varroa"
+                    android:textColor="@color/dash_text_card"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Salud de la colmena"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tv_health_percent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="100 %"
+                        android:textColor="@color/dash_good"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/bar_health"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="12dp"
+                    android:layout_marginTop="4dp"
+                    android:max="100"
+                    android:progress="100"
+                    android:progressDrawable="@drawable/progress_hive_horizontal" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Infestación varroa"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tv_varroa_percent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2,0 %"
+                        android:textColor="@color/dash_muted"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/bar_varroa"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="12dp"
+                    android:layout_marginTop="4dp"
+                    android:max="40"
+                    android:progress="5"
+                    android:progressDrawable="@drawable/progress_hive_horizontal" />
+
+                <TextView
+                    android:id="@+id/tv_treat_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@color/dash_soft_blue"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="6dp"
+                    android:textColor="@color/dash_text_card"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/tv_health_alerts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="@color/dash_muted"
+                    android:textSize="11sp"
+                    android:lineSpacingExtra="2dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Gráficos: miel, obreras, huevos (ancho completo) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="@color/dash_card_bg"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="3dp">
+
+            <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/hive_chart_honey_title"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:contentDescription="@string/cd_stat_honey_harvested"
+                            android:src="@drawable/ic_recolectar" />
+
+                        <TextView
+                            android:id="@+id/tv_honey_stock_in_hive"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:text="En colmena: 0,0 kg"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:contentDescription="@string/cd_stat_honey_harvested"
+                            android:src="@drawable/ic_recolectar" />
+
+                        <TextView
+                            android:id="@+id/tv_honey_total_7d"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:text="0,0 kg (6 días)"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_honey_avg_7d"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Media: 0,000 kg/día"
+                        android:textColor="@color/dash_good"
+                        android:textSize="12sp" />
+
+                    <!-- Grafico barras 7 dias (cifra encima de cada barra) -->
+                    <LinearLayout
+                        android:id="@+id/layout_bars"
+                        android:layout_width="match_parent"
+                        android:layout_height="118dp"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal"
+                        android:paddingBottom="4dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginHorizontal="2dp"
+                            android:layout_weight="1"
+                            android:gravity="bottom"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvBarValue1"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal|bottom"
+                                android:maxLines="1"
+                                android:text="0"
+                                android:textColor="@color/dash_text_card"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_weight="1"
+                                android:minHeight="20dp">
+
+                                <View
+                                    android:id="@+id/bar1"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="40dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="@drawable/bg_chart_bar" />
+                            </FrameLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginHorizontal="2dp"
+                            android:layout_weight="1"
+                            android:gravity="bottom"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvBarValue2"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal|bottom"
+                                android:maxLines="1"
+                                android:text="0"
+                                android:textColor="@color/dash_text_card"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_weight="1"
+                                android:minHeight="20dp">
+
+                                <View
+                                    android:id="@+id/bar2"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="40dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="@drawable/bg_chart_bar" />
+                            </FrameLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginHorizontal="2dp"
+                            android:layout_weight="1"
+                            android:gravity="bottom"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvBarValue3"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal|bottom"
+                                android:maxLines="1"
+                                android:text="0"
+                                android:textColor="@color/dash_text_card"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_weight="1"
+                                android:minHeight="20dp">
+
+                                <View
+                                    android:id="@+id/bar3"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="40dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="@drawable/bg_chart_bar" />
+                            </FrameLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginHorizontal="2dp"
+                            android:layout_weight="1"
+                            android:gravity="bottom"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvBarValue4"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal|bottom"
+                                android:maxLines="1"
+                                android:text="0"
+                                android:textColor="@color/dash_text_card"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_weight="1"
+                                android:minHeight="20dp">
+
+                                <View
+                                    android:id="@+id/bar4"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="40dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="@drawable/bg_chart_bar" />
+                            </FrameLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginHorizontal="2dp"
+                            android:layout_weight="1"
+                            android:gravity="bottom"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvBarValue5"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal|bottom"
+                                android:maxLines="1"
+                                android:text="0"
+                                android:textColor="@color/dash_text_card"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_weight="1"
+                                android:minHeight="20dp">
+
+                                <View
+                                    android:id="@+id/bar5"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="40dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="@drawable/bg_chart_bar" />
+                            </FrameLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginHorizontal="2dp"
+                            android:layout_weight="1"
+                            android:gravity="bottom"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvBarValue6"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal|bottom"
+                                android:maxLines="1"
+                                android:text="0"
+                                android:textColor="@color/dash_text_card"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_weight="1"
+                                android:minHeight="20dp">
+
+                                <View
+                                    android:id="@+id/bar6"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="40dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="@drawable/bg_chart_bar" />
+                            </FrameLayout>
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:id="@+id/layout_chart_col_bar7"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_marginHorizontal="2dp"
+                            android:layout_weight="1"
+                            android:gravity="bottom"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvBarValue7"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_horizontal|bottom"
+                                android:maxLines="1"
+                                android:text="0"
+                                android:textColor="@color/dash_text_card"
+                                android:textSize="9sp"
+                                android:textStyle="bold" />
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="0dp"
+                                android:layout_weight="1"
+                                android:minHeight="20dp">
+
+                                <View
+                                    android:id="@+id/bar7"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="40dp"
+                                    android:layout_gravity="bottom"
+                                    android:background="@drawable/bg_chart_bar" />
+                            </FrameLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/layout_sky_row"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/tvSky1"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="☀️"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/tvSky2"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="☀️"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/tvSky3"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="☀️"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/tvSky4"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="☀️"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/tvSky5"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="☀️"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/tvSky6"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="☀️"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/tvSky7"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="☀️"
+                            android:textSize="11sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/tv_day1"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="01/04"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_day2"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="02/04"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_day3"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="03/04"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_day4"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="04/04"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_day5"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="05/04"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_day6"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="06/04"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_day7"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="07/04"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/hive_chart_worker_net_title"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_worker_net_bars"
+                        android:layout_width="match_parent"
+                        android:layout_height="104dp"
+                        android:layout_marginTop="6dp"
+                        android:orientation="horizontal"
+                        android:paddingBottom="4dp" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_worker_net_days"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:orientation="horizontal" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="@string/hive_chart_eggs_title"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_eggs_bars"
+                        android:layout_width="match_parent"
+                        android:layout_height="118dp"
+                        android:layout_marginTop="6dp"
+                        android:orientation="horizontal"
+                        android:paddingBottom="4dp" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_eggs_days"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:orientation="horizontal" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</ScrollView>

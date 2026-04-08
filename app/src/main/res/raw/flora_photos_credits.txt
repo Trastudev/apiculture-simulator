@@ -1,0 +1,8 @@
+Fotos de flora en la app (detalle de colmena)
+
+La mayoría de imágenes son aportación del autor del juego (PNG en res/drawable como flora_photo_*.png).
+
+Excepción habitual:
+- flora_photo_bosque: puede seguir siendo una foto de archivo anterior (Wikimedia) hasta sustituirse por un PNG propio con el mismo nombre de recurso.
+
+Para atribución o licencias de terceros, documentar aquí cualquier archivo no original.

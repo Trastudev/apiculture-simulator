@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/loginFragment">
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.apiculture.simulator.presentation.auth.LoginFragment"
+        android:label="Login">
+        <action
+            android:id="@+id/action_login_to_dashboard"
+            app:destination="@id/dashboardFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.apiculture.simulator.presentation.dashboard.DashboardFragment"
+        android:label="Dashboard" />
+
+    <fragment
+        android:id="@+id/hivesFragment"
+        android:name="com.apiculture.simulator.presentation.hive.HiveListFragment"
+        android:label="Colmenas">
+        <action
+            android:id="@+id/action_hives_to_hive_detail"
+            app:destination="@id/hiveDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/hiveDetailFragment"
+        android:name="com.apiculture.simulator.presentation.hive.HiveDetailFragment"
+        android:label="" />
+
+    <fragment
+        android:id="@+id/mapFragment"
+        android:name="com.apiculture.simulator.presentation.map.SharedMapFragment"
+        android:label="" />
+
+    <fragment
+        android:id="@+id/rankingFragment"
+        android:name="com.apiculture.simulator.presentation.ranking.RankingFragment"
+        android:label="Ranking" />
+
+    <fragment
+        android:id="@+id/marketFragment"
+        android:name="com.apiculture.simulator.presentation.market.MarketFragment"
+        android:label="Mercado" />
+
+    <fragment
+        android:id="@+id/eventsFragment"
+        android:name="com.apiculture.simulator.presentation.events.EventsFragment"
+        android:label="Eventos" />
+</navigation>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Login / ApiSim mockup -->
+    <color name="login_bg_cream">#F7F3EA</color>
+    <color name="login_edge_hex">#DDE5D4</color>
+    <color name="login_primary_orange">#FF8A3D</color>
+    <color name="login_text_dark">#1C1B1F</color>
+    <color name="login_text_muted">#9E9E9E</color>
+    <color name="login_input_stroke">#D0D0D0</color>
+    <color name="login_card_white">#FFFFFF</color>
+    <color name="login_separator">#E0E0E0</color>
+
+    <!-- Dashboard mockup -->
+    <color name="dash_card_bg">#FFFFFFFF</color>
+    <color name="dash_bg">#F7F3EA</color>
+    <color name="dash_shadow">#14000000</color>
+    <color name="dash_muted">#8A8A8A</color>
+    <color name="dash_good">#2E7D32</color>
+    <color name="dash_bad">#D32F2F</color>
+    <color name="dash_warning">#F9A825</color>
+    <color name="dash_soft_orange">#FFF1E6</color>
+    <color name="dash_soft_green">#E7F4EC</color>
+    <color name="dash_soft_yellow">#FFF6D9</color>
+    <color name="dash_soft_blue">#E8F0FE</color>
+    <color name="dash_soft_red">#FDEAEA</color>
+    <color name="dash_header_bar">#EDE8DF</color>
+    <color name="dash_pill_day_bg">#FFE0C2</color>
+    <color name="dash_text_card">#2C2419</color>
+</resources>

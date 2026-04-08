@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/dashboardFragment"
+        android:icon="@drawable/ic_nav_dashboard"
+        android:title="@string/menu_dashboard" />
+    <item
+        android:id="@+id/hivesFragment"
+        android:icon="@drawable/ic_colmena"
+        android:title="@string/menu_hives" />
+    <item
+        android:id="@+id/mapFragment"
+        android:icon="@drawable/ic_nav_map"
+        android:title="@string/menu_map" />
+    <item
+        android:id="@+id/marketFragment"
+        android:icon="@drawable/ic_venta"
+        android:title="@string/menu_market" />
+    <item
+        android:id="@+id/rankingFragment"
+        android:icon="@drawable/ic_nav_ranking"
+        android:title="@string/menu_ranking" />
+</menu>

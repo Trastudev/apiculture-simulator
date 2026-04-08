@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /** Colmena existe y el usuario autenticado es su ownerId (campo en hives/{id}). */
+    function hiveDocOwnedByAuth(hiveId) {
+      return exists(/databases/$(database)/documents/hives/$(hiveId))
+          && get(/databases/$(database)/documents/hives/$(hiveId)).data.ownerId
+              == request.auth.uid;
+    }
+
+    // Perfil / ajustes del jugador
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/meta/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Colmenas: lectura para usuarios autenticados (el cliente filtra en Room por ownerId).
+    // Escritura solo del dueño del documento.
+    match /hives/{hiveId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+          && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if request.auth != null
+          && resource.data.ownerId == request.auth.uid;
+
+      // Producción diaria. El cliente guarda ownerId en cada doc de yield.
+      // Si el doc padre hives/{hiveId} ya no existe (huérfanos), antes fallaba todo el list/get → PERMISSION_DENIED.
+      match /dailyYields/{yieldId} {
+        allow read: if request.auth != null
+            && (hiveDocOwnedByAuth(hiveId) || resource.data.ownerId == request.auth.uid);
+
+        allow create: if request.auth != null
+            && request.resource.data.ownerId == request.auth.uid
+            && hiveDocOwnedByAuth(hiveId);
+
+        allow update: if request.auth != null
+            && request.resource.data.ownerId == request.auth.uid
+            && (hiveDocOwnedByAuth(hiveId) || resource.data.ownerId == request.auth.uid);
+
+        allow delete: if request.auth != null
+            && (hiveDocOwnedByAuth(hiveId) || resource.data.ownerId == request.auth.uid);
+      }
+    }
+
+    match /players/{playerId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == playerId;
+    }
+
+    // Mercado global de miel: kg vendidos ese día de juego por tipo (todos los jugadores).
+    match /globalHoneyMarket/{dayKey}/floraSales/{floraId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+          && request.resource.data.keys().hasOnly(['kgSold'])
+          && request.resource.data.kgSold is number
+          && request.resource.data.kgSold >= 0.0
+          && request.resource.data.kgSold <= 100000000.0;
+      allow update: if request.auth != null
+          && request.resource.data.keys().hasOnly(['kgSold'])
+          && request.resource.data.kgSold is number
+          && request.resource.data.kgSold >= resource.data.kgSold
+          && request.resource.data.kgSold <= resource.data.kgSold + 1000000.0;
+      allow delete: if false;
+    }
+
+    // Terrenos hex (dueño en documento; solo comprados tienen doc).
+    match /hexParcels/{hexId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+          && request.resource.data.ownerId == request.auth.uid;
+      allow update: if request.auth != null
+          && resource.data.ownerId == request.auth.uid
+          && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if request.auth != null
+          && resource.data.ownerId == request.auth.uid;
+    }
+  }
+}

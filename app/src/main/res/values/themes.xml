@@ -1,0 +1,9 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.ApicultureSimulator" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/dash_bg</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/login_bg_cream</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="colorPrimary">@color/login_primary_orange</item>
+        <item name="colorPrimaryDark">#E07828</item>
+    </style>
+</resources>
