@@ -1,0 +1,212 @@
+package com.apiculture.simulator.data.repository;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.apiculture.simulator.data.local.entity.HiveEntity;
+import com.apiculture.simulator.data.remote.RankingEntry;
+import com.apiculture.simulator.domain.population.HivePopulationState;
+import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.SetOptions;
+
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class LeaderboardRepository {
+
+    public enum Metric {
+        LEVEL("level"),
+        HONEY("honeyStockKg"),
+        HIVES("hiveCount"),
+        BEES("adultBeeCount");
+
+        final String firestoreField;
+
+        Metric(String firestoreField) {
+            this.firestoreField = firestoreField;
+        }
+    }
+
+    private static final String PLAYERS = "players";
+    private static final String USERS = "users";
+
+    private final FirebaseFirestore firestore;
+    private final HiveRepository hiveRepository;
+    private final EconomyRepository economyRepository;
+    private final PlayerProgressRepository progressRepository;
+    private final ExecutorService io = Executors.newSingleThreadExecutor();
+
+    public LeaderboardRepository(
+            @Nullable FirebaseFirestore firestore,
+            @NonNull HiveRepository hiveRepository,
+            @NonNull EconomyRepository economyRepository,
+            @NonNull PlayerProgressRepository progressRepository) {
+        this.firestore = firestore;
+        this.hiveRepository = hiveRepository;
+        this.economyRepository = economyRepository;
+        this.progressRepository = progressRepository;
+    }
+
+    public void shutdown() {
+        io.shutdown();
+    }
+
+    public interface FetchCallback {
+        void onSuccess(@NonNull List<RankingEntry> rows);
+
+        void onError(@NonNull String message);
+    }
+
+    /**
+     * Publica en {@code players/{uid}} los datos locales para el ranking (marca, nombre, nivel, miel en stock, colmenas, obreras).
+     */
+    public void enqueuePublish(@Nullable String uid) {
+        if (firestore == null || uid == null || uid.isEmpty()) {
+            return;
+        }
+        io.execute(() -> publishBlocking(uid));
+    }
+
+    private void publishBlocking(String uid) {
+        try {
+            String honeyBrand = "";
+            String playerName = "Jugador";
+            DocumentSnapshot userDoc = Tasks.await(firestore.collection(USERS).document(uid).get());
+            if (userDoc.exists()) {
+                String hb = userDoc.getString("honeyBrand");
+                String pn = userDoc.getString("playerName");
+                if (hb != null && !hb.trim().isEmpty()) {
+                    honeyBrand = hb.trim();
+                }
+                if (pn != null && !pn.trim().isEmpty()) {
+                    playerName = pn.trim();
+                }
+            }
+            int level = progressRepository.getLevel(uid);
+            int xp = progressRepository.getXp(uid);
+            double honeyKg = economyRepository.getHoneyStock();
+            List<HiveEntity> hives = hiveRepository.getLocalHivesSync(uid);
+            int hiveCount = hives != null ? hives.size() : 0;
+            int adultBees = 0;
+            if (hives != null) {
+                for (HiveEntity h : hives) {
+                    if (h != null) {
+                        adultBees += HivePopulationState.adultWorkersForUi(h,
+                                HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
+                    }
+                }
+            }
+            Map<String, Object> m = new HashMap<>();
+            m.put("playerName", playerName);
+            m.put("nickname", playerName);
+            m.put("honeyBrand", honeyBrand.isEmpty() ? "—" : honeyBrand);
+            m.put("level", level);
+            m.put("xp", xp);
+            m.put("honeyStockKg", honeyKg);
+            m.put("hiveCount", hiveCount);
+            m.put("adultBeeCount", adultBees);
+            m.put("totalHoneyKg", honeyKg);
+            m.put("updatedAt", FieldValue.serverTimestamp());
+            Tasks.await(firestore.collection(PLAYERS).document(uid).set(m, SetOptions.merge()));
+        } catch (Exception ignored) {
+        }
+    }
+
+    public void fetchLeaderboard(@NonNull Metric metric, @NonNull FetchCallback callback) {
+        if (firestore == null) {
+            callback.onSuccess(new ArrayList<>());
+            return;
+        }
+        io.execute(() -> {
+            try {
+                Query q = firestore.collection(PLAYERS)
+                        .orderBy(metric.firestoreField, Query.Direction.DESCENDING)
+                        .limit(500);
+                List<DocumentSnapshot> docs = new ArrayList<>(Tasks.await(q.get()).getDocuments());
+                if (metric == Metric.LEVEL) {
+                    docs.sort((a, b) -> {
+                        int c = Long.compare(longOr0(b, "level"), longOr0(a, "level"));
+                        if (c != 0) {
+                            return c;
+                        }
+                        return Long.compare(longOr0(b, "xp"), longOr0(a, "xp"));
+                    });
+                }
+                List<RankingEntry> rows = new ArrayList<>(docs.size());
+                NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
+                int rank = 1;
+                for (DocumentSnapshot doc : docs) {
+                    String brand = doc.getString("honeyBrand");
+                    if (brand == null || brand.trim().isEmpty()) {
+                        brand = "—";
+                    }
+                    String name = doc.getString("playerName");
+                    if (name == null || name.trim().isEmpty()) {
+                        name = doc.getString("nickname");
+                    }
+                    if (name == null || name.trim().isEmpty()) {
+                        name = "Jugador";
+                    }
+                    String valueLabel = formatValue(metric, doc, nf);
+                    rows.add(new RankingEntry(rank++, brand.trim(), name.trim(), valueLabel));
+                }
+                runOnMain(() -> callback.onSuccess(rows));
+            } catch (Exception e) {
+                String msg = e.getMessage() != null ? e.getMessage() : "fetch";
+                runOnMain(() -> callback.onError(msg));
+            }
+        });
+    }
+
+    private static String formatValue(Metric metric, DocumentSnapshot doc, NumberFormat nf) {
+        switch (metric) {
+            case LEVEL: {
+                long lv = doc.getLong("level") != null ? doc.getLong("level") : 0L;
+                long xpv = doc.getLong("xp") != null ? doc.getLong("xp") : 0L;
+                return "Nv. " + lv + " · " + nf.format(xpv) + " XP";
+            }
+            case HONEY: {
+                double kg = 0.0;
+                Double h = doc.getDouble("honeyStockKg");
+                if (h != null) {
+                    kg = h;
+                } else {
+                    Double legacy = doc.getDouble("totalHoneyKg");
+                    if (legacy != null) {
+                        kg = legacy;
+                    }
+                }
+                return nf.format(Math.round(kg)) + " kg";
+            }
+            case HIVES: {
+                long n = doc.getLong("hiveCount") != null ? doc.getLong("hiveCount") : 0L;
+                return nf.format(n);
+            }
+            case BEES: {
+                long b = doc.getLong("adultBeeCount") != null ? doc.getLong("adultBeeCount") : 0L;
+                return nf.format(b);
+            }
+            default:
+                return "—";
+        }
+    }
+
+    private void runOnMain(Runnable r) {
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(r);
+    }
+
+    private static long longOr0(DocumentSnapshot d, String key) {
+        Long l = d.getLong(key);
+        return l != null ? l : 0L;
+    }
+}
