@@ -41,9 +41,9 @@
                 <ImageView
                     android:layout_width="120dp"
                     android:layout_height="120dp"
-                    android:contentDescription="@string/cd_bee_mascot"
+                    android:contentDescription="@string/cd_app_logo"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/img_bee_mascot" />
+                    android:src="@drawable/ic_logo" />
 
                 <TextView
                     android:layout_width="wrap_content"

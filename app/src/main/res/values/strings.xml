@@ -1,5 +1,19 @@
 <resources>
     <string name="app_name">ApiSim</string>
+    <string name="cd_app_logo">Logo del juego</string>
+    <string name="dashboard_default_player">Apicultor</string>
+    <string name="profile_setup_title">Tu apiario</string>
+    <string name="profile_setup_subtitle">Elige una marca de miel y tu nombre de jugador. No pueden repetirse entre usuarios.</string>
+    <string name="profile_setup_honey_brand">Marca de la miel</string>
+    <string name="profile_setup_player_name">Nombre de jugador</string>
+    <string name="profile_setup_continue">Entrar al panel</string>
+    <string name="profile_setup_fill_all">Indica marca y nombre (mínimo 2 caracteres cada uno).</string>
+    <string name="profile_setup_need_login">Sesión no válida. Vuelve a iniciar sesión.</string>
+    <string name="profile_setup_error_brand_taken">Esa marca de miel ya está en uso. Prueba otra.</string>
+    <string name="profile_setup_error_name_taken">Ese nombre de jugador ya está en uso. Prueba otro.</string>
+    <string name="profile_setup_error_short">Marca y nombre deben tener al menos 2 caracteres.</string>
+    <string name="profile_setup_error_invalid">Texto no válido.</string>
+    <string name="profile_setup_error_generic">No se pudo guardar. Comprueba la conexión.</string>
     <string name="menu_dashboard">Inicio</string>
     <string name="menu_hives">Colmenas</string>
     <string name="menu_map">Mapa</string>
@@ -43,12 +57,19 @@
     <string name="cd_dashboard_settings">Ajustes del panel</string>
     <string name="dashboard_menu_reset_game">Reiniciar juego</string>
     <string name="dashboard_reset_confirm_title">¿Reiniciar juego?</string>
-    <string name="dashboard_reset_confirm_message">Se eliminarán todas tus colmenas y datos de producción locales y en la nube, se reiniciarán saldo y miel en stock, y se crearán de nuevo 3 colmenas iniciales (80.000 abejas en la primera con 71.000 obreras adultas, para probar aviso de enjambrazón y recomendación de división, y 25.000 en cada una de las otras dos).</string>
+    <string name="dashboard_reset_confirm_message">Se eliminarán todas tus colmenas y datos de producción locales y en la nube, se reiniciarán saldo y miel en stock, y se crearán de nuevo 3 colmenas iniciales (en la primera, 80.000 obreras adultas —tope— y unas 95.000 abejas en total con cría, para probar enjambrazón y división; 25.000 en cada una de las otras dos).</string>
     <string name="dashboard_reset_done">Juego reiniciado: 3 colmenas nuevas.</string>
     <string name="dashboard_reset_error">No se pudo reiniciar el juego.</string>
     <string name="hives_title">Gestión de colmenas</string>
     <string name="map_title">Mapa compartido</string>
-    <string name="ranking_title">Ranking multijugador</string>
+    <string name="ranking_title">Ranking global</string>
+    <string name="ranking_refresh">Actualizar</string>
+    <string name="ranking_tab_level">Nivel</string>
+    <string name="ranking_tab_honey">Miel en stock</string>
+    <string name="ranking_tab_hives">Colmenas</string>
+    <string name="ranking_tab_bees">Obreras</string>
+    <string name="ranking_empty">Aún no hay jugadores en el ranking. Abre el juego con tu cuenta para publicar tus datos.</string>
+    <string name="ranking_error">No se pudo cargar el ranking: %1$s</string>
     <string name="market_title">Mercado de miel</string>
     <string name="market_summary_line">Saldo: %1$.2f € · Miel en stock: %2$.2f kg</string>
     <string name="market_pill_demand_line">Cubierta: %1$.0f kg (%2$d%%)</string>
@@ -68,7 +89,10 @@
     <string name="cd_stat_balance">Saldo</string>
     <string name="cd_stat_honey">Miel en stock</string>
     <string name="cd_stat_honey_harvested">Miel recogida</string>
-    <string name="cd_stat_bees">Abejas</string>
+    <string name="cd_stat_bees">Obreras adultas</string>
+    <string name="hive_card_obreras_label">Obreras</string>
+    <string name="hive_card_obreras_line">Obreras %1$s</string>
+    <string name="hive_detail_pop_headline_obreras">%1$s obreras adultas</string>
     <string name="cd_hive_header_honey">Miel total en la colmena</string>
     <string name="cd_hive_header_supers">Número de alzas instaladas</string>
     <string name="cd_hive_header_health">Salud de la colmena</string>
@@ -195,4 +219,8 @@
     <string name="startup_sim_summary_line_salud">Salud: %1$s</string>
     <string name="startup_sim_summary_line_varroa">Varroa: %1$s</string>
     <string name="startup_sim_summary_line_swarm">¡La colmena %1$s se ha enjambrado!</string>
+    <string name="notification_channel_daily_title">Producción diaria</string>
+    <string name="notification_channel_daily_desc">Recordatorio cuando toca liquidar el día en el apiario (8:00).</string>
+    <string name="notification_daily_title">Son las 8:00 en el apiario</string>
+    <string name="notification_daily_text">Abre la app para aplicar la producción y ver el resumen del día.</string>
 </resources>

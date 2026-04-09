@@ -38,6 +38,8 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
 
+import java.text.NumberFormat;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -562,7 +564,9 @@ public class HiveListFragment extends Fragment {
             pbHealth.setProgressBackgroundTintList(
                     android.content.res.ColorStateList.valueOf(
                             itemView.getResources().getColor(R.color.dash_soft_yellow)));
-            tvBees.setText("Abejas " + hive.beeCount);
+            NumberFormat beeNf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
+            tvBees.setText(itemView.getContext().getString(R.string.hive_card_obreras_line,
+                    beeNf.format(pop.workersAdult)));
             int sc = Math.max(0, Math.min(2, hive.superCount));
             double cap = HiveHoneyRules.maxHoneyKgForSuperCount(sc);
             tvHoney.setText(String.format(java.util.Locale.getDefault(),

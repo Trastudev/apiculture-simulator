@@ -1,13 +1,19 @@
 package com.apiculture.simulator.presentation;
 
+import android.Manifest;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.navigation.NavController;
 import androidx.navigation.NavDestination;
 import androidx.navigation.NavOptions;
@@ -22,6 +28,7 @@ import com.apiculture.simulator.data.repository.HiveDayStartupSummary;
 import com.apiculture.simulator.data.repository.TickAppliedDayResult;
 import com.apiculture.simulator.databinding.ActivityMainBinding;
 import com.apiculture.simulator.domain.game.GameCalendar;
+import com.apiculture.simulator.notification.DailyProductionAlarmScheduler;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -40,6 +47,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String PREF_STARTUP_SIM_DAY = "startup_sim_summary_day_key";
 
+    private static final String PREF_NOTIF_PERM_PROMPTED = "notification_permission_prompted";
+
     /** Raíz de la zona “logueado”: todo lo demás se apila encima y al cambiar de tab se desapila hasta aquí. */
     private static final int MAIN_ROOT_ID = R.id.dashboardFragment;
 
@@ -53,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
     private NavController navController;
+
+    private ActivityResultLauncher<String> notificationPermissionLauncher;
 
     private static boolean isBottomNavDestination(int destinationId) {
         for (int id : BOTTOM_NAV_DESTINATIONS) {
@@ -84,6 +95,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        notificationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                granted -> DailyProductionAlarmScheduler.scheduleNext(MainActivity.this));
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -122,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
 
             navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
                 boolean onLogin = destination.getId() == R.id.loginFragment;
+                boolean onProfileSetup = destination.getId() == R.id.profileSetupFragment;
                 boolean onDashboard = destination.getId() == R.id.dashboardFragment;
                 boolean onHives = destination.getId() == R.id.hivesFragment;
                 boolean onHiveDetail = destination.getId() == R.id.hiveDetailFragment;
@@ -130,12 +145,12 @@ public class MainActivity extends AppCompatActivity {
 
                 // Sin barra superior en estas pantallas (más espacio; mercado sin título en toolbar)
                 binding.toolbar.setVisibility(
-                        onLogin || onDashboard || onHives || onHiveDetail || onMap || onMarket
+                        onLogin || onProfileSetup || onDashboard || onHives || onHiveDetail || onMap || onMarket
                                 ? View.GONE : View.VISIBLE);
-                binding.bottomNav.setVisibility(onLogin ? View.GONE : View.VISIBLE);
+                binding.bottomNav.setVisibility(onLogin || onProfileSetup ? View.GONE : View.VISIBLE);
 
                 // Sincronizar pestaña inferior (el listener custom no lo hace solo)
-                if (!onLogin) {
+                if (!onLogin && !onProfileSetup) {
                     int tabId = onHiveDetail ? R.id.hivesFragment : destination.getId();
                     MenuItem tab = binding.bottomNav.getMenu().findItem(tabId);
                     if (tab != null && tab.isCheckable()) {
@@ -151,6 +166,8 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
+            DailyProductionAlarmScheduler.markSessionActive(this, true);
+            maybeRequestNotificationPermission();
             Map<String, Object> profile = new HashMap<>();
             profile.put("timeZoneId", ZoneId.systemDefault().getId());
             FirebaseFirestore.getInstance()
@@ -159,7 +176,25 @@ public class MainActivity extends AppCompatActivity {
                     .set(profile, SetOptions.merge());
             ((ApicultureApp) getApplication()).getHiveRepository().tickDailyProductionForOwner(
                     user.getUid(), this::maybeShowStartupSimulationSummary);
+        } else {
+            DailyProductionAlarmScheduler.markSessionActive(this, false);
         }
+    }
+
+    private void maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        SharedPreferences p = getPreferences(MODE_PRIVATE);
+        if (p.getBoolean(PREF_NOTIF_PERM_PROMPTED, false)) {
+            return;
+        }
+        p.edit().putBoolean(PREF_NOTIF_PERM_PROMPTED, true).apply();
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
     }
 
     private void maybeShowStartupSimulationSummary(TickAppliedDayResult result) {
@@ -264,6 +299,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void logout() {
+        DailyProductionAlarmScheduler.markSessionActive(this, false);
         ((ApicultureApp) getApplication()).getAuthRepository().signOut();
         if (navController != null) {
             NavOptions opts = new NavOptions.Builder()

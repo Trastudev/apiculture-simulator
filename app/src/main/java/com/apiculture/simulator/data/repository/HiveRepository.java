@@ -129,14 +129,13 @@ public class HiveRepository {
     public static final int STARTER_GAME_TOTAL_BEES = 25_000;
 
     /**
-     * Primera colmena al reiniciar: total colonia (adultos + cría), hasta el tope {@link ColonyGameRules#MAX_BEES_PER_HIVE}.
-     * Las obreras adultas se fijan en {@link #STARTER_GAME_FIRST_HIVE_ADULT_WORKERS} para superar el umbral de riesgo de
-     * enjambrazón y la pastilla «dividir» en el dashboard ({@link ColonyGameRules#SWARM_RISK_BASE_BEES} /
-     * {@link ColonyGameRules#SPLIT_RECOMMEND_BEES}).
+     * Primera colmena al reiniciar: total colonia (adultos + cría). Las obreras adultas van al tope
+     * {@link ColonyGameRules#MAX_ADULT_WORKERS_PER_HIVE} para probar enjambrazón y división.
      */
-    public static final int STARTER_GAME_FIRST_HIVE_BEES = ColonyGameRules.MAX_BEES_PER_HIVE;
+    public static final int STARTER_GAME_FIRST_HIVE_TOTAL_BEES = 95_000;
 
-    public static final int STARTER_GAME_FIRST_HIVE_ADULT_WORKERS = 71_000;
+    public static final int STARTER_GAME_FIRST_HIVE_ADULT_WORKERS =
+            ColonyGameRules.MAX_ADULT_WORKERS_PER_HIVE;
 
 
 
@@ -900,7 +899,7 @@ public class HiveRepository {
                 String[] names = new String[]{"Colmena 1", "Colmena 2", "Colmena 3"};
 
                 int[] starterBeeTotals = new int[]{
-                        STARTER_GAME_FIRST_HIVE_BEES,
+                        STARTER_GAME_FIRST_HIVE_TOTAL_BEES,
                         STARTER_GAME_TOTAL_BEES,
                         STARTER_GAME_TOTAL_BEES,
                 };
@@ -1126,7 +1125,7 @@ public class HiveRepository {
 
     /**
 
-     * Aplica la producción diaria (8:00) para todos los días pendientes hasta hoy.
+     * Aplica la producción diaria para cada día civil pendiente (una vez pasadas las 8:00 locales).
 
      * Idempotente por colmena y día. Conviene llamarlo al entrar en la app (p. ej. {@code onResume}).
 
@@ -1203,7 +1202,7 @@ public class HiveRepository {
 
      * Solo para depuración: aplica <strong>un</strong> día de producción (siguiente tras {@code lastProcessed}),
 
-     * sin exigir la hora de las 8:00 ni bloquear el día de calendario actual. Permite comprobar miel, población, etc.
+     * sin exigir las 8:00 locales ni el día de calendario actual. Permite comprobar miel, población, etc.
 
      *
 
@@ -1454,6 +1453,13 @@ public class HiveRepository {
                 local.lastProcessedProductionDayKey = fsLast.intValue();
                 changed = true;
             }
+            Long fsAnchor = doc.getLong("gameRealTimeAnchorEpochMs");
+            if (fsAnchor != null && fsAnchor != 0) {
+                if (local.gameRealTimeAnchorEpochMs == 0 || fsAnchor < local.gameRealTimeAnchorEpochMs) {
+                    local.gameRealTimeAnchorEpochMs = fsAnchor;
+                    changed = true;
+                }
+            }
             if (changed) {
                 gameProductionStateDao.update(local);
             }
@@ -1469,6 +1475,7 @@ public class HiveRepository {
             Map<String, Object> m = new HashMap<>();
             m.put("gameStartDayKey", state.gameStartDayKey);
             m.put("lastProcessedProductionDayKey", state.lastProcessedProductionDayKey);
+            m.put("gameRealTimeAnchorEpochMs", state.gameRealTimeAnchorEpochMs);
             m.put("lastProductionAt", FieldValue.serverTimestamp());
             Tasks.await(firestore.collection("users").document(ownerId)
                     .collection("meta").document("productionState")
@@ -1502,7 +1509,7 @@ public class HiveRepository {
     }
 
     /**
-     * Temperatura media del día de calendario anterior a {@code productionDay} (para el tick de las 8:00).
+     * Temperatura media del día de calendario anterior a {@code productionDay} (para el tick de producción de ese día).
      */
     private Map<String, Double> buildPreviousDayMeanTempByHive(List<HiveEntity> hives, LocalDate productionDay) {
         LocalDate previousDay = productionDay.minusDays(1);
@@ -1528,8 +1535,9 @@ public class HiveRepository {
 
     /**
      * Solo se ejecuta con la app abierta (p. ej. {@code MainActivity.onResume}): plan Spark gratuito.
-     * Tras {@link #mergeRemoteProductionProgress}, recorre cada día de calendario pendiente hasta hoy
-     * (tres, una semana, etc.): cada uno con su temperatura del día anterior y producción determinista.
+     * Tras {@link #mergeRemoteProductionProgress}, recorre cada día civil desde el último procesado hasta hoy;
+     * para cada uno solo aplica el tick si ya son las {@link GameCalendar#PRODUCTION_HOUR}:00 o posteriores
+     * en la zona horaria del dispositivo.
      *
      * @param appliedDaysOut se vacía al inicio; recibe un {@link DailyTickSummary} por cada día con colmenas
      *                       y datos de resumen (orden cronológico).
@@ -2055,12 +2063,64 @@ public class HiveRepository {
 
 
 
+    /** Room ha aplicado más días de simulación que el documento recibido de Firestore. */
+    private static boolean localSimulationAheadOfCloudHive(HiveEntity local, HiveEntity cloud) {
+        return local.lastSummaryDayKey > cloud.lastSummaryDayKey;
+    }
+
+    /**
+     * Mismo {@code lastSummaryDayKey}: la nube puede traer miel por debajo del tope por snapshot viejo;
+     * no sobrescribir si local ya está al límite y tiene más kg que la nube.
+     */
+    private static boolean shouldRestoreHoneyWhenCloudStaleSameDay(HiveEntity local, HiveEntity cloud) {
+        if (local.lastSummaryDayKey != cloud.lastSummaryDayKey) {
+            return false;
+        }
+        if (!HiveHoneyRules.isHoneyAtCapacity(local)) {
+            return false;
+        }
+        return cloud.honeyProduction < local.honeyProduction - 1e-6;
+    }
+
+    /** Copia el estado que debe avanzar solo con el tick local (no regresar por nube rezagada). */
+    private static void copyAheadSimulationFieldsFromLocal(HiveEntity local, HiveEntity into) {
+        into.honeyProduction = local.honeyProduction;
+        into.beeCount = local.beeCount;
+        into.populationStateJson = local.populationStateJson;
+        into.lastSummaryDayKey = local.lastSummaryDayKey;
+        into.lastSummaryHoneyKg = local.lastSummaryHoneyKg;
+        into.lastSummaryDeltaBees = local.lastSummaryDeltaBees;
+        into.lastSummaryDeltaHealth = local.lastSummaryDeltaHealth;
+        into.lastSummaryDeltaVarroa = local.lastSummaryDeltaVarroa;
+        into.lastSummaryWorkerDeaths = local.lastSummaryWorkerDeaths;
+        into.lastSummaryWorkerEmergences = local.lastSummaryWorkerEmergences;
+        into.lastSummaryEggsLaid = local.lastSummaryEggsLaid;
+        into.lastSummarySwarmed = local.lastSummarySwarmed;
+        into.lastHealthSimDayKey = local.lastHealthSimDayKey;
+        into.health = local.health;
+        into.varroaPct = local.varroaPct;
+        into.varroaTreatmentDaysRemaining = local.varroaTreatmentDaysRemaining;
+        into.varroaReboundDaysRemaining = local.varroaReboundDaysRemaining;
+        into.reserves = local.reserves;
+    }
+
     private void upsertHiveFromCloud(DocumentSnapshot doc, HiveEntity hive) {
 
+        HiveEntity existing = null;
         if (hive != null && hive.id != null) {
-            HiveEntity existing = hiveDao.getHiveByIdSync(hive.id);
+            existing = hiveDao.getHiveByIdSync(hive.id);
             if (existing != null && doc != null && !doc.contains("superCount")) {
                 hive.superCount = existing.superCount;
+            }
+            /*
+             * La simulación diaria actualiza Room y luego Firestore. El snapshot puede llegar con un
+             * documento rezagado (caché u orden de escritura) y bajar honeyProduction / población.
+             * Colmena 1 (~80k abejas) llena el tope de miel muy rápido (5 kg sin alzas): el fallo se nota ahí.
+             */
+            if (existing != null && localSimulationAheadOfCloudHive(existing, hive)) {
+                copyAheadSimulationFieldsFromLocal(existing, hive);
+            } else if (existing != null && shouldRestoreHoneyWhenCloudStaleSameDay(existing, hive)) {
+                hive.honeyProduction = existing.honeyProduction;
             }
         }
 

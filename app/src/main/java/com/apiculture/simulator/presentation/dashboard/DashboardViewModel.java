@@ -12,9 +12,12 @@ import androidx.lifecycle.Transformations;
 import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
+import com.apiculture.simulator.data.repository.ProfileRepository;
 import com.apiculture.simulator.data.repository.ApiaryLocationProvider;
 import com.apiculture.simulator.data.repository.EconomyRepository;
 import com.apiculture.simulator.data.repository.HiveRepository;
+import com.apiculture.simulator.data.repository.LeaderboardRepository;
+import com.apiculture.simulator.data.repository.PlayerProgressRepository;
 import com.apiculture.simulator.data.repository.WeatherRepository;
 import com.apiculture.simulator.domain.game.ColonyGameRules;
 import com.apiculture.simulator.domain.game.HiveHoneyRules;
@@ -42,6 +45,7 @@ public class DashboardViewModel extends AndroidViewModel {
     private final MutableLiveData<String> seasonText = new MutableLiveData<>();
     private final MutableLiveData<String> dayText = new MutableLiveData<>();
     private final MutableLiveData<String> profileName = new MutableLiveData<>();
+    private final MutableLiveData<String> headerHoneyBrand = new MutableLiveData<>();
     private final MutableLiveData<String> profileSubtitle = new MutableLiveData<>();
     private final MutableLiveData<String> xpLabel = new MutableLiveData<>();
     private final MutableLiveData<Integer> xpCurrent = new MutableLiveData<>();
@@ -65,6 +69,9 @@ public class DashboardViewModel extends AndroidViewModel {
     private final ApiaryLocationProvider apiaryLocationProvider;
     private final HiveRepository hiveRepository;
     private final EconomyRepository economyRepository;
+    private final ProfileRepository profileRepository;
+    private final PlayerProgressRepository playerProgressRepository;
+    private final LeaderboardRepository leaderboardRepository;
     /** Room prohíbe consultas síncronas en el hilo principal; el refresco del aviso de enjambrazón va aquí. */
     private final ExecutorService swarmBannerIo = Executors.newSingleThreadExecutor();
 
@@ -73,6 +80,9 @@ public class DashboardViewModel extends AndroidViewModel {
         ApicultureApp app = (ApicultureApp) application;
         hiveRepository = app.getHiveRepository();
         economyRepository = app.getEconomyRepository();
+        profileRepository = app.getProfileRepository();
+        playerProgressRepository = app.getPlayerProgressRepository();
+        leaderboardRepository = app.getLeaderboardRepository();
         LiveData<List<HiveEntity>> hivesLive =
                 Transformations.switchMap(ownerIdForHives, hiveRepository::getLocalHives);
         statNectar = Transformations.map(hivesLive, this::formatTotalBees);
@@ -91,7 +101,8 @@ public class DashboardViewModel extends AndroidViewModel {
         NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
         refreshEconomyDisplay();
 
-        profileName.setValue("Apicultor");
+        profileName.setValue(application.getString(R.string.dashboard_default_player));
+        headerHoneyBrand.setValue("—");
         xpMaxInternal = LevelSystem.xpForLevel(level);
         xpMax.setValue(xpMaxInternal);
         xpCurrent.setValue(xp);
@@ -136,10 +147,45 @@ public class DashboardViewModel extends AndroidViewModel {
     }
 
     /**
-     * Enlaza las colmenas locales del usuario para total de abejas y resumen (debe llamarse desde la UI con sesión iniciada).
+     * Enlaza las colmenas locales del usuario para el total de obreras (UI) y resumen (sesión iniciada).
      */
     public void bindHivesForUser(@Nullable String firebaseUid) {
         ownerIdForHives.setValue(firebaseUid != null ? firebaseUid : "");
+        loadAndApplyProgress(firebaseUid);
+        refreshPlayerProfile(firebaseUid);
+        if (firebaseUid != null && !firebaseUid.isEmpty()) {
+            leaderboardRepository.enqueuePublish(firebaseUid);
+        }
+    }
+
+    private void loadAndApplyProgress(@Nullable String firebaseUid) {
+        if (firebaseUid == null || firebaseUid.isEmpty()) {
+            level = 0;
+            xp = 0;
+        } else {
+            level = playerProgressRepository.getLevel(firebaseUid);
+            xp = playerProgressRepository.getXp(firebaseUid);
+        }
+        xpMaxInternal = LevelSystem.xpForLevel(level);
+        xpMax.setValue(xpMaxInternal);
+        xpCurrent.setValue(xp);
+        NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
+        xpLabel.setValue(buildXpLabel(nf));
+        profileSubtitle.setValue(buildProfileSubtitle());
+    }
+
+    /** Carga nombre de jugador y marca de miel desde Firestore para cabecera y tarjeta de perfil. */
+    public void refreshPlayerProfile(@Nullable String firebaseUid) {
+        if (profileRepository == null || firebaseUid == null || firebaseUid.isEmpty()) {
+            profileName.postValue(getApplication().getString(R.string.dashboard_default_player));
+            headerHoneyBrand.postValue("—");
+            return;
+        }
+        profileRepository.fetchDisplayProfile(firebaseUid, p -> {
+            String defPlayer = getApplication().getString(R.string.dashboard_default_player);
+            profileName.postValue(p.playerName.isEmpty() ? defPlayer : p.playerName);
+            headerHoneyBrand.postValue(p.honeyBrand.isEmpty() ? "—" : p.honeyBrand);
+        });
     }
 
     /**
@@ -205,7 +251,7 @@ public class DashboardViewModel extends AndroidViewModel {
         }
         int sum = 0;
         for (HiveEntity h : list) {
-            sum += h.beeCount;
+            sum += HivePopulationState.adultWorkersForUi(h, HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
         }
         return nf.format(sum);
     }
@@ -354,15 +400,15 @@ public class DashboardViewModel extends AndroidViewModel {
         nf.setMinimumFractionDigits(0);
         nf.setMaximumFractionDigits(2);
         if (list == null || list.isEmpty()) {
-            return "0 colmenas activas · 0 abejas · Miel total 0 kg.";
+            return "0 colmenas activas · 0 obreras · Miel total 0 kg.";
         }
         int sumBees = 0;
         double honeyKg = 0.0;
         for (HiveEntity h : list) {
-            sumBees += h.beeCount;
+            sumBees += HivePopulationState.adultWorkersForUi(h, HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
             honeyKg += Math.max(0.0, h.honeyProduction);
         }
-        return list.size() + " colmenas activas · " + nf.format(sumBees) + " abejas · Miel total "
+        return list.size() + " colmenas activas · " + nf.format(sumBees) + " obreras · Miel total "
                 + nf.format(honeyKg) + " kg.";
     }
 
@@ -380,6 +426,11 @@ public class DashboardViewModel extends AndroidViewModel {
         xpMax.setValue(xpMaxInternal);
         xpLabel.setValue(buildXpLabel(nf));
         profileSubtitle.setValue(buildProfileSubtitle());
+        String uid = ownerIdForHives.getValue();
+        if (uid != null && !uid.isEmpty()) {
+            playerProgressRepository.save(uid, level, xp);
+            leaderboardRepository.enqueuePublish(uid);
+        }
     }
 
     private String buildProfileSubtitle() {
@@ -423,6 +474,10 @@ public class DashboardViewModel extends AndroidViewModel {
 
     public LiveData<String> profileName() {
         return profileName;
+    }
+
+    public LiveData<String> headerHoneyBrand() {
+        return headerHoneyBrand;
     }
 
     public LiveData<String> profileSubtitle() {

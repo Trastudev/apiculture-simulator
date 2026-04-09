@@ -10,14 +10,24 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.apiculture.simulator.ApicultureApp;
+import com.apiculture.simulator.R;
+import com.apiculture.simulator.data.repository.LeaderboardRepository;
 import com.apiculture.simulator.databinding.FragmentRankingBinding;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
+import com.google.android.material.chip.ChipGroup;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
+import java.util.List;
 
 public class RankingFragment extends Fragment {
 
     private FragmentRankingBinding binding;
+    private RankingViewModel viewModel;
+    private final RankingAdapter adapter = new RankingAdapter();
 
     @Nullable
     @Override
@@ -31,27 +41,75 @@ public class RankingFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
-        RankingViewModel viewModel = new ViewModelProvider(this,
-                new SimpleViewModelFactory<>(() -> new RankingViewModel(app.getMultiplayerRepository())))
+        viewModel = new ViewModelProvider(this,
+                new SimpleViewModelFactory<>(() -> new RankingViewModel(app.getLeaderboardRepository())))
                 .get(RankingViewModel.class);
 
-        viewModel.scores().observe(getViewLifecycleOwner(), scores -> {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < scores.size(); i++) {
-                var score = scores.get(i);
-                sb.append(i + 1)
-                        .append(". ")
-                        .append(score.nickname)
-                        .append(" - ")
-                        .append(String.format("%.2f", score.totalHoneyKg))
-                        .append(" kg\n");
-            }
-            binding.tvRanking.setText(sb.length() == 0 ? "Sin datos de ranking todavía" : sb.toString());
-        });
-        viewModel.error().observe(getViewLifecycleOwner(), msg ->
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show());
+        binding.rvRanking.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.rvRanking.setAdapter(adapter);
 
-        binding.btnRefreshRanking.setOnClickListener(v -> viewModel.fetchRanking());
+        viewModel.rows().observe(getViewLifecycleOwner(), this::onRows);
+        viewModel.loading().observe(getViewLifecycleOwner(), this::onLoading);
+        viewModel.error().observe(getViewLifecycleOwner(), msg -> {
+            if (msg != null && !msg.isEmpty()) {
+                Toast.makeText(requireContext(), getString(R.string.ranking_error, msg), Toast.LENGTH_LONG).show();
+            }
+        });
+
+        binding.chipGroupMetric.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == View.NO_ID) {
+                return;
+            }
+            if (checkedId == R.id.chip_level) {
+                viewModel.setMetric(LeaderboardRepository.Metric.LEVEL);
+            } else if (checkedId == R.id.chip_honey) {
+                viewModel.setMetric(LeaderboardRepository.Metric.HONEY);
+            } else if (checkedId == R.id.chip_hives) {
+                viewModel.setMetric(LeaderboardRepository.Metric.HIVES);
+            } else if (checkedId == R.id.chip_bees) {
+                viewModel.setMetric(LeaderboardRepository.Metric.BEES);
+            }
+        });
+
+        binding.btnRefreshRanking.setOnClickListener(v -> refreshRankingAndPublish());
+
+        refreshRankingAndPublish();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        publishSelfIfLoggedIn();
+    }
+
+    private void refreshRankingAndPublish() {
+        publishSelfIfLoggedIn();
         viewModel.fetchRanking();
+    }
+
+    private void publishSelfIfLoggedIn() {
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        if (u != null) {
+            ((ApicultureApp) requireActivity().getApplication()).getLeaderboardRepository()
+                    .enqueuePublish(u.getUid());
+        }
+    }
+
+    private void onLoading(Boolean loading) {
+        boolean show = Boolean.TRUE.equals(loading);
+        binding.progressRanking.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    private void onRows(List<com.apiculture.simulator.data.remote.RankingEntry> list) {
+        adapter.submit(list);
+        boolean empty = list == null || list.isEmpty();
+        binding.tvRankingEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+        binding.rvRanking.setVisibility(empty ? View.GONE : View.VISIBLE);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        binding = null;
     }
 }

@@ -7,22 +7,30 @@
     android:background="@color/dash_bg"
     android:orientation="vertical">
 
-    <!-- Barra de estadísticas (recursos + día / estación) -->
+    <!-- Barra: stats + logo | marca (centro) | estación / día / ajustes -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/bg_dash_header"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="14dp"
+        android:paddingHorizontal="10dp"
         android:paddingVertical="10dp">
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:gravity="center_vertical"
+            android:gravity="center_vertical|start"
             android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginEnd="6dp"
+                android:contentDescription="@string/cd_app_logo"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_logo" />
 
             <ImageView
                 android:layout_width="22dp"
@@ -43,7 +51,7 @@
             <ImageView
                 android:layout_width="20dp"
                 android:layout_height="20dp"
-                android:layout_marginStart="14dp"
+                android:layout_marginStart="10dp"
                 android:contentDescription="@string/cd_stat_honey_harvested"
                 android:src="@drawable/ic_recolectar" />
 
@@ -60,7 +68,7 @@
             <ImageView
                 android:layout_width="22dp"
                 android:layout_height="22dp"
-                android:layout_marginStart="14dp"
+                android:layout_marginStart="10dp"
                 android:contentDescription="@string/cd_stat_bees"
                 android:src="@drawable/ic_abeja" />
 
@@ -76,60 +84,82 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tv_season"
-            android:layout_width="wrap_content"
+            android:id="@+id/tv_header_brand"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_dash_pill_season"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="6dp"
-            android:textColor="#AD1457"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            tools:text="🌸 Primavera" />
-
-        <TextView
-            android:id="@+id/tv_day"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/bg_dash_pill_day"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="6dp"
-            android:textColor="@color/login_text_dark"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            tools:text="Día 42" />
-
-        <TextView
-            android:id="@+id/tv_split_hive_hint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_dash_pill_season"
+            android:layout_weight="1"
             android:ellipsize="end"
-            android:maxWidth="168dp"
-            android:maxLines="2"
-            android:paddingHorizontal="10dp"
-            android:paddingVertical="6dp"
-            android:text="@string/dashboard_split_hint_short"
-            android:textColor="@color/dash_text_card"
-            android:textSize="11sp"
+            android:gravity="center"
+            android:maxLines="1"
+            android:paddingHorizontal="4dp"
+            android:textColor="@color/login_text_dark"
+            android:textSize="15sp"
             android:textStyle="bold"
-            android:visibility="gone"
-            tools:text="@string/dashboard_split_hint_short"
-            tools:visibility="visible" />
+            tools:text="Miel del Valle" />
 
-        <ImageButton
-            android:id="@+id/btn_dashboard_settings"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/cd_dashboard_settings"
-            android:padding="8dp"
-            android:scaleType="centerInside"
-            android:src="@drawable/ic_settings"
-            app:tint="@color/dash_text_card" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_vertical|end"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_season"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_dash_pill_season"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:textColor="#AD1457"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                tools:text="🌸 Primavera" />
+
+            <TextView
+                android:id="@+id/tv_day"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/bg_dash_pill_day"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:textColor="@color/login_text_dark"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                tools:text="Día 42" />
+
+            <TextView
+                android:id="@+id/tv_split_hive_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/bg_dash_pill_season"
+                android:ellipsize="end"
+                android:maxWidth="120dp"
+                android:maxLines="2"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="6dp"
+                android:text="@string/dashboard_split_hint_short"
+                android:textColor="@color/dash_text_card"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:text="@string/dashboard_split_hint_short"
+                tools:visibility="visible" />
+
+            <ImageButton
+                android:id="@+id/btn_dashboard_settings"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/cd_dashboard_settings"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_settings"
+                app:tint="@color/dash_text_card" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- Tres columnas -->

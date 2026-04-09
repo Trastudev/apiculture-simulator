@@ -12,7 +12,8 @@ public class GameBalanceEngine {
      */
     public static double globalMaxTheoreticalDailyKgPerHive() {
         HiveEntity ideal = new HiveEntity();
-        ideal.beeCount = ColonyGameRules.MAX_BEES_PER_HIVE;
+        // Tope de obreras + cría típica para acotar el máximo teórico de miel/día.
+        ideal.beeCount = ColonyGameRules.MAX_ADULT_WORKERS_PER_HIVE + 25_000;
         ideal.health = 100;
         ideal.queenGeneticQuality = 100;
         ideal.floraType = "Lavanda";

@@ -39,12 +39,26 @@ public final class HiveHoneyRules {
         h.honeyProduction = Math.max(0.0, Math.min(cap, h.honeyProduction));
     }
 
-    /** {@code true} si la reserva está al límite (o casi) para el nivel de alzas. */
+    /**
+     * {@code true} si la reserva está al límite (o casi) para el nivel de alzas.
+     * <p>
+     * Tolerancia por redondeo float y porque la producción <strong>neta</strong> del día puede ser
+     * ligeramente negativa (consumo fijo por abeja). Con muchas abejas al tope de población ese consumo
+     * es mayor en kg/día; en colmenas con poca capacidad (0 alzas = 5 kg) basta un día flojo para bajar
+     * unos gramos y, con un umbral demasiado estricto, el aviso desaparecía aunque sigas “prácticamente lleno”.
+     */
     public static boolean isHoneyAtCapacity(HiveEntity h) {
         if (h == null) {
             return false;
         }
         double cap = maxHoneyKgForSuperCount(h.superCount);
-        return h.honeyProduction >= cap - 1e-3;
+        if (cap <= 0) {
+            return false;
+        }
+        double tol = Math.min(0.10, Math.max(0.002, cap * 0.0015));
+        if (cap <= 15.0) {
+            tol = Math.max(tol, 0.08);
+        }
+        return h.honeyProduction >= cap - tol;
     }
 }

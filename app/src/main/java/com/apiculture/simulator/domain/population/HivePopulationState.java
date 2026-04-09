@@ -319,6 +319,16 @@ public final class HivePopulationState {
         return fromLegacyBeeCount(n);
     }
 
+    /**
+     * Obreras adultas para listas, cabeceras y totales de UI (misma lógica que {@link #fromHiveEntityOrDefault}).
+     */
+    public static int adultWorkersForUi(HiveEntity hive, int defaultBeeCount) {
+        if (hive == null) {
+            return 0;
+        }
+        return fromHiveEntityOrDefault(hive, defaultBeeCount).workersAdult;
+    }
+
     public static HivePopulationState fromJson(String json) {
         if (json == null || json.isEmpty()) {
             return null;

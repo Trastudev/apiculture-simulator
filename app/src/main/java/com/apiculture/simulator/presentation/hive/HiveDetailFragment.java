@@ -82,6 +82,9 @@ public class HiveDetailFragment extends Fragment {
                 return;
             }
 
+            HivePopulationState pop = HivePopulationState.fromHiveEntityOrDefault(hive,
+                    com.apiculture.simulator.data.repository.HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
+
             // Cabecera
             binding.tvHiveName.setText(hive.name);
             boolean honeyAtCap = HiveHoneyRules.isHoneyAtCapacity(hive);
@@ -89,17 +92,13 @@ public class HiveDetailFragment extends Fragment {
             binding.tvHiveHoneyCapWarn.setVisibility(honeyAtCap ? View.VISIBLE : View.GONE);
             binding.tvHiveHeaderHoney.setText(String.format(Locale.getDefault(), "%.1f kg",
                     Math.max(0.0, hive.honeyProduction)));
-            binding.tvHiveHeaderBees.setText(String.format(Locale.getDefault(), "%,d", hive.beeCount));
-            HivePopulationState pop = HivePopulationState.fromHiveEntityOrDefault(hive,
-                    com.apiculture.simulator.data.repository.HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
+            binding.tvHiveHeaderBees.setText(String.format(Locale.getDefault(), "%,d", pop.workersAdult));
             boolean swarmRisk = ColonyGameRules.swarmRiskForAdultWorkers(pop.workersAdult) > 0.0
                     || pop.workersAdult >= ColonyGameRules.SPLIT_RECOMMEND_BEES;
             binding.ivHiveSwarmDangerIcon.setVisibility(swarmRisk ? View.VISIBLE : View.GONE);
             binding.tvHiveSwarmWarn.setVisibility(swarmRisk ? View.VISIBLE : View.GONE);
             NumberFormat popNf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
-            binding.tvPopHeadline.setText(String.format(Locale.getDefault(),
-                    "%s abejas en total  ·  %s obreras adultas",
-                    popNf.format(pop.totalBees()),
+            binding.tvPopHeadline.setText(getString(R.string.hive_detail_pop_headline_obreras,
                     popNf.format(pop.workersAdult)));
             binding.tvPopCompactEggs.setText(popNf.format(pop.broodEggs()));
             binding.tvPopCompactLarvae.setText(popNf.format(pop.broodLarvae()));
@@ -277,7 +276,7 @@ public class HiveDetailFragment extends Fragment {
                         binding.bar5, binding.bar6, binding.bar7
                 };
                 double scaleMax = HoneyDailyProduction.maxChartDailyKgForBeeCount(
-                        ColonyGameRules.MAX_BEES_PER_HIVE);
+                        ColonyGameRules.MAX_ADULT_WORKERS_PER_HIVE);
                 if (scaleMax <= 0) {
                     scaleMax = 1.0;
                 }

@@ -36,7 +36,7 @@ import com.apiculture.simulator.data.local.entity.PlayerEntity;
                 HexParcelOwnershipEntity.class,
                 HexFloraEntity.class
         },
-        version = 16,
+        version = 17,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -176,6 +176,14 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    private static final Migration MIGRATION_16_17 = new Migration(16, 17) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE game_production_state ADD COLUMN gameRealTimeAnchorEpochMs "
+                    + "INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     private static volatile AppDatabase INSTANCE;
 
     public abstract HiveDao hiveDao();
@@ -198,7 +206,7 @@ public abstract class AppDatabase extends RoomDatabase {
                             "apiculture_db"
                     ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
                             MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-                            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
+                            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
                     .build();
                 }
             }

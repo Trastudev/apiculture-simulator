@@ -106,7 +106,7 @@
             android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- Abejas -->
+        <!-- Obreras adultas (contador) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -124,7 +124,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
-                android:text="Abejas"
+                android:text="@string/hive_card_obreras_label"
                 android:textColor="@color/dash_muted"
                 android:textSize="11sp" />
 

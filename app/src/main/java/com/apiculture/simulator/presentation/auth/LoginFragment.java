@@ -17,6 +17,8 @@ import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.databinding.FragmentLoginBinding;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class LoginFragment extends Fragment {
 
@@ -41,7 +43,7 @@ public class LoginFragment extends Fragment {
 
         viewModel.isLoggedIn().observe(getViewLifecycleOwner(), loggedIn -> {
             if (Boolean.TRUE.equals(loggedIn)) {
-                NavHostFragment.findNavController(this).navigate(R.id.action_login_to_dashboard);
+                navigateAfterAuth();
             }
         });
         viewModel.error().observe(getViewLifecycleOwner(), message ->
@@ -51,6 +53,22 @@ public class LoginFragment extends Fragment {
         binding.tvRegisterLink.setOnClickListener(v -> submit(true));
         binding.btnGoogle.setOnClickListener(v ->
                 Toast.makeText(requireContext(), R.string.login_google_soon, Toast.LENGTH_SHORT).show());
+    }
+
+    private void navigateAfterAuth() {
+        ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        if (u == null) {
+            NavHostFragment.findNavController(LoginFragment.this).navigate(R.id.action_login_to_dashboard);
+            return;
+        }
+        app.getProfileRepository().fetchProfileComplete(u.getUid(), complete -> requireActivity().runOnUiThread(() -> {
+            if (Boolean.TRUE.equals(complete)) {
+                NavHostFragment.findNavController(LoginFragment.this).navigate(R.id.action_login_to_dashboard);
+            } else {
+                NavHostFragment.findNavController(LoginFragment.this).navigate(R.id.action_login_to_profileSetup);
+            }
+        }));
     }
 
     private void submit(boolean register) {

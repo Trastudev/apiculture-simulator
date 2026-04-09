@@ -56,7 +56,7 @@ public final class HivePopulationSimulator {
         if (s.queenMode == QueenMode.COLLAPSED) {
             s.lastDayWorkerDeaths = swarmWorkerLoss + applyWorkerMortality(s, day, hid, dayKey);
             s.lastDayWorkerEmergences = applyEmergenceBroodShiftAndWorkerAging(s);
-            capTotalColonyAtMax(s);
+            capAdultWorkersAtMax(s);
             s.lastTrend = HivePopulationTrend.COLLAPSED;
             s.clampNonNegative();
             return;
@@ -64,7 +64,7 @@ public final class HivePopulationSimulator {
 
         s.lastDayWorkerDeaths = swarmWorkerLoss + applyWorkerMortality(s, day, hid, dayKey);
         s.lastDayWorkerEmergences = applyEmergenceBroodShiftAndWorkerAging(s);
-        capTotalColonyAtMax(s);
+        capAdultWorkersAtMax(s);
 
         advanceQueenReplacementPipeline(s);
 
@@ -136,35 +136,18 @@ public final class HivePopulationSimulator {
         return before - s.workersAdult;
     }
 
-    /** Sobrepoblación: las obreras que excedan el tope “mueren” (no se añaden a la colonia). */
-    private static void capTotalColonyAtMax(HivePopulationState s) {
-        int cap = ColonyGameRules.MAX_BEES_PER_HIVE;
-        int over = s.totalBees() - cap;
+    /**
+     * Sobrepoblación de <strong>obreras adultas</strong>: las que excedan el tope se eliminan por edad
+     * (las más viejas primero). La cría no se recorta por este tope.
+     */
+    private static void capAdultWorkersAtMax(HivePopulationState s) {
+        int cap = ColonyGameRules.MAX_ADULT_WORKERS_PER_HIVE;
+        int over = s.workersAdult - cap;
         if (over <= 0) {
             return;
         }
-        int killAdults = Math.min(over, s.workersAdult);
-        removeAdultWorkersFromOldestFirst(s, killAdults);
-        s.lastDayWorkerDeaths += killAdults;
-        over = s.totalBees() - cap;
-        if (over > 0) {
-            subtractBroodFromEggSide(s, over);
-        }
-        over = s.totalBees() - cap;
-        while (over > 0 && s.workersAdult > 0) {
-            removeAdultWorkersFromOldestFirst(s, 1);
-            s.lastDayWorkerDeaths++;
-            over = s.totalBees() - cap;
-        }
-    }
-
-    private static void subtractBroodFromEggSide(HivePopulationState s, int amount) {
-        int left = amount;
-        for (int i = 0; i <= HivePopulationState.PUPA_LAST_DAY && left > 0; i++) {
-            int t = Math.min(s.workerBrood[i], left);
-            s.workerBrood[i] -= t;
-            left -= t;
-        }
+        removeAdultWorkersFromOldestFirst(s, over);
+        s.lastDayWorkerDeaths += over;
     }
 
     /**
@@ -308,7 +291,7 @@ public final class HivePopulationSimulator {
         double reserves = hive != null ? hive.reserves : 0;
         double factor = Math.min(1.0, Math.max(0.25, reserves / 45.0));
         target = (int) Math.floor(target * factor);
-        int room = ColonyGameRules.MAX_BEES_PER_HIVE - s.totalBees();
+        int room = ColonyGameRules.MAX_TOTAL_COLONY_BEES_SOFT_CAP - s.totalBees();
         target = Math.max(0, Math.min(target, room));
         double stressMult = 1.0;
         if (hive != null && hive.varroaPct > 8.0) {

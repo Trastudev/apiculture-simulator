@@ -8,10 +8,12 @@ import java.time.ZoneId;
  * (ajuste del sistema: España, Nueva York, etc.). No se usa UTC fijo: {@link #userTimeZone()}
  * equivale a la zona que el usuario tiene en Ajustes → Fecha y hora.
  * <p>
- * Las claves {@code yyyymmdd} y el tick de producción (p. ej. las 8:00) se interpretan siempre en esa zona.
+ * Las claves {@code yyyymmdd} se interpretan en esa zona. El tick de producción diaria se aplica
+ * cada día civil una vez pasadas las {@link #PRODUCTION_HOUR}:{@link #PRODUCTION_MINUTE} locales.
  */
 public final class GameCalendar {
 
+    /** Hora local a la que se liquida el día de juego (producción, resúmenes). */
     public static final int PRODUCTION_HOUR = 8;
     public static final int PRODUCTION_MINUTE = 0;
 

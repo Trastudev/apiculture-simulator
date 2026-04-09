@@ -67,6 +67,7 @@ public class DashboardFragment extends Fragment {
         viewModel.seasonText().observe(getViewLifecycleOwner(), binding.tvSeason::setText);
         viewModel.dayText().observe(getViewLifecycleOwner(), binding.tvDay::setText);
         viewModel.profileName().observe(getViewLifecycleOwner(), binding.tvProfileName::setText);
+        viewModel.headerHoneyBrand().observe(getViewLifecycleOwner(), binding.tvHeaderBrand::setText);
         viewModel.profileSubtitle().observe(getViewLifecycleOwner(), binding.tvProfileSubtitle::setText);
         viewModel.xpLabel().observe(getViewLifecycleOwner(), binding.tvXpLabel::setText);
         viewModel.xpMax().observe(getViewLifecycleOwner(), max -> {
@@ -165,8 +166,11 @@ public class DashboardFragment extends Fragment {
         binding.btnDebugSimulateDay.setVisibility(BuildConfig.DEBUG ? View.VISIBLE : View.GONE);
         if (BuildConfig.DEBUG && sessionUser != null) {
             binding.btnDebugSimulateDay.setOnClickListener(v ->
-                    viewModel.debugSimulateNextProductionDay(sessionUser.getUid(),
-                            msg -> Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()));
+                    viewModel.debugSimulateNextProductionDay(sessionUser.getUid(), msg -> {
+                        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+                        // Room puede agrupar emisiones; forzamos el mismo refresco que en onResume.
+                        viewModel.refreshSwarmRiskBannerNow();
+                    }));
         }
 
         binding.btnDashboardSettings.setOnClickListener(v -> {

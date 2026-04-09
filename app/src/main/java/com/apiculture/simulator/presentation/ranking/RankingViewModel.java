@@ -4,37 +4,63 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.apiculture.simulator.data.remote.PlayerScore;
-import com.apiculture.simulator.data.repository.MultiplayerRepository;
+import com.apiculture.simulator.data.remote.RankingEntry;
+import com.apiculture.simulator.data.repository.LeaderboardRepository;
 
+import java.util.Collections;
 import java.util.List;
 
 public class RankingViewModel extends ViewModel {
-    private final MultiplayerRepository repository;
-    private final MutableLiveData<List<PlayerScore>> scores = new MutableLiveData<>();
-    private final MutableLiveData<String> error = new MutableLiveData<>();
 
-    public RankingViewModel(MultiplayerRepository repository) {
+    private final LeaderboardRepository repository;
+    private final MutableLiveData<List<RankingEntry>> rows = new MutableLiveData<>(Collections.emptyList());
+    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
+    private final MutableLiveData<String> error = new MutableLiveData<>();
+    private final MutableLiveData<LeaderboardRepository.Metric> metric =
+            new MutableLiveData<>(LeaderboardRepository.Metric.LEVEL);
+
+    public RankingViewModel(LeaderboardRepository repository) {
         this.repository = repository;
     }
 
-    public LiveData<List<PlayerScore>> scores() {
-        return scores;
+    public LiveData<List<RankingEntry>> rows() {
+        return rows;
+    }
+
+    public LiveData<Boolean> loading() {
+        return loading;
     }
 
     public LiveData<String> error() {
         return error;
     }
 
+    public LiveData<LeaderboardRepository.Metric> metric() {
+        return metric;
+    }
+
+    public void setMetric(LeaderboardRepository.Metric m) {
+        metric.setValue(m);
+        fetchRanking();
+    }
+
     public void fetchRanking() {
-        repository.fetchRanking(new MultiplayerRepository.RankingCallback() {
+        LeaderboardRepository.Metric m = metric.getValue();
+        if (m == null) {
+            m = LeaderboardRepository.Metric.LEVEL;
+        }
+        loading.setValue(true);
+        LeaderboardRepository.Metric chosen = m;
+        repository.fetchLeaderboard(chosen, new LeaderboardRepository.FetchCallback() {
             @Override
-            public void onSuccess(List<PlayerScore> result) {
-                scores.postValue(result);
+            public void onSuccess(List<RankingEntry> result) {
+                loading.postValue(false);
+                rows.postValue(result != null ? result : Collections.emptyList());
             }
 
             @Override
             public void onError(String message) {
+                loading.postValue(false);
                 error.postValue(message);
             }
         });

@@ -5,8 +5,17 @@ package com.apiculture.simulator.domain.game;
  */
 public final class ColonyGameRules {
 
-    /** Población total (adultos + cría) máxima por colmena. */
-    public static final int MAX_BEES_PER_HIVE = 80_000;
+    /**
+     * Máximo de obreras <strong>adultas</strong> por colmena. La cría (huevos, larvas, pupas) puede sumar
+     * por encima; el tope no aplica al total adultos + cría.
+     */
+    public static final int MAX_ADULT_WORKERS_PER_HIVE = 80_000;
+
+    /**
+     * Techo holgado de colonia total (adultos + cría) para limitar la puesta diaria cuando el tope duro
+     * es solo de adultas; evita crecimiento ilimitado de la cría.
+     */
+    public static final int MAX_TOTAL_COLONY_BEES_SOFT_CAP = 200_000;
 
     /** Obreras adultas: a partir de este número + tramos de {@link #SWARM_RISK_STEP_BEES} sube el riesgo diario. */
     public static final int SWARM_RISK_BASE_BEES = 70_000;

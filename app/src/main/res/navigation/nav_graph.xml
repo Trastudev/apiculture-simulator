@@ -11,6 +11,20 @@
         <action
             android:id="@+id/action_login_to_dashboard"
             app:destination="@id/dashboardFragment" />
+        <action
+            android:id="@+id/action_login_to_profileSetup"
+            app:destination="@id/profileSetupFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/profileSetupFragment"
+        android:name="com.apiculture.simulator.presentation.profile.ProfileSetupFragment"
+        android:label="Perfil">
+        <action
+            android:id="@+id/action_profile_to_dashboard"
+            app:destination="@id/dashboardFragment"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="true" />
     </fragment>
 
     <fragment
