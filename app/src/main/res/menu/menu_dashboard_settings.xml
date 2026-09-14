@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
+        android:id="@+id/action_shop"
+        android:title="@string/dashboard_menu_shop" />
+    <item
+        android:id="@+id/action_admin"
+        android:title="@string/dashboard_menu_admin"
+        android:visible="false">
+        <menu>
+            <item
+                android:id="@+id/action_admin_events"
+                android:title="@string/dashboard_menu_admin_events" />
+            <item
+                android:id="@+id/action_admin_grants"
+                android:title="@string/dashboard_menu_admin_grants" />
+        </menu>
+    </item>
+    <item
         android:id="@+id/action_reset_game"
         android:title="@string/dashboard_menu_reset_game" />
 </menu>

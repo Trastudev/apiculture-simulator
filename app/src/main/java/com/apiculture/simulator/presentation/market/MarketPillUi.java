@@ -11,6 +11,8 @@ public final class MarketPillUi {
     public final double filledKg;
     public final int fillPercent;
     public final double priceEurPerKg;
+    /** Recargo/descuento por oferta, −25…+25. */
+    public final int priceAdjPercent;
     public final double userStockKg;
 
     public MarketPillUi(
@@ -20,6 +22,7 @@ public final class MarketPillUi {
             double filledKg,
             int fillPercent,
             double priceEurPerKg,
+            int priceAdjPercent,
             double userStockKg) {
         this.floraKey = floraKey;
         this.title = title;
@@ -27,6 +30,7 @@ public final class MarketPillUi {
         this.filledKg = filledKg;
         this.fillPercent = fillPercent;
         this.priceEurPerKg = priceEurPerKg;
+        this.priceAdjPercent = priceAdjPercent;
         this.userStockKg = userStockKg;
     }
 }

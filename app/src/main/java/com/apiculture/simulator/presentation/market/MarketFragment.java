@@ -4,7 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
+import com.apiculture.simulator.presentation.common.GameNotice;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -19,7 +19,6 @@ import com.apiculture.simulator.domain.game.GameCalendar;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 
 public class MarketFragment extends Fragment {
     private FragmentMarketBinding binding;
@@ -49,7 +48,8 @@ public class MarketFragment extends Fragment {
                 viewModel.sellFloraKg(floraKey, stockKg, result -> toastSellResult(stockKg, result));
             }
         });
-        binding.recyclerMarketPills.setLayoutManager(new GridLayoutManager(requireContext(), 3));
+        int span = getResources().getInteger(R.integer.market_grid_span);
+        binding.recyclerMarketPills.setLayoutManager(new GridLayoutManager(requireContext(), span));
         binding.recyclerMarketPills.setAdapter(adapter);
 
         viewModel.uiState().observe(getViewLifecycleOwner(), state -> {
@@ -57,7 +57,7 @@ public class MarketFragment extends Fragment {
                 return;
             }
             binding.tvMarketSummary.setText(requireContext().getString(R.string.market_summary_line,
-                    state.balanceEur, state.totalHoneyKg));
+                    state.balanceEur, state.totalHoneyKg, state.playerCount));
             adapter.setPills(state.pills);
         });
 
@@ -66,15 +66,13 @@ public class MarketFragment extends Fragment {
 
     private void toastSellResult(double kg, MarketSellResult result) {
         if (result.success) {
-            Toast.makeText(requireContext(),
-                    getString(R.string.market_sell_ok, kg, result.unitPriceEurPerKg),
-                    Toast.LENGTH_SHORT).show();
+            GameNotice.showSuccess(requireContext(),
+                    getString(R.string.market_sell_ok, kg, result.unitPriceEurPerKg));
         } else if ("stock".equals(result.errorMessage)) {
-            Toast.makeText(requireContext(), R.string.market_sell_fail_stock, Toast.LENGTH_SHORT).show();
+            GameNotice.show(requireContext(), R.string.market_sell_fail_stock);
         } else {
-            Toast.makeText(requireContext(),
-                    getString(R.string.market_sell_fail_reason, result.errorMessage),
-                    Toast.LENGTH_LONG).show();
+            GameNotice.show(requireContext(),
+                    getString(R.string.market_sell_fail_reason, result.errorMessage));
         }
     }
 
@@ -82,10 +80,9 @@ public class MarketFragment extends Fragment {
     public void onResume() {
         super.onResume();
         ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
-        ZoneId z = GameCalendar.userTimeZone();
-        LocalDate today = LocalDate.now(z);
+        LocalDate today = LocalDate.now(GameCalendar.globalMarketTimeZone());
         app.getMarketRepository().refreshGlobalMarketForDay(
-                GameCalendar.toDayKey(today), today.getDayOfYear());
+                GameCalendar.toDayKey(today), today.getDayOfYear(), viewModel::refresh);
         viewModel.attachGlobalSalesStream();
     }
 

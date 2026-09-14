@@ -14,6 +14,18 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <ImageView
+            android:id="@+id/iv_pill_flora"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_horizontal"
+            android:background="@android:color/transparent"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter"
+            android:visibility="gone"
+            tools:src="@drawable/ic_bosque"
+            tools:visibility="visible" />
+
         <TextView
             android:id="@+id/tv_pill_title"
             android:layout_width="match_parent"
@@ -40,7 +52,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textSize="10sp"
-            tools:text="Cubierta: 40 kg (40%)" />
+            tools:text="Oferta: 12 kg / demanda 40 kg" />
 
         <TextView
             android:id="@+id/tv_pill_price"

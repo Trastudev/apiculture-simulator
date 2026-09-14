@@ -4,7 +4,10 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import android.content.Intent;
+
 import com.apiculture.simulator.data.repository.AuthRepository;
+import com.google.firebase.auth.FirebaseUser;
 
 public class AuthViewModel extends ViewModel {
 
@@ -43,6 +46,28 @@ public class AuthViewModel extends ViewModel {
         authRepository.register(email, password, new AuthRepository.AuthCallback() {
             @Override
             public void onSuccess(com.google.firebase.auth.FirebaseUser user) {
+                isLoggedIn.postValue(true);
+            }
+
+            @Override
+            public void onError(String message) {
+                error.postValue(message);
+            }
+        });
+    }
+
+    public boolean isGoogleSignInConfigured() {
+        return authRepository.isGoogleSignInConfigured();
+    }
+
+    public Intent googleSignInIntent() {
+        return authRepository.googleSignInIntent();
+    }
+
+    public void loginWithGoogleIdToken(String idToken) {
+        authRepository.signInWithGoogleIdToken(idToken, new AuthRepository.AuthCallback() {
+            @Override
+            public void onSuccess(FirebaseUser user) {
                 isLoggedIn.postValue(true);
             }
 

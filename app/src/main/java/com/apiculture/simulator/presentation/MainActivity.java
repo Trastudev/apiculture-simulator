@@ -23,29 +23,19 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
-import com.apiculture.simulator.data.repository.DailyTickSummary;
-import com.apiculture.simulator.data.repository.HiveDayStartupSummary;
-import com.apiculture.simulator.data.repository.TickAppliedDayResult;
 import com.apiculture.simulator.databinding.ActivityMainBinding;
-import com.apiculture.simulator.domain.game.GameCalendar;
 import com.apiculture.simulator.notification.DailyProductionAlarmScheduler;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.apiculture.simulator.presentation.common.DailySummaryDialog;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
 
-import java.text.NumberFormat;
-import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
-
-    private static final String PREF_STARTUP_SIM_DAY = "startup_sim_summary_day_key";
 
     private static final String PREF_NOTIF_PERM_PROMPTED = "notification_permission_prompted";
 
@@ -110,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
             AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(
                     R.id.dashboardFragment,
                     R.id.hivesFragment,
+                    R.id.apiaryYardFragment,
                     R.id.hiveDetailFragment,
                     R.id.mapFragment,
                     R.id.marketFragment,
@@ -139,19 +130,24 @@ public class MainActivity extends AppCompatActivity {
                 boolean onProfileSetup = destination.getId() == R.id.profileSetupFragment;
                 boolean onDashboard = destination.getId() == R.id.dashboardFragment;
                 boolean onHives = destination.getId() == R.id.hivesFragment;
+                boolean onApiaryYard = destination.getId() == R.id.apiaryYardFragment;
                 boolean onHiveDetail = destination.getId() == R.id.hiveDetailFragment;
                 boolean onMap = destination.getId() == R.id.mapFragment;
                 boolean onMarket = destination.getId() == R.id.marketFragment;
+                boolean onAdminEvents = destination.getId() == R.id.adminEventsFragment;
+                boolean onAdminGrants = destination.getId() == R.id.adminGrantsFragment;
+                boolean onShop = destination.getId() == R.id.shopFragment;
 
                 // Sin barra superior en estas pantallas (más espacio; mercado sin título en toolbar)
                 binding.toolbar.setVisibility(
-                        onLogin || onProfileSetup || onDashboard || onHives || onHiveDetail || onMap || onMarket
+                        onLogin || onProfileSetup || onDashboard || onHives || onApiaryYard || onHiveDetail || onMap || onMarket
+                                || onAdminEvents || onAdminGrants || onShop
                                 ? View.GONE : View.VISIBLE);
                 binding.bottomNav.setVisibility(onLogin || onProfileSetup ? View.GONE : View.VISIBLE);
 
                 // Sincronizar pestaña inferior (el listener custom no lo hace solo)
                 if (!onLogin && !onProfileSetup) {
-                    int tabId = onHiveDetail ? R.id.hivesFragment : destination.getId();
+                    int tabId = (onHiveDetail || onApiaryYard) ? R.id.hivesFragment : destination.getId();
                     MenuItem tab = binding.bottomNav.getMenu().findItem(tabId);
                     if (tab != null && tab.isCheckable()) {
                         tab.setChecked(true);
@@ -174,10 +170,22 @@ public class MainActivity extends AppCompatActivity {
                     .collection("users")
                     .document(user.getUid())
                     .set(profile, SetOptions.merge());
-            ((ApicultureApp) getApplication()).getHiveRepository().tickDailyProductionForOwner(
-                    user.getUid(), this::maybeShowStartupSimulationSummary);
+            ApicultureApp app = (ApicultureApp) getApplication();
+            app.getUserGameStateRepository().pullAndApplyThen(user.getUid(),
+                    () -> app.getHiveRepository().tickDailyProductionForOwner(
+                            user.getUid(),
+                            result -> DailySummaryDialog.show(MainActivity.this, result)));
         } else {
             DailyProductionAlarmScheduler.markSessionActive(this, false);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            ((ApicultureApp) getApplication()).getUserGameStateRepository().pushImmediate(user.getUid());
         }
     }
 
@@ -195,86 +203,6 @@ public class MainActivity extends AppCompatActivity {
         }
         p.edit().putBoolean(PREF_NOTIF_PERM_PROMPTED, true).apply();
         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
-    }
-
-    private void maybeShowStartupSimulationSummary(TickAppliedDayResult result) {
-        if (isFinishing() || result == null || result.days.isEmpty()) {
-            return;
-        }
-        int maxDay = result.maxDayKey();
-        if (maxDay <= 0) {
-            return;
-        }
-        SharedPreferences prefs = getPreferences(MODE_PRIVATE);
-        if (prefs.getInt(PREF_STARTUP_SIM_DAY, 0) >= maxDay) {
-            return;
-        }
-        prefs.edit().putInt(PREF_STARTUP_SIM_DAY, maxDay).apply();
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd/MM/yyyy").withLocale(new Locale("es", "ES"));
-        String title;
-        if (result.days.size() == 1) {
-            LocalDate d = GameCalendar.fromDayKey(result.days.get(0).dayKey);
-            title = getString(R.string.startup_sim_summary_title, d.format(df));
-        } else {
-            DailyTickSummary first = result.days.get(0);
-            DailyTickSummary last = result.days.get(result.days.size() - 1);
-            title = getString(R.string.startup_sim_summary_title_multi, result.days.size(),
-                    GameCalendar.fromDayKey(first.dayKey).format(df),
-                    GameCalendar.fromDayKey(last.dayKey).format(df));
-        }
-        NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
-        nf.setMinimumFractionDigits(1);
-        nf.setMaximumFractionDigits(2);
-        NumberFormat nfVar = NumberFormat.getNumberInstance(new Locale("es", "ES"));
-        nfVar.setMinimumFractionDigits(2);
-        nfVar.setMaximumFractionDigits(2);
-        NumberFormat intNf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
-        StringBuilder body = new StringBuilder();
-        for (DailyTickSummary day : result.days) {
-            body.append("\n══ ");
-            body.append(GameCalendar.fromDayKey(day.dayKey).format(df));
-            body.append(" ══\n\n");
-            for (HiveDayStartupSummary s : day.summaries) {
-                body.append("— ").append(s.hiveName).append("\n");
-                body.append(getString(R.string.startup_sim_summary_line_miel, nf.format(s.honeyKg))).append('\n');
-                String obreras = (s.workerNet >= 0 ? "+" : "") + intNf.format(s.workerNet);
-                body.append(getString(R.string.startup_sim_summary_line_obreras, obreras)).append('\n');
-                body.append(getString(R.string.startup_sim_summary_line_huevos, intNf.format(s.eggsLaid))).append('\n');
-                String salud = formatSignedIntPercent(s.healthDelta);
-                body.append(getString(R.string.startup_sim_summary_line_salud, salud)).append('\n');
-                String varroa = formatSignedDoublePercent(s.varroaDelta, nfVar);
-                body.append(getString(R.string.startup_sim_summary_line_varroa, varroa)).append('\n');
-                if (s.swarmed) {
-                    body.append(getString(R.string.startup_sim_summary_line_swarm, s.hiveName)).append("\n");
-                }
-                body.append('\n');
-            }
-        }
-        new MaterialAlertDialogBuilder(this)
-                .setTitle(title)
-                .setMessage(body.toString().trim())
-                .setPositiveButton(android.R.string.ok, null)
-                .show();
-    }
-
-    private static String formatSignedIntPercent(int delta) {
-        if (delta > 0) {
-            return "+" + delta + " %";
-        }
-        if (delta < 0) {
-            return "−" + Math.abs(delta) + " %";
-        }
-        return "0 %";
-    }
-
-    private static String formatSignedDoublePercent(double delta, NumberFormat nfVar) {
-        if (delta > 0) {
-            return "+" + nfVar.format(delta) + " %";
-        }
-        if (delta < 0) {
-            return "−" + nfVar.format(Math.abs(delta)) + " %";
-        }
-        return "0 %";
     }
 
     @Override

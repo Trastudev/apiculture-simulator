@@ -1,14 +1,18 @@
 package com.apiculture.simulator.data.repository;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 
 import com.apiculture.simulator.BuildConfig;
+import com.apiculture.simulator.domain.map.PlayableMapRegion;
 import com.apiculture.simulator.domain.parcel.BoundingBox;
 import com.apiculture.simulator.domain.parcel.HexParcel;
 import com.apiculture.simulator.domain.parcel.HexParcelGenerator;
-import com.apiculture.simulator.domain.parcel.IberiaBounds;
 import com.apiculture.simulator.domain.parcel.LandMask;
 import com.apiculture.simulator.presentation.map.HexOverlayDiskCache;
 import com.apiculture.simulator.presentation.map.MapHexOverlayConfig;
@@ -27,49 +31,139 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
- * Malla hexagonal precalculada para Iberia: se genera una sola vez (o se copia desde
- * {@code assets/iberia_hex/overlay.json}) y se guarda en {@code filesDir/iberia_hex/}.
- * El mapa solo filtra por viewport. Para otro país, mismo patrón con otro bbox y fichero.
+ * Malla hexagonal precalculada por región jugable (Iberia, Sudáfrica).
+ * Se genera una sola vez (o se copia desde {@code assets/.../overlay.json}) y se guarda en filesDir.
  */
 public final class IberiaHexOverlayStore {
 
+    private static final String TAG = "HexOverlay";
     private static final int SCHEMA = 2;
-    private static final String SUBDIR = "iberia_hex";
-    private static final String ASSET_PATH = "iberia_hex/overlay.json";
     private static final int GENERATE_CAP = 32000;
-    private static final String KEY_PREFIX = "iberia-grid-v2|";
 
     private static final Object LOCK = new Object();
-    private static volatile List<HexParcel> memoryCache;
+    private static final Map<PlayableMapRegion, List<HexParcel>> memoryCache =
+            new EnumMap<>(PlayableMapRegion.class);
+    private static final ExecutorService GEN_EXEC = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "hex-overlay-gen");
+        t.setPriority(Thread.MIN_PRIORITY);
+        return t;
+    });
+    private static volatile Handler mainHandler;
 
     private IberiaHexOverlayStore() {
     }
 
+    public static boolean isLoaded(PlayableMapRegion region) {
+        PlayableMapRegion r = region != null ? region : PlayableMapRegion.IBERIA;
+        return memoryCache.get(r) != null;
+    }
+
+    /**
+     * Carga la malla en un hilo propio (no el del mapa). {@code onDone} se ejecuta en el hilo principal.
+     */
+    public static void ensureLoadedAsync(
+            Context appContext, PlayableMapRegion region, @Nullable Runnable onDone) {
+        PlayableMapRegion r = region != null ? region : PlayableMapRegion.IBERIA;
+        if (isLoaded(r)) {
+            if (onDone != null) {
+                onDone.run();
+            }
+            return;
+        }
+        Context app = appContext.getApplicationContext();
+        GEN_EXEC.execute(() -> {
+            getParcels(app, r);
+            if (onDone != null) {
+                mainHandler().post(onDone);
+            }
+        });
+    }
+
+    private static Handler mainHandler() {
+        Handler h = mainHandler;
+        if (h == null) {
+            synchronized (LOCK) {
+                h = mainHandler;
+                if (h == null) {
+                    h = new Handler(Looper.getMainLooper());
+                    mainHandler = h;
+                }
+            }
+        }
+        return h;
+    }
+
     public static List<HexParcel> getParcels(Context appContext) {
-        List<HexParcel> c = memoryCache;
+        return getParcels(appContext, PlayableMapRegion.IBERIA);
+    }
+
+    public static List<HexParcel> getParcels(Context appContext, PlayableMapRegion region) {
+        PlayableMapRegion r = region != null ? region : PlayableMapRegion.IBERIA;
+        List<HexParcel> c = memoryCache.get(r);
         if (c != null) {
             return c;
         }
         synchronized (LOCK) {
-            if (memoryCache != null) {
-                return memoryCache;
+            List<HexParcel> again = memoryCache.get(r);
+            if (again != null) {
+                return again;
             }
             Context app = appContext.getApplicationContext();
-            File f = storageFile(app);
-            List<HexParcel> loaded = tryLoadDisk(app, f);
+            File f = storageFile(app, r);
+            List<HexParcel> loaded = tryLoadDisk(app, f, r);
             if (loaded == null) {
-                loaded = tryLoadBundledAssetAndPersist(app, f);
+                loaded = tryLoadBundledAssetAndPersist(app, f, r);
             }
             if (loaded == null) {
-                loaded = generateAndSave(app, f);
+                loaded = generateAndSave(app, f, r);
             }
-            memoryCache = loaded;
+            memoryCache.put(r, loaded);
             return loaded;
         }
+    }
+
+    @Nullable
+    public static HexParcel findById(Context appContext, String hexId) {
+        if (hexId == null || hexId.isEmpty()) {
+            return null;
+        }
+        PlayableMapRegion r = PlayableMapRegion.fromHexId(hexId);
+        HexParcel found = findIn(getParcels(appContext, r), hexId);
+        if (found != null || hexId.startsWith("za_") || hexId.startsWith("iberia_")) {
+            return found;
+        }
+        PlayableMapRegion other = r == PlayableMapRegion.SOUTH_AFRICA
+                ? PlayableMapRegion.IBERIA : PlayableMapRegion.SOUTH_AFRICA;
+        return findIn(getParcels(appContext, other), hexId);
+    }
+
+    @Nullable
+    public static HexParcel findContaining(Context appContext, double lat, double lon) {
+        PlayableMapRegion r = PlayableMapRegion.containing(lat, lon);
+        if (r == null) {
+            return null;
+        }
+        return com.apiculture.simulator.domain.parcel.HexParcelResolve.findContaining(
+                getParcels(appContext, r), lat, lon);
+    }
+
+    @Nullable
+    private static HexParcel findIn(List<HexParcel> all, String hexId) {
+        for (int i = 0; i < all.size(); i++) {
+            HexParcel p = all.get(i);
+            if (hexId.equals(p.id)) {
+                return p;
+            }
+        }
+        return null;
     }
 
     /**
@@ -122,28 +216,39 @@ public final class IberiaHexOverlayStore {
                 || maxLon < view.minLon || minLon > view.maxLon);
     }
 
-    private static String datasetKey(Context app) {
-        return iberiaOverlayDatasetKey(BuildConfig.VERSION_CODE);
+    private static String datasetKey(Context app, PlayableMapRegion region) {
+        return overlayDatasetKey(region, BuildConfig.VERSION_CODE);
     }
 
     /**
      * Misma clave que se guarda en el JSON; {@code versionCode} debe coincidir con {@link BuildConfig#VERSION_CODE}
      * del APK que consumirá el overlay.
      */
-    public static String iberiaOverlayDatasetKey(int versionCode) {
-        return KEY_PREFIX + HexOverlayDiskCache.configFingerprint(
+    public static String overlayDatasetKey(PlayableMapRegion region, int versionCode) {
+        PlayableMapRegion r = region != null ? region : PlayableMapRegion.IBERIA;
+        return r.hexPrefix() + "-grid-v2|" + HexOverlayDiskCache.configFingerprint(
                 LandMaskAssets.DEFAULT_LAND_GEOJSON_ASSET,
-                MapHexOverlayConfig.MAP_HEX_TARGET_AREA_KM2,
+                r.hexTargetAreaKm2(),
                 MapHexOverlayConfig.MAP_HEX_LAND_SAMPLES_PER_AXIS,
                 MapHexOverlayConfig.MAP_HEX_MIN_LAND_FRACTION,
-                MapHexOverlayConfig.HEX_GRID_ANCHOR_LAT,
-                MapHexOverlayConfig.HEX_GRID_ANCHOR_LON,
+                r.gridAnchorLat(),
+                r.gridAnchorLon(),
                 versionCode);
+    }
+
+    public static String iberiaOverlayDatasetKey(int versionCode) {
+        return overlayDatasetKey(PlayableMapRegion.IBERIA, versionCode);
     }
 
     public static JSONObject toOverlayJsonDocument(List<HexParcel> parcels, int versionCode)
             throws org.json.JSONException {
-        return buildJson(parcels, iberiaOverlayDatasetKey(versionCode));
+        return toOverlayJsonDocument(parcels, PlayableMapRegion.IBERIA, versionCode);
+    }
+
+    public static JSONObject toOverlayJsonDocument(
+            List<HexParcel> parcels, PlayableMapRegion region, int versionCode)
+            throws org.json.JSONException {
+        return buildJson(parcels, overlayDatasetKey(region, versionCode));
     }
 
     private static String jsonFileName(String datasetKey) {
@@ -160,59 +265,75 @@ public final class IberiaHexOverlayStore {
         }
     }
 
-    private static File storageFile(Context app) {
-        File dir = new File(app.getFilesDir(), SUBDIR);
+    private static File storageFile(Context app, PlayableMapRegion region) {
+        PlayableMapRegion r = region != null ? region : PlayableMapRegion.IBERIA;
+        File dir = new File(app.getFilesDir(), r.overlaySubdir());
         if (!dir.isDirectory()) {
             //noinspection ResultOfMethodCallIgnored
             dir.mkdirs();
         }
-        return new File(dir, jsonFileName(datasetKey(app)));
+        return new File(dir, jsonFileName(datasetKey(app, r)));
     }
 
     @Nullable
-    private static List<HexParcel> tryLoadDisk(Context app, File f) {
+    private static List<HexParcel> tryLoadDisk(Context app, File f, PlayableMapRegion region) {
         if (!f.isFile()) {
             return null;
         }
         try {
             JSONObject root = new JSONObject(new String(readAllBytes(f), StandardCharsets.UTF_8));
-            return parseParcelsJson(root, datasetKey(app));
+            return parseParcelsJson(root, datasetKey(app, region));
         } catch (Exception e) {
             return null;
         }
     }
 
     @Nullable
-    private static List<HexParcel> tryLoadBundledAssetAndPersist(Context app, File dest) {
-        try (InputStream in = app.getAssets().open(ASSET_PATH)) {
+    private static List<HexParcel> tryLoadBundledAssetAndPersist(
+            Context app, File dest, PlayableMapRegion region) {
+        PlayableMapRegion r = region != null ? region : PlayableMapRegion.IBERIA;
+        try (InputStream in = app.getAssets().open(r.overlayAssetPath())) {
             byte[] raw = readAllBytes(in);
             JSONObject root = new JSONObject(new String(raw, StandardCharsets.UTF_8));
-            List<HexParcel> list = parseParcelsJson(root, datasetKey(app));
+            List<HexParcel> list = parseParcelsJson(root, datasetKey(app, r));
             if (list != null) {
                 writeBytesAtomically(dest, raw);
                 return list;
             }
+            Log.w(TAG, r.hexPrefix() + " bundled overlay.json key mismatch; expected "
+                    + datasetKey(app, r));
         } catch (Exception ignored) {
         }
         return null;
     }
 
-    private static List<HexParcel> generateAndSave(Context app, File dest) {
+    private static List<HexParcel> generateAndSave(Context app, File dest, PlayableMapRegion region) {
+        PlayableMapRegion r = region != null ? region : PlayableMapRegion.IBERIA;
+        long t0 = SystemClock.elapsedRealtime();
         LandMask land = LandMaskAssets.getOrLoadDefaultLandMask(app);
         HexParcelGenerator generator = new HexParcelGenerator(
                 land,
-                MapHexOverlayConfig.MAP_HEX_TARGET_AREA_KM2,
+                r.hexTargetAreaKm2(),
                 MapHexOverlayConfig.MAP_HEX_LAND_SAMPLES_PER_AXIS,
                 HexParcelGenerator.DEFAULT_LAND_FRACTION_INLAND,
                 MapHexOverlayConfig.MAP_HEX_MIN_LAND_FRACTION,
-                MapHexOverlayConfig.HEX_GRID_ANCHOR_LAT,
-                MapHexOverlayConfig.HEX_GRID_ANCHOR_LON);
-        List<HexParcel> list = generator.generate(IberiaBounds.BOX, "iberia", GENERATE_CAP);
-        try {
-            JSONObject root = buildJson(list, datasetKey(app));
-            writeBytesAtomically(dest, root.toString().getBytes(StandardCharsets.UTF_8));
-        } catch (Exception ignored) {
-        }
+                r.gridAnchorLat(),
+                r.gridAnchorLon());
+        List<HexParcel> list = generator.generate(r.box(), r.hexPrefix(), GENERATE_CAP);
+        Log.i(TAG, r.hexPrefix() + " generate " + list.size() + " hex in "
+                + (SystemClock.elapsedRealtime() - t0) + " ms");
+        final String key = datasetKey(app, r);
+        GEN_EXEC.execute(() -> {
+            long tPersist = SystemClock.elapsedRealtime();
+            try {
+                JSONObject root = buildJson(list, key);
+                writeBytesAtomically(dest, root.toString().getBytes(StandardCharsets.UTF_8));
+                Log.i(TAG, r.hexPrefix() + " persist in "
+                        + (SystemClock.elapsedRealtime() - tPersist) + " ms");
+            } catch (Exception e) {
+                Log.w(TAG, r.hexPrefix() + " persist failed", e);
+            }
+        });
         return list;
     }
 

@@ -12,6 +12,7 @@ import com.apiculture.simulator.databinding.ItemMarketHoneyPillBinding;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class MarketPillsAdapter extends RecyclerView.Adapter<MarketPillsAdapter.VH> {
 
@@ -47,11 +48,20 @@ public class MarketPillsAdapter extends RecyclerView.Adapter<MarketPillsAdapter.
         MarketPillUi p = pills.get(position);
         Context c = holder.binding.getRoot().getContext();
         holder.binding.tvPillTitle.setText(p.title);
+        int floraIcon = com.apiculture.simulator.presentation.hive.HiveSiteSummaryUi.floraHoneyJarIcon(p.floraKey);
+        if (floraIcon != 0) {
+            holder.binding.ivPillFlora.setImageResource(floraIcon);
+            holder.binding.ivPillFlora.setVisibility(android.view.View.VISIBLE);
+        } else {
+            holder.binding.ivPillFlora.setVisibility(android.view.View.GONE);
+        }
         holder.binding.progressDemand.setMax(100);
         holder.binding.progressDemand.setProgress(Math.min(100, Math.max(0, p.fillPercent)));
         holder.binding.tvPillDemand.setText(c.getString(R.string.market_pill_demand_line,
-                p.filledKg, p.fillPercent));
-        holder.binding.tvPillPrice.setText(c.getString(R.string.market_pill_price, p.priceEurPerKg));
+                p.filledKg, p.demandKg));
+        String adj = String.format(Locale.getDefault(), "%+d%%", p.priceAdjPercent);
+        holder.binding.tvPillPrice.setText(c.getString(R.string.market_pill_price,
+                p.priceEurPerKg, adj));
         holder.binding.tvPillStock.setText(c.getString(R.string.market_pill_stock, p.userStockKg));
         holder.binding.btnSell5.setText(c.getString(R.string.market_sell_5));
         holder.binding.btnSellAll.setText(c.getString(R.string.market_sell_all, p.userStockKg));

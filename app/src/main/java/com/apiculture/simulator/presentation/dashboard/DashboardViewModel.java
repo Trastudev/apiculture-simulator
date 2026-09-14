@@ -1,37 +1,52 @@
 package com.apiculture.simulator.presentation.dashboard;
 
 import android.app.Application;
+import android.os.Handler;
+import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 
 import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
 import com.apiculture.simulator.data.repository.ProfileRepository;
-import com.apiculture.simulator.data.repository.ApiaryLocationProvider;
 import com.apiculture.simulator.data.repository.EconomyRepository;
 import com.apiculture.simulator.data.repository.HiveRepository;
 import com.apiculture.simulator.data.repository.LeaderboardRepository;
 import com.apiculture.simulator.data.repository.PlayerProgressRepository;
-import com.apiculture.simulator.data.repository.WeatherRepository;
+import com.apiculture.simulator.data.repository.GlobalEventRepository;
+import com.apiculture.simulator.data.repository.EventInventoryStore;
+import com.apiculture.simulator.data.repository.MarketRepository;
+import com.apiculture.simulator.domain.admin.AdminRoles;
+import com.apiculture.simulator.domain.game.DemandSurgeMilestones;
 import com.apiculture.simulator.domain.game.ColonyGameRules;
+import com.apiculture.simulator.domain.game.GameCalendar;
 import com.apiculture.simulator.domain.game.HiveHoneyRules;
+import com.apiculture.simulator.domain.game.XpAwards;
+import com.apiculture.simulator.domain.market.HoneyMarketEngine;
+import com.apiculture.simulator.domain.market.HoneyMarketSnapshot;
 import com.apiculture.simulator.domain.population.HivePopulationState;
 import com.apiculture.simulator.domain.game.GameClock;
 import com.apiculture.simulator.domain.game.LevelSystem;
 import com.apiculture.simulator.domain.game.Season;
+import com.apiculture.simulator.domain.parcel.FloraPlantingProgressRow;
+import com.apiculture.simulator.presentation.hive.HiveSiteSummaryUi;
 
 import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -50,30 +65,35 @@ public class DashboardViewModel extends AndroidViewModel {
     private final MutableLiveData<String> xpLabel = new MutableLiveData<>();
     private final MutableLiveData<Integer> xpCurrent = new MutableLiveData<>();
     private final MutableLiveData<Integer> xpMax = new MutableLiveData<>();
-    private final MutableLiveData<String> weatherTemp = new MutableLiveData<>();
-    private final MutableLiveData<String> weatherHint = new MutableLiveData<>();
-    private final MutableLiveData<String> weatherLocation = new MutableLiveData<>();
-    private final LiveData<String> summaryText;
     private final MutableLiveData<String> eventTitle = new MutableLiveData<>();
     private final MutableLiveData<String> eventSubtitle = new MutableLiveData<>();
-    private final LiveData<Boolean> showSplitHiveHint;
+    private final MutableLiveData<GlobalEventBanner> globalEventBanner = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> isAdmin = new MutableLiveData<>(false);
+    private final MutableLiveData<Integer> queenInventoryCount = new MutableLiveData<>(0);
+    private final MutableLiveData<Integer> treatInventoryCount = new MutableLiveData<>(0);
+    private final MutableLiveData<Integer> feedInventoryCount = new MutableLiveData<>(0);
     private final MediatorLiveData<SwarmRiskBanner> swarmRiskBanner = new MediatorLiveData<>();
+    private final MediatorLiveData<QueenDeathBanner> queenDeathBanner = new MediatorLiveData<>();
     private final MediatorLiveData<HoneyCapBanner> honeyCapBanner = new MediatorLiveData<>();
+    private final MutableLiveData<List<FloraPlantingProgressRow>> floraPlantingsInProgress =
+            new MutableLiveData<>(Collections.emptyList());
 
     // Estado interno sencillo de progreso del jugador
     private int level = 0;
     private int xp = 0;
     private int xpMaxInternal;
 
-    private final WeatherRepository weatherRepository = new WeatherRepository();
-    private final ApiaryLocationProvider apiaryLocationProvider;
     private final HiveRepository hiveRepository;
     private final EconomyRepository economyRepository;
     private final ProfileRepository profileRepository;
     private final PlayerProgressRepository playerProgressRepository;
     private final LeaderboardRepository leaderboardRepository;
+    private final GlobalEventRepository globalEventRepository;
+    private final MarketRepository marketRepository;
     /** Room prohíbe consultas síncronas en el hilo principal; el refresco del aviso de enjambrazón va aquí. */
     private final ExecutorService swarmBannerIo = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Observer<GlobalEventRepository.Snapshot> eventObserver = this::applyGlobalEventSnapshot;
 
     public DashboardViewModel(@NonNull Application application) {
         super(application);
@@ -83,20 +103,17 @@ public class DashboardViewModel extends AndroidViewModel {
         profileRepository = app.getProfileRepository();
         playerProgressRepository = app.getPlayerProgressRepository();
         leaderboardRepository = app.getLeaderboardRepository();
+        globalEventRepository = app.getGlobalEventRepository();
+        marketRepository = app.getMarketRepository();
         LiveData<List<HiveEntity>> hivesLive =
                 Transformations.switchMap(ownerIdForHives, hiveRepository::getLocalHives);
         statNectar = Transformations.map(hivesLive, this::formatTotalBees);
-        summaryText = Transformations.map(hivesLive, this::formatColmenasSummary);
-        showSplitHiveHint = Transformations.map(hivesLive, this::anyHiveOverSplitRecommend);
         swarmRiskBanner.addSource(hivesLive, this::rebuildSwarmRiskBannerFromList);
+        queenDeathBanner.addSource(hivesLive, this::rebuildQueenDeathBannerFromList);
         honeyCapBanner.addSource(hivesLive, this::rebuildHoneyCapBannerFromList);
 
-        apiaryLocationProvider = new ApiaryLocationProvider(application);
         GameClock clock = new GameClock();
-        Season season = clock.currentSeason();
-        seasonText.setValue(season.emoji() + " " + season.labelEs());
-        // Calendario y reloj reales
-        dayText.setValue(clock.currentDateLabel() + " · " + clock.currentTimeLabel());
+        applyGameDateToUi(LocalDate.now(), clock);
 
         NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
         refreshEconomyDisplay();
@@ -109,39 +126,13 @@ public class DashboardViewModel extends AndroidViewModel {
         profileSubtitle.setValue(buildProfileSubtitle());
         xpLabel.setValue(buildXpLabel(nf));
 
-        weatherTemp.setValue("—");
-        weatherHint.setValue("Clima hoy en tu zona");
-        weatherLocation.setValue("Buscando estación y apiario…");
-
-        // Coordenadas reales del apiario: usamos una colmena del jugador como referencia.
-        apiaryLocationProvider.resolveApiaryLocation(new ApiaryLocationProvider.Callback() {
-            @Override
-            public void onLocationAvailable(double lat, double lng, String apiaryLabel) {
-                weatherLocation.postValue(apiaryLabel);
-                weatherRepository.fetchCurrentTemperature(lat, lng, new WeatherRepository.Callback() {
-                    @Override
-                    public void onSuccess(String temperatureLabel, String stationLabel) {
-                        weatherTemp.postValue(temperatureLabel);
-                        weatherHint.postValue("Clima hoy en tu zona");
-                        weatherLocation.postValue(stationLabel + " · " + apiaryLabel);
-                    }
-
-                    @Override
-                    public void onError(Throwable t) {
-                        weatherHint.postValue("No se pudo cargar el clima");
-                    }
-                });
-            }
-
-            @Override
-            public void onNoLocation() {
-                weatherHint.postValue("Añade al menos una colmena para ver el clima del apiario");
-                weatherLocation.postValue("Sin apiario configurado");
-            }
-        });
-
         eventTitle.setValue(getApplication().getString(R.string.dashboard_no_event_title));
         eventSubtitle.setValue(getApplication().getString(R.string.dashboard_no_event_subtitle));
+        refreshInventoryDisplay();
+        if (globalEventRepository != null) {
+            globalEventRepository.snapshot().observeForever(eventObserver);
+            applyGlobalEventSnapshot(globalEventRepository.cached());
+        }
 
         ownerIdForHives.setValue("");
     }
@@ -153,9 +144,28 @@ public class DashboardViewModel extends AndroidViewModel {
         ownerIdForHives.setValue(firebaseUid != null ? firebaseUid : "");
         loadAndApplyProgress(firebaseUid);
         refreshPlayerProfile(firebaseUid);
+        refreshFloraPlantings(firebaseUid);
+        refreshGameClock();
         if (firebaseUid != null && !firebaseUid.isEmpty()) {
             leaderboardRepository.enqueuePublish(firebaseUid);
         }
+        if (globalEventRepository != null) {
+            applyGlobalEventSnapshot(globalEventRepository.cached());
+        }
+    }
+
+    /** Siembras de flora con cuenta atrás (dashboard). */
+    public void refreshFloraPlantings(@Nullable String firebaseUid) {
+        if (firebaseUid == null || firebaseUid.isEmpty()) {
+            floraPlantingsInProgress.postValue(Collections.emptyList());
+            return;
+        }
+        hiveRepository.loadFloraPlantingsInProgressAsync(firebaseUid, rows ->
+                floraPlantingsInProgress.postValue(rows != null ? rows : Collections.emptyList()));
+    }
+
+    public LiveData<List<FloraPlantingProgressRow>> floraPlantings() {
+        return floraPlantingsInProgress;
     }
 
     private void loadAndApplyProgress(@Nullable String firebaseUid) {
@@ -179,12 +189,14 @@ public class DashboardViewModel extends AndroidViewModel {
         if (profileRepository == null || firebaseUid == null || firebaseUid.isEmpty()) {
             profileName.postValue(getApplication().getString(R.string.dashboard_default_player));
             headerHoneyBrand.postValue("—");
+            isAdmin.postValue(false);
             return;
         }
         profileRepository.fetchDisplayProfile(firebaseUid, p -> {
             String defPlayer = getApplication().getString(R.string.dashboard_default_player);
             profileName.postValue(p.playerName.isEmpty() ? defPlayer : p.playerName);
             headerHoneyBrand.postValue(p.honeyBrand.isEmpty() ? "—" : p.honeyBrand);
+            isAdmin.postValue(AdminRoles.isAdminPlayerName(p.playerName));
         });
     }
 
@@ -198,6 +210,32 @@ public class DashboardViewModel extends AndroidViewModel {
     }
 
     /**
+     * Fecha/temporada del panel: si «Simular un día» adelantó el tick, muestra esa fecha de juego.
+     */
+    public void refreshGameClock() {
+        String uid = ownerIdForHives.getValue();
+        GameClock clock = new GameClock();
+        if (uid == null || uid.isEmpty()) {
+            applyGameDateToUi(LocalDate.now(), clock);
+            return;
+        }
+        hiveRepository.loadUiGameDate(uid, date -> applyGameDateToUi(date, clock));
+    }
+
+    private void applyGameDateToUi(@Nullable LocalDate gameDate, @NonNull GameClock clock) {
+        LocalDate today = LocalDate.now();
+        LocalDate d = gameDate != null ? gameDate : today;
+        Season season = Season.fromDayOfYear(d.getDayOfYear());
+        seasonText.setValue(season.emoji() + " " + season.labelEs());
+        if (d.isAfter(today)) {
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("es", "ES"));
+            dayText.setValue(getApplication().getString(R.string.dashboard_date_simulated, d.format(fmt)));
+        } else {
+            dayText.setValue(clock.currentDateLabel() + " · " + clock.currentTimeLabel());
+        }
+    }
+
+    /**
      * Fuerza a recalcular la tarjeta de enjambrazón desde Room (volver al dashboard no siempre re-emite {@code hivesLive}).
      * La lectura a Room no puede hacerse en el hilo UI ({@link IllegalStateException} de Room).
      */
@@ -205,12 +243,14 @@ public class DashboardViewModel extends AndroidViewModel {
         String uid = ownerIdForHives.getValue();
         if (uid == null || uid.isEmpty()) {
             swarmRiskBanner.postValue(null);
+            queenDeathBanner.postValue(null);
             honeyCapBanner.postValue(null);
             return;
         }
         swarmBannerIo.execute(() -> {
             List<HiveEntity> list = hiveRepository.getLocalHivesSync(uid);
             swarmRiskBanner.postValue(buildSwarmRiskBanner(list));
+            queenDeathBanner.postValue(buildQueenDeathBanner(list));
             honeyCapBanner.postValue(buildHoneyCapBanner(list));
         });
     }
@@ -219,12 +259,19 @@ public class DashboardViewModel extends AndroidViewModel {
         swarmRiskBanner.setValue(buildSwarmRiskBanner(list));
     }
 
+    private void rebuildQueenDeathBannerFromList(List<HiveEntity> list) {
+        queenDeathBanner.setValue(buildQueenDeathBanner(list));
+    }
+
     private void rebuildHoneyCapBannerFromList(List<HiveEntity> list) {
         honeyCapBanner.setValue(buildHoneyCapBanner(list));
     }
 
     @Override
     protected void onCleared() {
+        if (globalEventRepository != null) {
+            globalEventRepository.snapshot().removeObserver(eventObserver);
+        }
         swarmBannerIo.shutdown();
         super.onCleared();
     }
@@ -237,11 +284,230 @@ public class DashboardViewModel extends AndroidViewModel {
     }
 
     /**
-     * Reinicia colmenas y producción a estado inicial (3 colmenas × ~25k abejas). {@code onResult} recibe
-     * {@code null} si hubo éxito.
+     * Reinicia economía, nivel, terrenos y colmenas al estado inicial.
+     * {@code onResult} recibe {@code null} si hubo éxito.
      */
     public void resetGameToStarterState(String ownerId, Consumer<String> onResult) {
-        hiveRepository.resetGameToStarterState(ownerId, onResult);
+        if (ownerId == null || ownerId.isEmpty()) {
+            onResult.accept("Sesión no válida.");
+            return;
+        }
+        hiveRepository.resetGameToStarterState(ownerId, msg -> {
+            if (msg == null) {
+                playerProgressRepository.resetToNewGame(ownerId);
+                loadAndApplyProgress(ownerId);
+                refreshEconomyDisplay();
+                refreshFloraPlantings(ownerId);
+                refreshGameClock();
+                refreshSwarmRiskBannerNow();
+                leaderboardRepository.enqueuePublish(ownerId);
+            }
+            onResult.accept(msg);
+        });
+    }
+
+    public interface ActionNoticeCallback {
+        void onDone(boolean success, String message);
+    }
+
+    /**
+     * Recolecta de cada colmena la miel por encima de 3 kg de reserva habitual.
+     */
+    public void harvestAllHives(@Nullable ActionNoticeCallback onDone) {
+        Application ap = getApplication();
+        String uid = ownerIdForHives.getValue();
+        if (uid == null || uid.isEmpty()) {
+            if (onDone != null) {
+                onDone.onDone(false, ap.getString(R.string.dashboard_harvest_all_session));
+            }
+            return;
+        }
+        swarmBannerIo.execute(() -> {
+            List<HiveEntity> list = hiveRepository.getLocalHivesSync(uid);
+            double totalKg = 0.0;
+            int hiveCount = 0;
+            if (list != null) {
+                for (HiveEntity h : list) {
+                    if (h == null) {
+                        continue;
+                    }
+                    double stock = Math.max(0.0, h.honeyProduction);
+                    double min = HiveHoneyRules.HARVEST_ALL_LEAVE_KG;
+                    if (stock <= min + 1e-9) {
+                        continue;
+                    }
+                    double harvested = stock - min;
+                    h.honeyProduction = min;
+                    hiveRepository.saveHive(h);
+                    String flora = (h.floraType != null && !h.floraType.isEmpty())
+                            ? h.floraType
+                            : "Mil flores";
+                    economyRepository.addHoney(flora, harvested);
+                    totalKg += harvested;
+                    hiveCount++;
+                }
+            }
+            if (totalKg > 1e-9) {
+                hiveRepository.grantXp(uid, XpAwards.harvest(totalKg));
+            }
+            final double kgDone = totalKg;
+            final int nDone = hiveCount;
+            mainHandler.post(() -> {
+                refreshEconomyDisplay();
+                refreshSwarmRiskBannerNow();
+                refreshEventBanner();
+                if (onDone == null) {
+                    return;
+                }
+                if (kgDone <= 1e-9) {
+                    onDone.onDone(false, ap.getString(R.string.dashboard_harvest_all_none));
+                } else {
+                    onDone.onDone(true, ap.getString(R.string.dashboard_harvest_all_ok, kgDone, nDone));
+                }
+            });
+        });
+    }
+
+    /**
+     * Pone a la venta en el mercado global todo el stock de miel del almacén.
+     */
+    public void sellAllHoneyToMarket(@Nullable ActionNoticeCallback onDone) {
+        Application ap = getApplication();
+        if (onDone == null) {
+            return;
+        }
+        Map<String, Double> buckets = economyRepository.copyHoneyBuckets();
+        List<String> keys = new ArrayList<>();
+        for (Map.Entry<String, Double> e : buckets.entrySet()) {
+            if (e.getValue() != null && e.getValue() > 1e-6) {
+                keys.add(e.getKey());
+            }
+        }
+        if (keys.isEmpty()) {
+            onDone.onDone(false, ap.getString(R.string.dashboard_sell_all_none));
+            return;
+        }
+        if (marketRepository == null) {
+            onDone.onDone(false, ap.getString(R.string.dashboard_sell_all_market));
+            return;
+        }
+        LocalDate today = LocalDate.now(GameCalendar.globalMarketTimeZone());
+        marketRepository.refreshGlobalMarketForDay(GameCalendar.toDayKey(today), today.getDayOfYear());
+        sellNextBucket(keys, 0, 0.0, 0.0, onDone);
+    }
+
+    /**
+     * Vende todo el stock de la miel del evento global (el tipo en demanda).
+     */
+    public void sellEventFloraToMarket(@Nullable ActionNoticeCallback onDone) {
+        Application ap = getApplication();
+        if (onDone == null) {
+            return;
+        }
+        GlobalEventBanner banner = globalEventBanner.getValue();
+        if (banner == null || !banner.canSellEventHoney || banner.floraKey == null
+                || banner.floraKey.isEmpty()) {
+            onDone.onDone(false, ap.getString(R.string.dashboard_global_event_sell_not_live));
+            return;
+        }
+        String flora = HoneyMarketEngine.canonicalFloraKey(banner.floraKey);
+        double kg = economyRepository.getHoneyStockForFlora(flora);
+        if (kg <= 1e-6) {
+            onDone.onDone(false, ap.getString(R.string.dashboard_global_event_sell_none, flora));
+            return;
+        }
+        if (marketRepository == null) {
+            onDone.onDone(false, ap.getString(R.string.dashboard_sell_all_market));
+            return;
+        }
+        LocalDate today = LocalDate.now(GameCalendar.globalMarketTimeZone());
+        marketRepository.refreshGlobalMarketForDay(GameCalendar.toDayKey(today), today.getDayOfYear());
+        HoneyMarketSnapshot snap = marketRepository.getSnapshot();
+        if (snap == null) {
+            onDone.onDone(false, ap.getString(R.string.dashboard_sell_all_market));
+            return;
+        }
+        marketRepository.executeGlobalSale(flora, kg, snap, economyRepository,
+                new MarketRepository.MarketSaleExecutionCallback() {
+                    @Override
+                    public void onSuccess(double unitPriceEurPerKg) {
+                        refreshEconomyDisplay();
+                        refreshEventBanner();
+                        onDone.onDone(true, ap.getString(R.string.dashboard_global_event_sell_ok,
+                                kg, flora, kg * unitPriceEurPerKg));
+                    }
+
+                    @Override
+                    public void onFailure(String reasonCodeOrMessage) {
+                        String reason = reasonCodeOrMessage != null ? reasonCodeOrMessage : "error";
+                        if ("stock".equals(reason)) {
+                            onDone.onDone(false, ap.getString(R.string.dashboard_global_event_sell_none, flora));
+                            return;
+                        }
+                        if ("snapshot".equals(reason) || "invalid".equals(reason)) {
+                            reason = ap.getString(R.string.dashboard_sell_all_market);
+                        }
+                        onDone.onDone(false, ap.getString(R.string.market_sell_fail_reason, reason));
+                    }
+                });
+    }
+
+    private void refreshEventBanner() {
+        if (globalEventRepository != null) {
+            applyGlobalEventSnapshot(globalEventRepository.cached());
+        }
+    }
+
+    private void sellNextBucket(List<String> keys, int index, double kgSold, double eurSold,
+            @NonNull ActionNoticeCallback onDone) {
+        Application ap = getApplication();
+        if (index >= keys.size()) {
+            refreshEconomyDisplay();
+            refreshEventBanner();
+            onDone.onDone(true, ap.getString(R.string.dashboard_sell_all_ok, kgSold, eurSold));
+            return;
+        }
+        String flora = keys.get(index);
+        double kg = economyRepository.getHoneyStockForFlora(flora);
+        if (kg <= 1e-6) {
+            sellNextBucket(keys, index + 1, kgSold, eurSold, onDone);
+            return;
+        }
+        HoneyMarketSnapshot snap = marketRepository.getSnapshot();
+        if (snap == null) {
+            finishSellAll(kgSold, eurSold, ap.getString(R.string.dashboard_sell_all_market), onDone);
+            return;
+        }
+        marketRepository.executeGlobalSale(flora, kg, snap, economyRepository,
+                new MarketRepository.MarketSaleExecutionCallback() {
+                    @Override
+                    public void onSuccess(double unitPriceEurPerKg) {
+                        sellNextBucket(keys, index + 1, kgSold + kg, eurSold + kg * unitPriceEurPerKg, onDone);
+                    }
+
+                    @Override
+                    public void onFailure(String reasonCodeOrMessage) {
+                        String reason = reasonCodeOrMessage != null ? reasonCodeOrMessage : "error";
+                        if ("stock".equals(reason)) {
+                            reason = ap.getString(R.string.market_sell_fail_stock);
+                        } else if ("snapshot".equals(reason) || "invalid".equals(reason)) {
+                            reason = ap.getString(R.string.dashboard_sell_all_market);
+                        }
+                        finishSellAll(kgSold, eurSold, reason, onDone);
+                    }
+                });
+    }
+
+    private void finishSellAll(double kgSold, double eurSold, String reason,
+            @NonNull ActionNoticeCallback onDone) {
+        Application ap = getApplication();
+        refreshEconomyDisplay();
+        refreshEventBanner();
+        if (kgSold > 1e-6) {
+            onDone.onDone(true, ap.getString(R.string.dashboard_sell_all_partial, kgSold, eurSold, reason));
+        } else {
+            onDone.onDone(false, ap.getString(R.string.market_sell_fail_reason, reason));
+        }
     }
 
     private String formatTotalBees(List<HiveEntity> list) {
@@ -254,23 +520,6 @@ public class DashboardViewModel extends AndroidViewModel {
             sum += HivePopulationState.adultWorkersForUi(h, HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
         }
         return nf.format(sum);
-    }
-
-    private boolean anyHiveOverSplitRecommend(List<HiveEntity> list) {
-        if (list == null || list.isEmpty()) {
-            return false;
-        }
-        for (HiveEntity h : list) {
-            if (h == null) {
-                continue;
-            }
-            HivePopulationState p = HivePopulationState.fromHiveEntityOrDefault(h,
-                    HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
-            if (p.workersAdult >= ColonyGameRules.SPLIT_RECOMMEND_BEES) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static final class HiveSwarmRisk implements Comparable<HiveSwarmRisk> {
@@ -340,6 +589,34 @@ public class DashboardViewModel extends AndroidViewModel {
         return new SwarmRiskBanner(title, Collections.unmodifiableList(rows));
     }
 
+    private QueenDeathBanner buildQueenDeathBanner(List<HiveEntity> list) {
+        if (list == null || list.isEmpty()) {
+            return null;
+        }
+        Application app = getApplication();
+        String fallbackName = app.getString(R.string.dashboard_swarm_risk_unnamed_colmena);
+        List<QueenDeathHiveRow> rows = new ArrayList<>();
+        for (HiveEntity h : list) {
+            if (h == null || h.id == null || h.id.trim().isEmpty()) {
+                continue;
+            }
+            HivePopulationState p = HivePopulationState.fromHiveEntityOrDefault(h,
+                    HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
+            if (!p.needsQueenIntroduction()) {
+                continue;
+            }
+            String name = (h.name != null && !h.name.trim().isEmpty()) ? h.name.trim() : fallbackName;
+            rows.add(new QueenDeathHiveRow(h.id, name));
+        }
+        if (rows.isEmpty()) {
+            return null;
+        }
+        String title = rows.size() == 1
+                ? app.getString(R.string.dashboard_queen_dead_title)
+                : app.getString(R.string.dashboard_queen_dead_title_multi, rows.size());
+        return new QueenDeathBanner(title, Collections.unmodifiableList(rows));
+    }
+
     /**
      * Divide todas las colmenas indicadas (p. ej. las del aviso de enjambrazón), en orden.
      */
@@ -359,6 +636,10 @@ public class DashboardViewModel extends AndroidViewModel {
 
     public LiveData<SwarmRiskBanner> swarmRiskBanner() {
         return swarmRiskBanner;
+    }
+
+    public LiveData<QueenDeathBanner> queenDeathBanner() {
+        return queenDeathBanner;
     }
 
     public LiveData<HoneyCapBanner> honeyCapBanner() {
@@ -395,28 +676,15 @@ public class DashboardViewModel extends AndroidViewModel {
         return new HoneyCapBanner(title, Collections.unmodifiableList(rows));
     }
 
-    private String formatColmenasSummary(List<HiveEntity> list) {
-        NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
-        nf.setMinimumFractionDigits(0);
-        nf.setMaximumFractionDigits(2);
-        if (list == null || list.isEmpty()) {
-            return "0 colmenas activas · 0 obreras · Miel total 0 kg.";
-        }
-        int sumBees = 0;
-        double honeyKg = 0.0;
-        for (HiveEntity h : list) {
-            sumBees += HivePopulationState.adultWorkersForUi(h, HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
-            honeyKg += Math.max(0.0, h.honeyProduction);
-        }
-        return list.size() + " colmenas activas · " + nf.format(sumBees) + " obreras · Miel total "
-                + nf.format(honeyKg) + " kg.";
-    }
-
     /**
      * Método preparado para que cualquier acción del juego pueda sumar experiencia.
      */
     public void addExperience(int amount) {
-        LevelSystem.Result result = LevelSystem.addXp(level, xp, amount);
+        String uid = ownerIdForHives.getValue();
+        if (uid == null || uid.isEmpty() || amount <= 0) {
+            return;
+        }
+        LevelSystem.Result result = playerProgressRepository.addXp(uid, amount);
         level = result.level;
         xp = result.xp;
         xpMaxInternal = result.maxXp;
@@ -426,11 +694,6 @@ public class DashboardViewModel extends AndroidViewModel {
         xpMax.setValue(xpMaxInternal);
         xpLabel.setValue(buildXpLabel(nf));
         profileSubtitle.setValue(buildProfileSubtitle());
-        String uid = ownerIdForHives.getValue();
-        if (uid != null && !uid.isEmpty()) {
-            playerProgressRepository.save(uid, level, xp);
-            leaderboardRepository.enqueuePublish(uid);
-        }
     }
 
     private String buildProfileSubtitle() {
@@ -496,28 +759,88 @@ public class DashboardViewModel extends AndroidViewModel {
         return xpMax;
     }
 
-    public LiveData<String> weatherTemp() {
-        return weatherTemp;
-    }
-
-    public LiveData<String> weatherHint() {
-        return weatherHint;
-    }
-
-    public LiveData<String> weatherLocation() {
-        return weatherLocation;
-    }
-
-    public LiveData<String> summaryText() {
-        return summaryText;
-    }
-
     public LiveData<String> eventTitle() {
         return eventTitle;
     }
 
     public LiveData<String> eventSubtitle() {
         return eventSubtitle;
+    }
+
+    public LiveData<GlobalEventBanner> globalEventBanner() {
+        return globalEventBanner;
+    }
+
+    public LiveData<Boolean> isAdmin() {
+        return isAdmin;
+    }
+
+    public LiveData<Integer> queenInventoryCount() {
+        return queenInventoryCount;
+    }
+
+    public LiveData<Integer> treatInventoryCount() {
+        return treatInventoryCount;
+    }
+
+    public LiveData<Integer> feedInventoryCount() {
+        return feedInventoryCount;
+    }
+
+    public void refreshInventoryDisplay() {
+        Application ap = getApplication();
+        queenInventoryCount.setValue(EventInventoryStore.queens(ap).size());
+        treatInventoryCount.setValue(EventInventoryStore.treatments(ap));
+        feedInventoryCount.setValue(EventInventoryStore.feed(ap));
+    }
+
+    public List<Integer> queenQualities() {
+        return EventInventoryStore.queens(getApplication());
+    }
+
+    public void claimGlobalEventReward(@Nullable String uid, Consumer<String> onMain) {
+        if (uid == null || globalEventRepository == null) {
+            if (onMain != null) {
+                onMain.accept("Sesión no válida.");
+            }
+            return;
+        }
+        globalEventRepository.claimSurgeRewards(uid, msg -> {
+            applyGlobalEventSnapshot(globalEventRepository.cached());
+            refreshEconomyDisplay();
+            refreshInventoryDisplay();
+            if (onMain != null) {
+                onMain.accept(msg);
+            }
+        });
+    }
+
+    private void applyGlobalEventSnapshot(@Nullable GlobalEventRepository.Snapshot snap) {
+        Application ap = getApplication();
+        if (snap == null) {
+            eventTitle.setValue(ap.getString(R.string.dashboard_no_event_title));
+            eventSubtitle.setValue(ap.getString(R.string.dashboard_no_event_subtitle));
+            globalEventBanner.setValue(GlobalEventBanner.none(ap));
+            return;
+        }
+        GlobalEventBanner banner = GlobalEventBanner.from(ap, snap, globalEventRepository, economyRepository);
+        eventTitle.setValue(banner.title);
+        eventSubtitle.setValue(banner.subtitle);
+        globalEventBanner.setValue(banner);
+        if (!banner.visible || !banner.ended || !banner.showProgress || banner.claimed
+                || globalEventRepository == null) {
+            return;
+        }
+        String uid = ownerIdForHives.getValue();
+        String instanceId = snap.surge.instanceId();
+        if (uid == null || uid.isEmpty() || instanceId.isEmpty()) {
+            return;
+        }
+        int highest = DemandSurgeMilestones.highestReached(
+                snap.kgSoldTowardGoal, snap.surge.targetDemandKg);
+        globalEventRepository.hasParticipated(uid, instanceId, participated -> {
+            globalEventBanner.setValue(banner.withCanClaim(participated && highest >= 15));
+        });
     }
 
     /**
@@ -534,8 +857,143 @@ public class DashboardViewModel extends AndroidViewModel {
                 : ap.getString(R.string.dashboard_no_event_subtitle));
     }
 
-    public LiveData<Boolean> showSplitHiveHint() {
-        return showSplitHiveHint;
+    public static final class GlobalEventBanner {
+        public final String title;
+        public final String subtitle;
+        public final boolean visible;
+        public final boolean showProgress;
+        public final int progressPct;
+        public final String progressLabel;
+        public final boolean ended;
+        public final boolean canClaim;
+        public final boolean claimed;
+        public final int highestMilestone;
+        public final String myKgLabel;
+        public final String statusLabel;
+        public final int floraIconRes;
+        public final String floraKey;
+        public final boolean canSellEventHoney;
+        public final String sellButtonLabel;
+
+        public GlobalEventBanner(String title, String subtitle, boolean visible, boolean showProgress,
+                int progressPct, String progressLabel, boolean ended, boolean canClaim, boolean claimed,
+                int highestMilestone, String myKgLabel, String statusLabel, int floraIconRes,
+                String floraKey, boolean canSellEventHoney, String sellButtonLabel) {
+            this.title = title;
+            this.subtitle = subtitle;
+            this.visible = visible;
+            this.showProgress = showProgress;
+            this.progressPct = progressPct;
+            this.progressLabel = progressLabel != null ? progressLabel : "";
+            this.ended = ended;
+            this.canClaim = canClaim;
+            this.claimed = claimed;
+            this.highestMilestone = highestMilestone;
+            this.myKgLabel = myKgLabel != null ? myKgLabel : "";
+            this.statusLabel = statusLabel != null ? statusLabel : "";
+            this.floraIconRes = floraIconRes;
+            this.floraKey = floraKey != null ? floraKey : "";
+            this.canSellEventHoney = canSellEventHoney;
+            this.sellButtonLabel = sellButtonLabel != null ? sellButtonLabel : "";
+        }
+
+        GlobalEventBanner withCanClaim(boolean canClaim) {
+            return new GlobalEventBanner(title, subtitle, visible, showProgress, progressPct,
+                    progressLabel, ended, canClaim, claimed, highestMilestone, myKgLabel, statusLabel,
+                    floraIconRes, floraKey, canSellEventHoney, sellButtonLabel);
+        }
+
+        static GlobalEventBanner none(Application ap) {
+            return new GlobalEventBanner(
+                    ap.getString(R.string.dashboard_no_event_title),
+                    ap.getString(R.string.dashboard_no_event_subtitle),
+                    false, false, 0, "", false, false, false, 0, "", "", 0, "", false, "");
+        }
+
+        static GlobalEventBanner from(
+                Application ap,
+                GlobalEventRepository.Snapshot snap,
+                GlobalEventRepository repo,
+                @Nullable EconomyRepository economy) {
+            if (snap.surge.exists() && (snap.surge.isLive() || snap.surge.isEnded())) {
+                String flora = snap.surge.floraKey.isEmpty() ? "miel" : snap.surge.floraKey;
+                String floraKey = snap.surge.floraKey.isEmpty()
+                        ? ""
+                        : HoneyMarketEngine.canonicalFloraKey(snap.surge.floraKey);
+                int floraIcon = HiveSiteSummaryUi.floraHoneyJarIcon(flora);
+                String title = floraIcon != 0
+                        ? ap.getString(R.string.dashboard_global_event_surge_graphic)
+                        : ap.getString(R.string.dashboard_global_event_surge, flora);
+                int highest = DemandSurgeMilestones.highestReached(
+                        snap.kgSoldTowardGoal, snap.surge.targetDemandKg);
+                int pct = snap.surge.targetDemandKg <= 1e-9 ? 0
+                        : (int) Math.min(100, Math.round(100.0 * snap.kgSoldTowardGoal / snap.surge.targetDemandKg));
+                boolean ended = snap.surge.isEnded();
+                boolean canSell = !ended && !floraKey.isEmpty() && !"miel".equalsIgnoreCase(floraKey);
+                double stock = (canSell && economy != null)
+                        ? economy.getHoneyStockForFlora(floraKey)
+                        : 0.0;
+                String sellLabel = "";
+                if (canSell) {
+                    sellLabel = stock > 1e-6
+                            ? ap.getString(R.string.dashboard_global_event_sell_kg, flora, stock)
+                            : ap.getString(R.string.dashboard_global_event_sell_flora, flora);
+                }
+                StringBuilder sub = new StringBuilder();
+                if (ended) {
+                    appendLine(sub, ap.getString(R.string.dashboard_global_event_ended));
+                }
+                boolean claimed = repo != null && repo.hasClaimedLocal(snap.surge.instanceId());
+                if (claimed) {
+                    appendLine(sub, ap.getString(R.string.dashboard_global_event_claimed));
+                }
+                if (snap.shift.isLive()) {
+                    appendLine(sub, ap.getString(R.string.dashboard_global_event_shift,
+                            signed(snap.shift.demandDeltaPercent),
+                            signed(snap.shift.priceDeltaPercent)));
+                }
+                if (snap.velutina.isLive()) {
+                    appendLine(sub, ap.getString(R.string.dashboard_global_event_velutina,
+                            snap.velutina.lossPercent));
+                }
+                String progressLabel = ap.getString(R.string.dashboard_global_event_progress_short,
+                        snap.kgSoldTowardGoal, snap.surge.targetDemandKg, pct);
+                String myKg = ap.getString(R.string.dashboard_global_event_my_kg_short, snap.myKgSold);
+                String status = ended
+                        ? ap.getString(R.string.dashboard_global_event_ended_badge)
+                        : ap.getString(R.string.dashboard_global_event_live);
+                return new GlobalEventBanner(title, sub.toString(), true, true, pct, progressLabel,
+                        ended, false, claimed, highest, myKg, status, floraIcon,
+                        floraKey, canSell, sellLabel);
+            }
+            String live = ap.getString(R.string.dashboard_global_event_live);
+            if (snap.shift.isLive()) {
+                return new GlobalEventBanner(
+                        ap.getString(R.string.dashboard_global_event_kicker),
+                        ap.getString(R.string.dashboard_global_event_shift,
+                                signed(snap.shift.demandDeltaPercent),
+                                signed(snap.shift.priceDeltaPercent)),
+                        true, false, 0, "", false, false, false, 0, "", live, 0, "", false, "");
+            }
+            if (snap.velutina.isLive()) {
+                return new GlobalEventBanner(
+                        ap.getString(R.string.dashboard_global_event_kicker),
+                        ap.getString(R.string.dashboard_global_event_velutina, snap.velutina.lossPercent),
+                        true, false, 0, "", false, false, false, 0, "", live, 0, "", false, "");
+            }
+            return none(ap);
+        }
+
+        private static void appendLine(StringBuilder sb, String line) {
+            if (sb.length() > 0) {
+                sb.append('\n');
+            }
+            sb.append(line);
+        }
+
+        private static String signed(int pct) {
+            return (pct >= 0 ? "+" : "") + pct;
+        }
     }
 
     /**
@@ -556,6 +1014,29 @@ public class DashboardViewModel extends AndroidViewModel {
         public final String displayName;
 
         public SwarmRiskHiveRow(String hiveId, String displayName) {
+            this.hiveId = hiveId;
+            this.displayName = displayName;
+        }
+    }
+
+    /**
+     * Aviso de reina muerta o ausente en el dashboard (enlace al detalle para introducir reina).
+     */
+    public static final class QueenDeathBanner {
+        public final String title;
+        public final List<QueenDeathHiveRow> hiveRows;
+
+        public QueenDeathBanner(String title, List<QueenDeathHiveRow> hiveRows) {
+            this.title = title;
+            this.hiveRows = hiveRows;
+        }
+    }
+
+    public static final class QueenDeathHiveRow {
+        public final String hiveId;
+        public final String displayName;
+
+        public QueenDeathHiveRow(String hiveId, String displayName) {
             this.hiveId = hiveId;
             this.displayName = displayName;
         }

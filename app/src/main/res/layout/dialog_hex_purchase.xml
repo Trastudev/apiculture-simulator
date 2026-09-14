@@ -1,40 +1,243 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:clipToPadding="false"
     android:descendantFocusability="beforeDescendants"
-    android:paddingHorizontal="8dp"
-    android:paddingVertical="4dp">
+    android:overScrollMode="ifContentScrolls"
+    android:paddingHorizontal="20dp"
+    android:paddingVertical="8dp">
 
-    <LinearLayout
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        app:cardBackgroundColor="@color/event_cream"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/event_gold_stroke"
+        app:strokeWidth="1.5dp">
 
-        <TextView
-            android:id="@+id/tv_hex_purchase_summary"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="14sp" />
+            android:orientation="vertical">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:labelFor="@id/edit_parcel_name"
-            android:text="@string/hex_purchase_name_label"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="6dp"
+                android:text="@string/hex_purchase_title"
+                android:textColor="@color/event_ink"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-        <EditText
-            android:id="@+id/edit_parcel_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:hint="@string/hex_purchase_name_hint"
-            android:inputType="textCapSentences"
-            android:maxLength="80"
-            android:minHeight="48dp"
-            android:singleLine="true" />
-    </LinearLayout>
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="112dp">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@null"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/hex_purchase_banner" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_event_banner_scrim" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|start"
+                    android:layout_margin="12dp"
+                    android:background="@drawable/bg_event_kicker_pill"
+                    android:letterSpacing="0.08"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="4dp"
+                    android:text="@string/hex_purchase_kicker"
+                    android:textAllCaps="true"
+                    android:textColor="@color/white"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_hex_purchase_price"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="12dp"
+                    android:background="@drawable/bg_event_kg_chip"
+                    android:drawablePadding="6dp"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:textColor="@color/event_ink"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_beecoin"
+                    tools:text="1000 B" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_event_global_body"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/hex_purchase_intro"
+                    android:textColor="@color/event_ink_muted"
+                    android:textSize="13sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_shop_card"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/iv_hex_purchase_flora"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:contentDescription="@null"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/ic_mil_flores" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/hex_purchase_flora_label"
+                                android:textColor="@color/event_ink_muted"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/tv_hex_purchase_flora"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/event_ink"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                tools:text="Romero" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginVertical="10dp"
+                        android:background="@color/event_gold_stroke" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/hex_purchase_hives_label"
+                        android:textColor="@color/event_ink_muted"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tv_hex_purchase_hives"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/event_ink"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        tools:text="Hasta 8 colmenas" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/hex_purchase_climate_label"
+                        android:textColor="@color/event_ink_muted"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tv_hex_purchase_climate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/event_ink"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        tools:text="Mediterráneo" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:labelFor="@id/edit_parcel_name"
+                    android:text="@string/hex_purchase_name_label"
+                    android:textColor="@color/event_ink"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/edit_parcel_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:background="@drawable/bg_shop_card"
+                    android:hint="@string/hex_purchase_name_hint"
+                    android:inputType="textCapSentences"
+                    android:maxLength="80"
+                    android:minHeight="48dp"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="10dp"
+                    android:singleLine="true"
+                    android:textColor="@color/event_ink"
+                    android:textColorHint="@color/event_ink_muted"
+                    android:textSize="14sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_hex_purchase_confirm"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/hex_purchase_confirm_buy"
+                    android:textAllCaps="false"
+                    android:textColor="@color/event_ink"
+                    android:textStyle="bold"
+                    app:backgroundTint="@color/event_gold"
+                    app:cornerRadius="14dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_hex_purchase_cancel"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="6dp"
+                    android:text="@string/hex_purchase_cancel"
+                    android:textAllCaps="false"
+                    android:textColor="@color/event_ink_muted" />
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 </ScrollView>

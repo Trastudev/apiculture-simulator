@@ -1,33 +1,35 @@
 package com.apiculture.simulator.domain.health;
 
 import com.apiculture.simulator.data.local.entity.HiveEntity;
+import com.apiculture.simulator.domain.game.GameBalanceConfig;
+import com.apiculture.simulator.domain.game.HiveCareRules;
 import com.apiculture.simulator.domain.game.HiveHoneyRules;
 import com.apiculture.simulator.domain.game.HoneyDailyProduction;
 import com.apiculture.simulator.domain.game.Season;
+import com.apiculture.simulator.domain.game.TemperatureStress;
+import com.apiculture.simulator.domain.game.TranshumanceRules;
 
 /**
- * Salud diaria (0–100), dinámica de varroa, tratamiento y rebote; inercia ±3 puntos/día.
- * Sin tratamiento, la varroa crece en proporción al nivel actual (crecimiento exponencial en el tiempo),
- * con una tasa relativa que sube al aumentar el % de infestación.
+ * Salud diaria (0–100), varroa, miel/reservas y estrés térmico; inercia limitada por día.
+ * Sin tratamiento, la varroa crece en proporción a la puesta (cría operculada).
+ * En invierno, con casi 0 huevos, la reproducción es residual. Con tratamiento
+ * activo no hay multiplicación: baja cada día. El jugador decide cuándo tratar.
  */
 public final class HiveDailyHealthSimulator {
-
-    private static final double VARROA_CAP = 40.0;
-    private static final int MAX_HEALTH_DELTA_PER_DAY = 3;
-    /**
-     * Fracción de crecimiento respecto al nivel actual un día “tipo” (primavera/otoño); verano/invierno escalan aparte.
-     * Equivale a la idea de que cada ciclo infecta más hospedadores cuando ya hay muchos ácaros.
-     */
-    private static final double VARROA_BASE_RELATIVE_DAILY_RATE = 0.026;
-    /** A mayor carga (pct / tope), más rápida la multiplicación relativa diaria. */
-    private static final double VARROA_LOAD_AMPLIFIER = 2.8;
-    /** Tras cortar el tratamiento: subida multiplicativa más contenida que en crecimiento libre. */
-    private static final double VARROA_REBOUND_RELATIVE_DAILY_RATE = 0.014;
 
     private HiveDailyHealthSimulator() {
     }
 
     public static void applyDay(HiveEntity hive, int dayKey, Season season) {
+        applyDay(hive, dayKey, season, null, 0);
+    }
+
+    public static void applyDay(HiveEntity hive, int dayKey, Season season, Double tempCelsius) {
+        applyDay(hive, dayKey, season, tempCelsius, 0);
+    }
+
+    public static void applyDay(
+            HiveEntity hive, int dayKey, Season season, Double tempCelsius, int eggsLaid) {
         if (hive == null) {
             return;
         }
@@ -40,43 +42,50 @@ public final class HiveDailyHealthSimulator {
 
         boolean activeTreatmentToday = hive.varroaTreatmentDaysRemaining > 0;
         String vid = hive.id != null ? hive.id : "";
+        double varroaCap = GameBalanceConfig.varroaCapPct;
+        double loadAmp = GameBalanceConfig.varroaLoadAmplifier;
 
         if (activeTreatmentToday) {
-            double u = HoneyDailyProduction.deterministicUniform01(vid + ":vdrop", dayKey);
-            double drop = 0.2 + u * 0.3;
-            hive.varroaPct = Math.max(0.0, hive.varroaPct - drop);
+            hive.varroaPct = hive.varroaPct * HiveCareRules.TREAT_VARROA_KEEP_FACTOR;
             hive.varroaTreatmentDaysRemaining--;
             if (hive.varroaTreatmentDaysRemaining == 0) {
-                double u2 = HoneyDailyProduction.deterministicUniform01(vid + ":vreb", dayKey);
-                hive.varroaReboundDaysRemaining = 5 + (int) Math.floor(u2 * 6);
+                hive.varroaReboundDaysRemaining = 0;
             }
         } else if (hive.varroaReboundDaysRemaining > 0) {
             double pReb = hive.varroaPct;
-            double burdenReb = Math.min(1.0, Math.max(0.0, pReb / VARROA_CAP));
-            double relReb = VARROA_REBOUND_RELATIVE_DAILY_RATE * (1.0 + VARROA_LOAD_AMPLIFIER * burdenReb);
+            double burdenReb = Math.min(1.0, Math.max(0.0, pReb / varroaCap));
+            double env = VarroaGrowth.environmentMultiplier(hive, season, tempCelsius);
+            double brood = VarroaGrowth.broodMultiplier(eggsLaid);
+            double relReb = GameBalanceConfig.varroaReboundRelativeDailyRate * env * brood
+                    * (1.0 + loadAmp * burdenReb);
             hive.varroaPct = pReb * (1.0 + relReb);
             hive.varroaReboundDaysRemaining--;
         } else {
-            double seasonMult = season == Season.SUMMER ? 1.2 : season == Season.WINTER ? 0.75 : 1.0;
             double p = hive.varroaPct;
-            double burden = Math.min(1.0, Math.max(0.0, p / VARROA_CAP));
-            double relativeRate =
-                    VARROA_BASE_RELATIVE_DAILY_RATE * seasonMult * (1.0 + VARROA_LOAD_AMPLIFIER * burden);
+            double burden = Math.min(1.0, Math.max(0.0, p / varroaCap));
+            double relativeRate = VarroaGrowth.relativeDailyRate(hive, season, tempCelsius,
+                    GameBalanceConfig.varroaBaseRelativeDailyRate, eggsLaid)
+                    * (1.0 + loadAmp * burden);
             hive.varroaPct = p * (1.0 + relativeRate);
         }
 
-        hive.varroaPct = Math.min(VARROA_CAP, Math.max(0.0, hive.varroaPct));
+        hive.varroaPct = Math.min(varroaCap, Math.max(0.0, hive.varroaPct));
 
         double varroaImpact = dailyVarroaHealthPenalty(hive.varroaPct, vid, dayKey);
         double mielImpact = honeyAndReservePenalty(hive);
         double treatmentBonus = activeTreatmentToday ? 0.2 : 0.0;
         double collapseStress = hive.health < 20 ? 0.5 : 0.0;
+        double tempDelta = TemperatureStress.dailyHealthDelta(tempCelsius);
+        if (TranshumanceRules.isInTransit(hive, dayKey)) {
+            tempDelta -= 0.6;
+        }
 
-        double proposed = hive.health - varroaImpact - mielImpact + treatmentBonus - collapseStress;
+        double proposed = hive.health - varroaImpact - mielImpact + treatmentBonus - collapseStress + tempDelta;
         proposed = Math.max(0.0, Math.min(100.0, proposed));
 
         int delta = (int) Math.round(proposed - hive.health);
-        delta = Math.max(-MAX_HEALTH_DELTA_PER_DAY, Math.min(MAX_HEALTH_DELTA_PER_DAY, delta));
+        int maxDelta = GameBalanceConfig.maxHealthDeltaPerDay;
+        delta = Math.max(-maxDelta, Math.min(maxDelta, delta));
         int next = hive.health + delta;
         hive.health = Math.max(0, Math.min(100, next));
     }
@@ -100,10 +109,6 @@ public final class HiveDailyHealthSimulator {
         double kg = hive.honeyProduction;
         if (kg < HiveHoneyRules.MIN_HIVE_STOCK_KG) {
             p += 0.55;
-        } else if (kg < HiveHoneyRules.MIN_HIVE_STOCK_KG + 1.5) {
-            p += 0.28;
-        } else if (kg < HiveHoneyRules.MIN_HIVE_STOCK_KG + 3.0) {
-            p += 0.12;
         }
         int r = hive.reserves;
         if (r < 12) {

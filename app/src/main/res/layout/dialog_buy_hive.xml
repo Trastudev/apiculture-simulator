@@ -50,14 +50,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:labelFor="@id/spinner_flora"
-            android:text="@string/hive_buy_flora_label"
+            android:labelFor="@id/spinner_hex"
+            android:text="@string/hive_buy_hex_label"
             android:textColor="@android:color/white"
             android:textSize="12sp"
             android:textStyle="bold" />
 
         <Spinner
-            android:id="@+id/spinner_flora"
+            android:id="@+id/spinner_hex"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
@@ -67,14 +67,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:labelFor="@id/spinner_hex"
-            android:text="@string/hive_buy_hex_label"
+            android:labelFor="@id/spinner_flora"
+            android:text="@string/hive_buy_flora_label"
             android:textColor="@android:color/white"
             android:textSize="12sp"
             android:textStyle="bold" />
 
         <Spinner
-            android:id="@+id/spinner_hex"
+            android:id="@+id/spinner_flora"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"

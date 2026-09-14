@@ -3,16 +3,8 @@ package com.apiculture.simulator.domain.game;
 import androidx.annotation.Nullable;
 
 /**
- * Clima simulado por día (determinista), en función de la <strong>altitud en el emplazamiento de la colmena</strong>
- * (m s.n.m., típicamente Open-Meteo al crear o tras transhumancia):
- * <ul>
- *   <li>0–800 m: soleado 80 %, nublado 10 %, viento 5 %, lluvia 5 %</li>
- *   <li>801–1500 m: soleado 65 %, nublado 15 %, viento 10 %, lluvia 10 %</li>
- *   <li>&gt; 1500 m: soleado 50 %, nublado 25 %, viento 12,5 %, lluvia 12,5 %</li>
- * </ul>
- * Multiplicadores de producción: soleado ×1; nublado ×0,7; viento ×0,5; lluvia ×0.
- * <p>
- * {@link #forOwnerAndDay} conserva la leyenda anterior (70/15/10/5 %) solo para compatibilidad puntual.
+ * Cielo del día para pecoreo. Si hay observación Open-Meteo (lluvia, código WMO, viento)
+ * se usa esa; si no, un modelo determinista por altitud.
  */
 public enum DailySkyCondition {
     SUN(1.0, "☀️"),
@@ -29,7 +21,18 @@ public enum DailySkyCondition {
     }
 
     public double productionMultiplier() {
-        return productionMultiplier;
+        switch (this) {
+            case SUN:
+                return GameBalanceConfig.skyMultSun;
+            case CLOUDY:
+                return GameBalanceConfig.skyMultCloudy;
+            case WINDY:
+                return GameBalanceConfig.skyMultWindy;
+            case RAINY:
+                return GameBalanceConfig.skyMultRain;
+            default:
+                return productionMultiplier;
+        }
     }
 
     public String emoji() {
@@ -50,18 +53,18 @@ public enum DailySkyCondition {
         double sunEnd;
         double cloudEnd;
         double windEnd;
-        if (elevM <= 800) {
-            sunEnd = 0.80;
-            cloudEnd = 0.90;
-            windEnd = 0.95;
-        } else if (elevM <= 1500) {
-            sunEnd = 0.65;
-            cloudEnd = 0.80;
-            windEnd = 0.90;
+        if (elevM <= GameBalanceConfig.skyLowElevMaxM) {
+            sunEnd = GameBalanceConfig.skyLowSunEnd;
+            cloudEnd = GameBalanceConfig.skyLowCloudEnd;
+            windEnd = GameBalanceConfig.skyLowWindEnd;
+        } else if (elevM <= GameBalanceConfig.skyMidElevMaxM) {
+            sunEnd = GameBalanceConfig.skyMidSunEnd;
+            cloudEnd = GameBalanceConfig.skyMidCloudEnd;
+            windEnd = GameBalanceConfig.skyMidWindEnd;
         } else {
-            sunEnd = 0.50;
-            cloudEnd = 0.75;
-            windEnd = 0.875;
+            sunEnd = GameBalanceConfig.skyHighSunEnd;
+            cloudEnd = GameBalanceConfig.skyHighCloudEnd;
+            windEnd = GameBalanceConfig.skyHighWindEnd;
         }
         if (u < sunEnd) {
             return SUN;
@@ -91,5 +94,53 @@ public enum DailySkyCondition {
             return WINDY;
         }
         return RAINY;
+    }
+
+    /**
+     * Cielo observado (Open-Meteo). {@code null} si no hay datos: el llamador usa el modelo por altitud.
+     */
+    @Nullable
+    public static DailySkyCondition fromObserved(@Nullable DailyWeather w) {
+        if (w == null || !w.hasSkyObservation()) {
+            return null;
+        }
+        double rain = w.precipitationMm != null ? w.precipitationMm : 0.0;
+        double wind = w.windMaxKmh != null ? w.windMaxKmh : 0.0;
+        Integer code = w.weatherCode;
+        if (code != null) {
+            int c = code;
+            if ((c >= 61 && c <= 67) || (c >= 80 && c <= 82) || (c >= 95 && c <= 99)
+                    || (c >= 71 && c <= 77)) {
+                return RAINY;
+            }
+            if (c >= 51 && c <= 57) {
+                return rain >= 1.0 ? RAINY : CLOUDY;
+            }
+            if (c == 45 || c == 48) {
+                return CLOUDY;
+            }
+            if (c == 0 || c == 1) {
+                return wind >= 40.0 ? WINDY : SUN;
+            }
+            if (c == 2 || c == 3) {
+                return wind >= 45.0 ? WINDY : CLOUDY;
+            }
+        }
+        if (rain >= 1.5) {
+            return RAINY;
+        }
+        if (wind >= 40.0) {
+            return WINDY;
+        }
+        return CLOUDY;
+    }
+
+    public static DailySkyCondition forHiveDay(
+            @Nullable String skyKey, int dayKey, int elevM, @Nullable DailyWeather observed) {
+        DailySkyCondition fromApi = fromObserved(observed);
+        if (fromApi != null) {
+            return fromApi;
+        }
+        return forHexElevationAndDay(skyKey, dayKey, elevM);
     }
 }

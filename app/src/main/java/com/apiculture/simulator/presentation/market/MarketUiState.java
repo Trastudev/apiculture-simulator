@@ -9,11 +9,17 @@ public final class MarketUiState {
 
     public final double balanceEur;
     public final double totalHoneyKg;
+    public final int playerCount;
     public final @NonNull List<MarketPillUi> pills;
 
-    public MarketUiState(double balanceEur, double totalHoneyKg, @NonNull List<MarketPillUi> pills) {
+    public MarketUiState(
+            double balanceEur,
+            double totalHoneyKg,
+            int playerCount,
+            @NonNull List<MarketPillUi> pills) {
         this.balanceEur = balanceEur;
         this.totalHoneyKg = totalHoneyKg;
+        this.playerCount = Math.max(1, playerCount);
         this.pills = Collections.unmodifiableList(pills);
     }
 }

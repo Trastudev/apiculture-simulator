@@ -1,54 +1,42 @@
 package com.apiculture.simulator.domain.game;
 
 import com.apiculture.simulator.data.local.entity.HiveEntity;
+import com.apiculture.simulator.domain.population.HivePopulationState;
 
-import java.util.Locale;
+import java.time.LocalDate;
 
 public class GameBalanceEngine {
 
     /**
-     * Producción diaria máxima teórica por colmena (población tope, primavera, salud y reina óptimas, flora intensiva).
-     * Usado para dimensionar el mercado global.
+     * Producción diaria máxima teórica por colmena (población tope, mielada plena).
+     * Usado para dimensionar el mercado global; no depende de néctar del hex.
      */
     public static double globalMaxTheoreticalDailyKgPerHive() {
-        HiveEntity ideal = new HiveEntity();
-        // Tope de obreras + cría típica para acotar el máximo teórico de miel/día.
-        ideal.beeCount = ColonyGameRules.MAX_ADULT_WORKERS_PER_HIVE + 25_000;
-        ideal.health = 100;
-        ideal.queenGeneticQuality = 100;
-        ideal.floraType = "Lavanda";
-        return new GameBalanceEngine().calculateDailyHoneyKg(ideal, Season.SPRING);
+        return HiveDailyBiology.maxChartDailyKgForAdults(ColonyGameRules.MAX_ADULT_WORKERS_PER_HIVE);
     }
 
     public double calculateDailyHoneyKg(HiveEntity hive, Season season) {
-        double seasonFactor = switch (season) {
-            case SPRING -> 1.3;
-            case SUMMER -> 1.1;
-            case AUTUMN -> 0.8;
-            case WINTER -> 0.2;
-        };
-        double healthHoney = HealthHoneyModifier.productionMultiplierForHealth(hive.health);
-        double queenFactor = 0.6 + (hive.queenGeneticQuality / 100.0);
-        double floraFactor = floraFactor(hive.floraType);
-        return Math.max(0.0, hive.beeCount * 0.00016 * seasonFactor * healthHoney * queenFactor * floraFactor);
-    }
-
-    private double floraFactor(String floraType) {
-        if (floraType == null) {
-            return 1.0;
+        if (hive == null) {
+            return 0.0;
         }
-        String f = floraType.toLowerCase(Locale.ROOT);
-        return switch (f) {
-            case "romero" -> 1.2;
-            case "lavanda" -> 1.25;
-            case "mil flores" -> 1.15;
-            case "tomillo" -> 1.1;
-            case "brezo" -> 1.05;
-            case "bosque" -> 1.0;
-            case "campo de girasoles", "campo de colza" -> 1.12;
-            case "campo de naranjos", "campo de manzanos", "campo de cerezos",
-                    "campo de perales", "campo de almendros" -> 1.08;
-            default -> 1.0;
-        };
+        HivePopulationState pop = HivePopulationState.fromHiveEntityOrDefault(hive, hive.beeCount);
+        int doy;
+        switch (season) {
+            case SPRING:
+                doy = 120;
+                break;
+            case SUMMER:
+                doy = 180;
+                break;
+            case AUTUMN:
+                doy = 280;
+                break;
+            case WINTER:
+            default:
+                doy = 15;
+                break;
+        }
+        LocalDate day = LocalDate.ofYearDay(2024, doy);
+        return HiveDailyBiology.netHoneyKg(pop, hive, day, 0, 22.0, 1.0);
     }
 }

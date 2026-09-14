@@ -16,11 +16,11 @@ public final class WorkerAdultLifespan {
      * Nudos (día del año 1–365, {@link java.time.LocalDate#getDayOfYear()}) y esperanza de vida media en días.
      * Interpolación lineal entre nudos consecutivos; el tramo 355→365 se une suavemente con el inicio del año.
      */
-    private static final int[] DOY_KNOT = {
+    public static int[] DOY_KNOT = {
             1, 45, 75, 110, 145, 172, 200, 230, 262, 288, 315, 335, 355, 365
     };
 
-    private static final double[] MEAN_LIFE_DAYS = {
+    public static double[] MEAN_LIFE_DAYS = {
             132, 118, 95, 62, 44, 39, 36, 36, 37, 44, 58, 78, 105, 128
     };
 

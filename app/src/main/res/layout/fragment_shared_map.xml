@@ -18,13 +18,229 @@
         app:cardCornerRadius="12dp"
         app:cardElevation="4dp">
 
-        <TextView
-            android:id="@+id/tv_map_help"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="10dp"
-            android:text="Mantener pulsado: crear colmena. Toca marcador propio y luego el mapa para transhumancia."
-            android:textSize="12sp" />
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/map_region_toggle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:checkedButton="@id/btn_map_iberia"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_map_iberia"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="40dp"
+                    android:text="@string/map_region_iberia"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_map_za"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="40dp"
+                    android:text="@string/map_region_south_africa"
+                    android:textSize="13sp" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <TextView
+                android:id="@+id/tv_map_help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/map_help_text"
+                android:textSize="12sp" />
+        </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_hex_toggles"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|center_vertical"
+        android:layout_margin="12dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_map_hex_mesh"
+                style="@style/Widget.Material3.Button.IconButton.Outlined"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:checkable="true"
+                android:contentDescription="@string/map_toggle_hex_mesh"
+                app:icon="@drawable/ic_hex_mesh"
+                app:iconSize="24dp"
+                app:iconTint="@color/login_text_dark"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_map_hex_own"
+                style="@style/Widget.Material3.Button.IconButton.Outlined"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:checkable="true"
+                android:contentDescription="@string/map_toggle_hex_own"
+                app:icon="@drawable/ic_hex_own"
+                app:iconSize="24dp"
+                app:iconTint="@color/hex_own_lilac"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_map_hex_other"
+                style="@style/Widget.Material3.Button.IconButton.Outlined"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:checkable="true"
+                android:contentDescription="@string/map_toggle_hex_other"
+                app:icon="@drawable/ic_hex_other"
+                app:iconSize="24dp"
+                app:iconTint="@color/hex_other_blue"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_map_hex_buy"
+                style="@style/Widget.Material3.Button.IconButton.Outlined"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:checkable="true"
+                android:contentDescription="@string/map_toggle_hex_buy"
+                app:icon="@drawable/ic_hex_buyable"
+                app:iconSize="24dp"
+                app:iconTint="@color/hex_buyable_green"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <ProgressBar
+        android:id="@+id/progress_map_region"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_climate_legend"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="12dp"
+        android:visibility="gone"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <LinearLayout
+                android:id="@+id/legend_iberia"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:background="@color/climate_atlantic" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:background="@color/climate_mountain" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:background="@color/climate_mediterranean" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:background="@color/climate_south" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:background="@color/climate_continental" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/legend_za"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:background="@color/climate_fynbos" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:background="@color/climate_karoo" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:background="@color/climate_highveld" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:background="@color/climate_subtropical" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_weight="1"
+                    android:background="@color/climate_bushveld" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_climate_legend"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/map_climate_legend"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 </FrameLayout>

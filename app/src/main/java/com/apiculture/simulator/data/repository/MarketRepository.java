@@ -8,8 +8,12 @@ import android.os.Looper;
 import androidx.annotation.Nullable;
 
 import com.apiculture.simulator.domain.game.GameCalendar;
+import com.apiculture.simulator.domain.game.GlobalEventEffects;
 import com.apiculture.simulator.domain.market.HoneyMarketEngine;
 import com.apiculture.simulator.domain.market.HoneyMarketSnapshot;
+import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.firestore.AggregateQuerySnapshot;
+import com.google.firebase.firestore.AggregateSource;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -20,36 +24,46 @@ import com.google.firebase.firestore.SetOptions;
 import org.json.JSONObject;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * Mercado global: demanda diaria local (snapshot) + ventas acumuladas de todos los jugadores en Firestore
+ * Mercado global: demanda diaria proporcional a jugadores reales + ventas acumuladas en Firestore
  * (o fallback local si no hay Firebase / sesión).
  */
 public class MarketRepository {
 
     private static final String COLLECTION_ROOT = "globalHoneyMarket";
-    private static final String SUB_FLORA_SALES = "floraSales";
+    private static final String SUB_FLORA_SALES = "floraSalesUtc";
+    private static final String PLAYERS = "players";
 
     private static final String PREFS = "honey_market_prefs";
     private static final String KEY_DAY = "dayKey";
     private static final String KEY_JSON = "snapshotJson";
-    private static final String KEY_LOCAL_FALLBACK_DAY = "local_fallback_sales_day";
-    private static final String KEY_LOCAL_FALLBACK_JSON = "local_fallback_sales_json";
+    private static final String KEY_LOCAL_FALLBACK_DAY = "local_fallback_sales_day_utc";
+    private static final String KEY_LOCAL_FALLBACK_JSON = "local_fallback_sales_json_utc";
+    private static final String KEY_PLAYER_COUNT = "player_count";
     private static final String FIELD_KG_SOLD = "kgSold";
+    private static final String FIELD_MARKET_DAY = "marketDayKey";
 
     private final Context appContext;
     private final AuthRepository authRepository;
     private final FirebaseFirestore firestore;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService io = Executors.newSingleThreadExecutor();
     private volatile HoneyMarketSnapshot cached;
     private ListenerRegistration globalSalesListener;
+    private int attachedSalesDayKey = Integer.MIN_VALUE;
+    private int salesListenerGeneration = 0;
+    @Nullable
+    private volatile Runnable snapshotChangedListener;
 
     public MarketRepository(Context context, @Nullable FirebaseFirestore firestore, AuthRepository authRepository) {
         this.appContext = context.getApplicationContext();
@@ -58,17 +72,60 @@ public class MarketRepository {
     }
 
     public void refreshGlobalMarketForDay(int dayKey, int civilDayOfYear) {
-        resetLocalFallbackSalesIfNewDay(dayKey);
-        HoneyMarketSnapshot snap = HoneyMarketEngine.computeSnapshot(dayKey, civilDayOfYear);
+        refreshGlobalMarketForDay(dayKey, civilDayOfYear, null);
+    }
+
+    public void refreshGlobalMarketForDay(int dayKey, int civilDayOfYear, @Nullable Runnable onUpdated) {
+        // Oferta/demanda mundiales: un solo día UTC, no la medianoche local de cada jugador.
+        int marketDay = GameCalendar.currentGlobalMarketDayKey();
+        LocalDate marketDate = GameCalendar.fromDayKey(marketDay);
+        resetLocalFallbackSalesIfNewDay(marketDay);
+        HoneyMarketSnapshot snap = HoneyMarketEngine.computeSnapshot(
+                marketDay, marketDate.getDayOfYear(), readCachedPlayerCount());
+        applySnapshot(GlobalEventEffects.applyToMarket(snap));
+        notifyUpdated(onUpdated);
+        io.execute(() -> {
+            int players = fetchPlayerCountBlocking();
+            HoneyMarketSnapshot remote = HoneyMarketEngine.computeSnapshot(
+                    marketDay, marketDate.getDayOfYear(), players);
+            applySnapshot(GlobalEventEffects.applyToMarket(remote));
+            notifyUpdated(onUpdated);
+        });
+    }
+
+    /** Aviso en el hilo UI cuando el snapshot del mercado cambia (p. ej. tick / nuevo día de juego). */
+    public void setSnapshotChangedListener(@Nullable Runnable listener) {
+        this.snapshotChangedListener = listener;
+    }
+
+    private void notifyUpdated(@Nullable Runnable onUpdated) {
+        if (onUpdated == null) {
+            return;
+        }
+        mainHandler.post(onUpdated);
+    }
+
+    private void applySnapshot(HoneyMarketSnapshot snap) {
+        if (snap == null) {
+            return;
+        }
+        HoneyMarketSnapshot prev = cached;
         cached = snap;
         persist(snap);
+        if (prev == null || prev.dayKey != snap.dayKey) {
+            resetLocalFallbackSalesIfNewDay(snap.dayKey);
+        }
+        Runnable r = snapshotChangedListener;
+        if (r != null) {
+            mainHandler.post(r);
+        }
     }
 
     private void resetLocalFallbackSalesIfNewDay(int dayKey) {
         SharedPreferences p = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         int prev = p.getInt(KEY_LOCAL_FALLBACK_DAY, Integer.MIN_VALUE);
         if (prev != dayKey) {
-            p.edit().putInt(KEY_LOCAL_FALLBACK_DAY, dayKey).putString(KEY_LOCAL_FALLBACK_JSON, "{}").apply();
+            p.edit().putInt(KEY_LOCAL_FALLBACK_DAY, dayKey).putString(KEY_LOCAL_FALLBACK_JSON, "{}").commit();
         }
     }
 
@@ -80,26 +137,62 @@ public class MarketRepository {
             o.put("demandSeason", s.demandSeasonFactor);
             o.put("noise", s.dailyNoiseMultiplier);
             o.put("priceTension", s.priceTension01);
+            o.put("playerCount", s.playerCount);
             o.put("demandByFlora", new JSONObject(s.demandKgByFlora));
             o.put("priceByFlora", new JSONObject(s.priceEurPerKgByFlora));
             SharedPreferences p = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            p.edit().putInt(KEY_DAY, s.dayKey).putString(KEY_JSON, o.toString()).apply();
+            p.edit()
+                    .putInt(KEY_DAY, s.dayKey)
+                    .putInt(KEY_PLAYER_COUNT, s.playerCount)
+                    .putString(KEY_JSON, o.toString())
+                    .apply();
         } catch (Exception ignored) {
+        }
+    }
+
+    private int readCachedPlayerCount() {
+        SharedPreferences p = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        return Math.max(1, p.getInt(KEY_PLAYER_COUNT, 1));
+    }
+
+    private int fetchPlayerCountBlocking() {
+        if (firestore == null || authRepository.getCurrentUser() == null) {
+            return readCachedPlayerCount();
+        }
+        try {
+            AggregateQuerySnapshot snap = Tasks.await(
+                    firestore.collection(PLAYERS).count().get(AggregateSource.SERVER),
+                    8, TimeUnit.SECONDS);
+            int n = (int) Math.max(1L, snap.getCount());
+            appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .edit()
+                    .putInt(KEY_PLAYER_COUNT, n)
+                    .apply();
+            return n;
+        } catch (Exception ignored) {
+            return readCachedPlayerCount();
         }
     }
 
     @Nullable
     public HoneyMarketSnapshot getSnapshot() {
-        if (cached != null) {
-            return cached;
-        }
-        ZoneId z = GameCalendar.userTimeZone();
-        LocalDate today = LocalDate.now(z);
-        refreshGlobalMarketForDay(GameCalendar.toDayKey(today), today.getDayOfYear());
+        ensureGlobalMarketDaySnapshot();
         return cached;
     }
 
-    /** Precio mostrado con cobertura global conocida ({@code globalSoldKg} en kg ya vendidos ese día). */
+    /** El mercado mundial sigue el día UTC; el snapshot en memoria no puede quedar en ayer. */
+    private void ensureGlobalMarketDaySnapshot() {
+        LocalDate marketDate = LocalDate.now(GameCalendar.globalMarketTimeZone());
+        int todayKey = GameCalendar.toDayKey(marketDate);
+        if (cached != null && cached.dayKey == todayKey) {
+            return;
+        }
+        resetLocalFallbackSalesIfNewDay(todayKey);
+        applySnapshot(GlobalEventEffects.applyToMarket(HoneyMarketEngine.computeSnapshot(
+                todayKey, marketDate.getDayOfYear(), readCachedPlayerCount())));
+    }
+
+    /** Precio mostrado con oferta global conocida ({@code globalSoldKg} en kg ya vendidos ese día). */
     public double priceEurPerKgForFloraWithSold(@Nullable String floraType, double globalSoldKg) {
         HoneyMarketSnapshot s = getSnapshot();
         if (s == null) {
@@ -107,7 +200,8 @@ public class MarketRepository {
         }
         String k = HoneyMarketEngine.canonicalFloraKey(floraType);
         double demand = s.demandKgByFlora.getOrDefault(k, 0.0);
-        return HoneyMarketEngine.priceEurPerKgFromGlobalCoverage(k, demand, globalSoldKg);
+        double base = s.priceForFloraOrDefault(k, 12.0);
+        return HoneyMarketEngine.priceEurPerKgFromSupply(k, demand, globalSoldKg, base);
     }
 
     public double priceEurPerKgForFlora(@Nullable String floraType) {
@@ -132,7 +226,8 @@ public class MarketRepository {
                 continue;
             }
             double gSold = sold.getOrDefault(flora, 0.0);
-            double price = HoneyMarketEngine.priceEurPerKgFromGlobalCoverage(flora, d, gSold);
+            double base = s.priceForFloraOrDefault(flora, 12.0);
+            double price = HoneyMarketEngine.priceEurPerKgFromSupply(flora, d, gSold, base);
             num += d * price;
             den += d;
         }
@@ -143,23 +238,47 @@ public class MarketRepository {
     }
 
     public void attachGlobalSoldListener(int dayKey, Consumer<Map<String, Double>> onSoldMapChanged) {
+        int marketDay = GameCalendar.currentGlobalMarketDayKey();
         clearGlobalSoldListener();
+        int gen = ++salesListenerGeneration;
+        attachedSalesDayKey = marketDay;
+        onSoldMapChanged.accept(Collections.emptyMap());
         if (firestore == null || authRepository.getCurrentUser() == null) {
-            mainHandler.post(() -> onSoldMapChanged.accept(readLocalFallbackSalesMap()));
+            mainHandler.post(() -> {
+                if (gen != salesListenerGeneration || attachedSalesDayKey != marketDay) {
+                    return;
+                }
+                onSoldMapChanged.accept(readLocalFallbackSalesMap());
+            });
             return;
         }
-        CollectionReference col = floraSalesCollection(dayKey);
+        CollectionReference col = floraSalesCollection(marketDay);
         globalSalesListener = col.addSnapshotListener((snap, error) -> {
+            if (gen != salesListenerGeneration
+                    || attachedSalesDayKey != marketDay
+                    || GameCalendar.currentGlobalMarketDayKey() != marketDay) {
+                return;
+            }
             if (snap == null) {
-                mainHandler.post(() -> onSoldMapChanged.accept(Collections.emptyMap()));
+                mainHandler.post(() -> {
+                    if (gen == salesListenerGeneration && attachedSalesDayKey == marketDay) {
+                        onSoldMapChanged.accept(Collections.emptyMap());
+                    }
+                });
                 return;
             }
             Map<String, Double> m = new LinkedHashMap<>();
             for (DocumentSnapshot d : snap.getDocuments()) {
-                double kg = d.contains(FIELD_KG_SOLD) ? d.getDouble(FIELD_KG_SOLD) : 0.0;
-                m.put(d.getId(), kg);
+                if (!isSaleForMarketDay(d, marketDay)) {
+                    continue;
+                }
+                m.put(d.getId(), readKgSold(d));
             }
-            mainHandler.post(() -> onSoldMapChanged.accept(m));
+            mainHandler.post(() -> {
+                if (gen == salesListenerGeneration && attachedSalesDayKey == marketDay) {
+                    onSoldMapChanged.accept(m);
+                }
+            });
         });
     }
 
@@ -168,10 +287,11 @@ public class MarketRepository {
             globalSalesListener.remove();
             globalSalesListener = null;
         }
+        attachedSalesDayKey = Integer.MIN_VALUE;
     }
 
     /**
-     * Venta global: transacción Firestore (kg vendidos mundiales) y precio según cobertura previa.
+     * Venta global: transacción Firestore (kg vendidos mundiales) y precio según oferta previa.
      */
     public void executeGlobalSale(
             @Nullable String floraType,
@@ -184,33 +304,42 @@ public class MarketRepository {
             return;
         }
         String flora = HoneyMarketEngine.canonicalFloraKey(floraType);
-        double demand = snap.demandKgByFlora.getOrDefault(flora, 0.0);
+        HoneyMarketSnapshot live = getSnapshot();
+        if (live == null) {
+            callback.onFailure("snapshot");
+            return;
+        }
+        int dayKey = GameCalendar.currentGlobalMarketDayKey();
+        double demand = live.demandKgByFlora.getOrDefault(flora, 0.0);
+        double seasonalBase = live.priceForFloraOrDefault(flora, 12.0);
         if (economy.getHoneyStockForFlora(flora) + 1e-9 < kg) {
             callback.onFailure("stock");
             return;
         }
 
         if (firestore == null || authRepository.getCurrentUser() == null) {
-            executeSaleLocalFallback(flora, kg, demand, snap.dayKey, economy, callback);
+            executeSaleLocalFallback(flora, kg, demand, seasonalBase, dayKey, economy, callback);
             return;
         }
 
-        DocumentReference ref = floraSaleDoc(snap.dayKey, flora);
+        DocumentReference ref = floraSaleDoc(dayKey, flora);
         firestore.runTransaction(transaction -> {
             DocumentSnapshot doc = transaction.get(ref);
-            double soldBefore = (doc.exists() && doc.contains(FIELD_KG_SOLD)) ? doc.getDouble(FIELD_KG_SOLD) : 0.0;
-            double price = HoneyMarketEngine.priceEurPerKgFromGlobalCoverage(flora, demand, soldBefore);
+            double soldBefore = isSaleForMarketDay(doc, dayKey) ? readKgSold(doc) : 0.0;
+            double price = HoneyMarketEngine.priceEurPerKgFromSupply(flora, demand, soldBefore, seasonalBase);
             double soldAfter = soldBefore + kg;
             Map<String, Object> data = new HashMap<>();
             data.put(FIELD_KG_SOLD, soldAfter);
+            data.put(FIELD_MARKET_DAY, dayKey);
             transaction.set(ref, data, SetOptions.merge());
             return price;
         }).addOnSuccessListener(price -> {
             if (!economy.sellHoneyOfFlora(flora, kg, price)) {
-                compensatingFirestoreDecrement(snap.dayKey, flora, kg);
+                compensatingFirestoreDecrement(dayKey, flora, kg);
                 callback.onFailure("stock");
                 return;
             }
+            notifyEventSale(flora, kg);
             callback.onSuccess(price);
         }).addOnFailureListener(e -> {
             String msg = e.getMessage() != null ? e.getMessage() : "mercado";
@@ -222,16 +351,18 @@ public class MarketRepository {
             String flora,
             double kg,
             double demand,
+            double seasonalBase,
             int dayKey,
             EconomyRepository economy,
             MarketSaleExecutionCallback callback) {
         double soldBefore = readLocalFallbackSalesMap().getOrDefault(flora, 0.0);
-        double price = HoneyMarketEngine.priceEurPerKgFromGlobalCoverage(flora, demand, soldBefore);
+        double price = HoneyMarketEngine.priceEurPerKgFromSupply(flora, demand, soldBefore, seasonalBase);
         if (!economy.sellHoneyOfFlora(flora, kg, price)) {
             callback.onFailure("stock");
             return;
         }
         persistLocalFallbackSale(flora, soldBefore + kg);
+        notifyEventSale(flora, kg);
         callback.onSuccess(price);
     }
 
@@ -245,9 +376,12 @@ public class MarketRepository {
             if (!doc.exists()) {
                 return null;
             }
-            double sold = doc.contains(FIELD_KG_SOLD) ? doc.getDouble(FIELD_KG_SOLD) : 0.0;
+            double sold = isSaleForMarketDay(doc, dayKey) ? readKgSold(doc) : 0.0;
             double next = Math.max(0.0, sold - kg);
-            transaction.set(ref, Collections.singletonMap(FIELD_KG_SOLD, next), SetOptions.merge());
+            Map<String, Object> data = new HashMap<>();
+            data.put(FIELD_KG_SOLD, next);
+            data.put(FIELD_MARKET_DAY, dayKey);
+            transaction.set(ref, data, SetOptions.merge());
             return null;
         });
     }
@@ -262,9 +396,30 @@ public class MarketRepository {
         return floraSalesCollection(dayKey).document(floraCanonical);
     }
 
+    private static boolean isSaleForMarketDay(DocumentSnapshot d, int marketDay) {
+        if (d == null || !d.exists()) {
+            return false;
+        }
+        Object raw = d.get(FIELD_MARKET_DAY);
+        if (!(raw instanceof Number)) {
+            return false;
+        }
+        return ((Number) raw).intValue() == marketDay;
+    }
+
+    private static double readKgSold(DocumentSnapshot d) {
+        if (d == null || !d.exists()) {
+            return 0.0;
+        }
+        Object raw = d.get(FIELD_KG_SOLD);
+        if (!(raw instanceof Number)) {
+            return 0.0;
+        }
+        return ((Number) raw).doubleValue();
+    }
+
     private Map<String, Double> readLocalFallbackSalesMap() {
-        HoneyMarketSnapshot s = getSnapshot();
-        int day = s != null ? s.dayKey : Integer.MIN_VALUE;
+        int day = GameCalendar.currentGlobalMarketDayKey();
         SharedPreferences p = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         if (p.getInt(KEY_LOCAL_FALLBACK_DAY, Integer.MIN_VALUE) != day) {
             return new LinkedHashMap<>();
@@ -288,10 +443,9 @@ public class MarketRepository {
 
     private void persistLocalFallbackSale(String floraCanonical, double newTotalSold) {
         SharedPreferences p = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        HoneyMarketSnapshot s = getSnapshot();
-        int day = s != null ? s.dayKey : Integer.MIN_VALUE;
+        int day = GameCalendar.currentGlobalMarketDayKey();
         if (p.getInt(KEY_LOCAL_FALLBACK_DAY, Integer.MIN_VALUE) != day) {
-            p.edit().putInt(KEY_LOCAL_FALLBACK_DAY, day).putString(KEY_LOCAL_FALLBACK_JSON, "{}").apply();
+            p.edit().putInt(KEY_LOCAL_FALLBACK_DAY, day).putString(KEY_LOCAL_FALLBACK_JSON, "{}").commit();
         }
         Map<String, Double> m = readLocalFallbackSalesMap();
         m.put(floraCanonical, newTotalSold);
@@ -305,6 +459,18 @@ public class MarketRepository {
             p.edit().putString(KEY_LOCAL_FALLBACK_JSON, o.toString()).apply();
         } catch (Exception ignored) {
         }
+    }
+
+    private void notifyEventSale(String flora, double kg) {
+        if (!(appContext instanceof com.apiculture.simulator.ApicultureApp)) {
+            return;
+        }
+        GlobalEventRepository repo =
+                ((com.apiculture.simulator.ApicultureApp) appContext).getGlobalEventRepository();
+        if (repo == null || authRepository.getCurrentUser() == null) {
+            return;
+        }
+        repo.recordSaleTowardSurge(flora, kg, authRepository.getCurrentUser().getUid());
     }
 
     public interface MarketSaleExecutionCallback {

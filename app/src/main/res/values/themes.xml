@@ -6,4 +6,14 @@
         <item name="colorPrimary">@color/login_primary_orange</item>
         <item name="colorPrimaryDark">#E07828</item>
     </style>
+
+    <style name="ShapeAppearance.Apiculture.Circle" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <style name="ShapeAppearance.Apiculture.Rounded16" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
 </resources>

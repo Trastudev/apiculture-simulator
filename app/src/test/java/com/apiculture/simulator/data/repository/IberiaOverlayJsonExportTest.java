@@ -4,6 +4,7 @@ import com.apiculture.simulator.BuildConfig;
 import com.apiculture.simulator.domain.parcel.GeoJsonLandMask;
 import com.apiculture.simulator.domain.parcel.HexParcel;
 import com.apiculture.simulator.domain.parcel.HexParcelGenerator;
+import com.apiculture.simulator.domain.map.PlayableMapRegion;
 import com.apiculture.simulator.domain.parcel.IberiaBounds;
 import com.apiculture.simulator.domain.parcel.LandMask;
 import com.apiculture.simulator.presentation.map.MapHexOverlayConfig;
@@ -63,14 +64,15 @@ public class IberiaOverlayJsonExportTest {
         try (FileInputStream in = new FileInputStream(geoFile)) {
             land = GeoJsonLandMask.fromInputStream(in);
         }
+        PlayableMapRegion region = PlayableMapRegion.IBERIA;
         HexParcelGenerator generator = new HexParcelGenerator(
                 land,
-                MapHexOverlayConfig.MAP_HEX_TARGET_AREA_KM2,
+                region.hexTargetAreaKm2(),
                 MapHexOverlayConfig.MAP_HEX_LAND_SAMPLES_PER_AXIS,
                 HexParcelGenerator.DEFAULT_LAND_FRACTION_INLAND,
                 MapHexOverlayConfig.MAP_HEX_MIN_LAND_FRACTION,
-                MapHexOverlayConfig.HEX_GRID_ANCHOR_LAT,
-                MapHexOverlayConfig.HEX_GRID_ANCHOR_LON);
+                region.gridAnchorLat(),
+                region.gridAnchorLon());
         List<HexParcel> parcels = generator.generate(IberiaBounds.BOX, "iberia", GENERATE_CAP);
 
         JSONObject root = IberiaHexOverlayStore.toOverlayJsonDocument(parcels, BuildConfig.VERSION_CODE);

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="24dp"
+    app:cardBackgroundColor="@color/event_cream"
+    app:cardCornerRadius="22dp"
+    app:cardElevation="10dp"
+    app:strokeColor="@color/event_gold_stroke"
+    app:strokeWidth="1.5dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_event_global_body"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingHorizontal="22dp"
+        android:paddingTop="22dp"
+        android:paddingBottom="18dp">
+
+        <TextView
+            android:id="@+id/tv_notice_kicker"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_event_kicker_pill"
+            android:letterSpacing="0.10"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
+            android:text="@string/game_notice_kicker"
+            android:textAllCaps="true"
+            android:textColor="@color/white"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_notice_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:gravity="center"
+            android:textColor="@color/event_ink"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            tools:text="@string/game_notice_title" />
+
+        <TextView
+            android:id="@+id/tv_notice_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:lineSpacingExtra="3dp"
+            android:textColor="@color/event_ink_muted"
+            android:textSize="14sp"
+            tools:text="Mensaje de aviso del apiario." />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_notice_ok"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="18dp"
+            android:text="@string/game_notice_ok"
+            android:textAllCaps="false"
+            android:textColor="@color/event_ink"
+            android:textStyle="bold"
+            app:backgroundTint="@color/event_gold"
+            app:cornerRadius="14dp" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

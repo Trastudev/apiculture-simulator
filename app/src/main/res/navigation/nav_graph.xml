@@ -34,10 +34,19 @@
 
     <fragment
         android:id="@+id/hivesFragment"
-        android:name="com.apiculture.simulator.presentation.hive.HiveListFragment"
-        android:label="Colmenas">
+        android:name="com.apiculture.simulator.presentation.hive.ApiariesFragment"
+        android:label="@string/menu_hives">
         <action
-            android:id="@+id/action_hives_to_hive_detail"
+            android:id="@+id/action_hives_to_apiary_yard"
+            app:destination="@id/apiaryYardFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/apiaryYardFragment"
+        android:name="com.apiculture.simulator.presentation.hive.ApiaryYardFragment"
+        android:label="">
+        <action
+            android:id="@+id/action_yard_to_hive_detail"
             app:destination="@id/hiveDetailFragment" />
     </fragment>
 
@@ -65,4 +74,19 @@
         android:id="@+id/eventsFragment"
         android:name="com.apiculture.simulator.presentation.events.EventsFragment"
         android:label="Eventos" />
+
+    <fragment
+        android:id="@+id/adminEventsFragment"
+        android:name="com.apiculture.simulator.presentation.admin.AdminEventsFragment"
+        android:label="@string/admin_events_title" />
+
+    <fragment
+        android:id="@+id/adminGrantsFragment"
+        android:name="com.apiculture.simulator.presentation.admin.AdminGrantsFragment"
+        android:label="@string/admin_grants_title" />
+
+    <fragment
+        android:id="@+id/shopFragment"
+        android:name="com.apiculture.simulator.presentation.shop.ShopFragment"
+        android:label="@string/shop_title" />
 </navigation>

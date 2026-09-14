@@ -4,7 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
+import com.apiculture.simulator.presentation.common.GameNotice;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -52,7 +52,7 @@ public class RankingFragment extends Fragment {
         viewModel.loading().observe(getViewLifecycleOwner(), this::onLoading);
         viewModel.error().observe(getViewLifecycleOwner(), msg -> {
             if (msg != null && !msg.isEmpty()) {
-                Toast.makeText(requireContext(), getString(R.string.ranking_error, msg), Toast.LENGTH_LONG).show();
+                GameNotice.show(requireContext(), getString(R.string.ranking_error, msg));
             }
         });
 

@@ -37,8 +37,10 @@ Juego de simulacion y gestion de explotacion apicola con enfoque multijugador.
 3. Descarga `google-services.json` y colocalo en:
    - `app/google-services.json`
 4. Habilita:
-   - Authentication (Email/Password)
+   - Authentication (Email/Password **y Google**)
    - Cloud Firestore
+5. En Authentication → Google, usa el **ID de cliente web** que genera Firebase (el plugin lo lee de `google-services.json` como `default_web_client_id`).
+6. En Project settings → tu app Android, añade la huella **SHA-1** de debug (`gradlew signingReport`) y vuelve a descargar `google-services.json`.
 
 ### 2) Google Maps
 

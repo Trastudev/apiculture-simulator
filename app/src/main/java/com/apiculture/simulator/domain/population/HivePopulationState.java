@@ -9,8 +9,8 @@ import org.json.JSONObject;
 import java.util.Arrays;
 
 /**
- * Estado poblacional diario de una colmena: obreras adultas, cría por cohorte (día 0–21 del ciclo
- * obrera) y máquina de estados de la reina.
+ * Estado poblacional de una colmena: obreras adultas, cría estimada (instantánea de la puesta)
+ * y máquina de estados de la reina. El paso diario no envejece cohortes.
  */
 public final class HivePopulationState {
 
@@ -20,7 +20,7 @@ public final class HivePopulationState {
     public static final int LARVA_LAST_DAY = 9;
     public static final int PUPA_LAST_DAY = 21;
 
-    public static final int MIN_BEES_COLLAPSE = 400;
+    public static int MIN_BEES_COLLAPSE = 400;
     static final int MIN_EGGS_TO_START_QUEEN_CELL = 150;
     static final int QUEEN_CELL_TAKE = 200;
     /** Desarrollo reina: días 0–16 (17 etapas), emerge al completar 16. */
@@ -49,6 +49,8 @@ public final class HivePopulationState {
     public int lastDayEggsLaid;
     /** Enjambrazón aplicada al inicio de ese tick (no incluido en {@link #toJson}). */
     public boolean lastDaySwarmed;
+    /** Muerte natural de reina en ese tick (no incluido en {@link #toJson}). */
+    public boolean lastDayQueenDied;
 
     public int totalBees() {
         int t = workersAdult;
@@ -144,6 +146,26 @@ public final class HivePopulationState {
         return s;
     }
 
+    /**
+     * Instantánea de cría a partir de la puesta de hoy (4 días huevo, 6 larva, 12 pupa),
+     * sin desplazar una cola de envejecimiento.
+     */
+    public void applyEstimatedBroodFromDailyLaying(int eggsPerDay) {
+        Arrays.fill(workerBrood, 0);
+        int e = Math.max(0, eggsPerDay);
+        if (e == 0) {
+            return;
+        }
+        for (int i = 0; i <= PUPA_LAST_DAY; i++) {
+            workerBrood[i] = e;
+        }
+    }
+
+    /** True si hace falta introducir reina comercial (no en puesta y la colonia no ha colapsado). */
+    public boolean needsQueenIntroduction() {
+        return queenMode != QueenMode.LAYING && queenMode != QueenMode.COLLAPSED;
+    }
+
     public String queenStatusLabelEs() {
         switch (queenMode) {
             case LAYING:
@@ -175,6 +197,19 @@ public final class HivePopulationState {
         replaceWindowDay = Math.max(0, replaceWindowDay);
         queenPipelineDay = Math.max(0, queenPipelineDay);
         daysWithoutEggLaying = Math.max(0, daysWithoutEggLaying);
+    }
+
+    /** Reduce obreras adultas (ataque de velutina). {@code lossPercent} 0–100. */
+    public void applyAdultLossPercent(double lossPercent) {
+        double loss = Math.max(0.0, Math.min(100.0, lossPercent));
+        double keep = 1.0 - loss / 100.0;
+        if (workerAdultByAge != null) {
+            for (int i = 0; i < workerAdultByAge.length; i++) {
+                workerAdultByAge[i] = (int) Math.round(workerAdultByAge[i] * keep);
+            }
+        }
+        syncWorkersAdultFromBuckets(this);
+        clampNonNegative();
     }
 
     /**
@@ -500,6 +535,14 @@ public final class HivePopulationState {
      * Copia estado de reina y tendencia; útil para división de colmena en el mismo hexágono.
      */
     public HivePopulationState splitOffFairHalf() {
+        return splitOffFraction(0.5);
+    }
+
+    /**
+     * La colmena nueva se lleva {@code spawnShare} de adultos y cría; esta conserva el resto.
+     */
+    public HivePopulationState splitOffFraction(double spawnShare) {
+        double share = Math.max(0.0, Math.min(1.0, spawnShare));
         HivePopulationState spawn = new HivePopulationState();
         spawn.version = version;
         spawn.queenMode = queenMode;
@@ -509,7 +552,12 @@ public final class HivePopulationState {
         spawn.lastPopulationDayKey = lastPopulationDayKey;
         spawn.lastTrend = lastTrend;
         int w = workersAdult;
-        int targetSpawn = w / 2;
+        int targetSpawn = (int) Math.round(w * share);
+        if (w > 1) {
+            targetSpawn = Math.max(1, Math.min(w - 1, targetSpawn));
+        } else {
+            targetSpawn = Math.max(0, Math.min(w, targetSpawn));
+        }
         if (workerAdultByAge != null && w > 0 && targetSpawn >= 0) {
             allocateProportionalAdultSplit(workerAdultByAge, spawn.workerAdultByAge, targetSpawn);
             syncWorkersAdultFromBuckets(spawn);
@@ -522,7 +570,8 @@ public final class HivePopulationState {
         }
         for (int i = 0; i < WORKER_BROOD_DAYS; i++) {
             int c = workerBrood[i];
-            int c2 = c / 2;
+            int c2 = (int) Math.round(c * share);
+            c2 = Math.max(0, Math.min(c, c2));
             spawn.workerBrood[i] = c2;
             workerBrood[i] = c - c2;
         }

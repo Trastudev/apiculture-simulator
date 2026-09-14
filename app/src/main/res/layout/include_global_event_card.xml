@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_global_event"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:visibility="gone"
+    app:cardBackgroundColor="@color/event_cream"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="5dp"
+    app:strokeColor="@color/event_gold_stroke"
+    app:strokeWidth="1dp"
+    tools:visibility="visible">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_event_global_body"
+        android:orientation="vertical">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="118dp">
+
+            <ImageView
+                android:id="@+id/iv_event_banner"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/dashboard_global_event_kicker"
+                android:scaleType="centerCrop"
+                android:src="@drawable/event_global_banner" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_event_banner_scrim" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="10dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_event_kicker_pill"
+                    android:letterSpacing="0.12"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
+                    android:text="@string/dashboard_global_event_kicker"
+                    android:textAllCaps="true"
+                    android:textColor="@color/white"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/tv_event_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_event_status_pill"
+                    android:letterSpacing="0.08"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
+                    android:textAllCaps="true"
+                    android:textColor="@color/event_ink"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    tools:text="@string/dashboard_global_event_live" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="14dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="14dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/iv_event_medal"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:contentDescription="@string/dashboard_global_event_kicker"
+                    android:padding="2dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_event_global_medal"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Apiculture.Circle"
+                    app:strokeColor="@color/event_gold"
+                    app:strokeWidth="2.5dp" />
+
+                <ImageView
+                    android:id="@+id/iv_event_flora"
+                    android:layout_width="112dp"
+                    android:layout_height="112dp"
+                    android:background="@android:color/transparent"
+                    android:contentDescription="@string/flora_display_bosque"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_bosque"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_event_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:lineSpacingExtra="1dp"
+                        android:textColor="@color/event_ink"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        tools:text="@string/dashboard_global_event_surge" />
+
+                    <TextView
+                        android:id="@+id/tv_event_subtitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:textColor="@color/event_ink_muted"
+                        android:textSize="12sp"
+                        tools:text="@string/dashboard_global_event_ended" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_event_my_kg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_event_kg_chip"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="5dp"
+                android:textColor="@color/event_gold_dark"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:text="@string/dashboard_global_event_my_kg_short"
+                tools:visibility="visible" />
+
+            <LinearLayout
+                android:id="@+id/ll_event_progress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="96dp"
+                    android:paddingTop="4dp">
+
+                    <ProgressBar
+                        android:id="@+id/progress_event_demand"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="0dp"
+                        android:layout_height="10dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:max="100"
+                        android:progressDrawable="@drawable/progress_event_gold"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        tools:progress="42" />
+
+                    <ImageView
+                        android:id="@+id/iv_event_ms_15"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:contentDescription="@string/dashboard_event_ms_15"
+                        android:src="@drawable/ic_event_ms_off"
+                        app:layout_constraintBottom_toBottomOf="@id/progress_event_demand"
+                        app:layout_constraintEnd_toEndOf="@id/progress_event_demand"
+                        app:layout_constraintHorizontal_bias="0.15"
+                        app:layout_constraintStart_toStartOf="@id/progress_event_demand"
+                        app:layout_constraintTop_toTopOf="@id/progress_event_demand" />
+
+                    <ImageView
+                        android:id="@+id/iv_event_ms_30"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:contentDescription="@string/dashboard_event_ms_30"
+                        android:src="@drawable/ic_event_ms_off"
+                        app:layout_constraintBottom_toBottomOf="@id/progress_event_demand"
+                        app:layout_constraintEnd_toEndOf="@id/progress_event_demand"
+                        app:layout_constraintHorizontal_bias="0.30"
+                        app:layout_constraintStart_toStartOf="@id/progress_event_demand"
+                        app:layout_constraintTop_toTopOf="@id/progress_event_demand" />
+
+                    <ImageView
+                        android:id="@+id/iv_event_ms_50"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:contentDescription="@string/dashboard_event_ms_50"
+                        android:src="@drawable/ic_event_ms_off"
+                        app:layout_constraintBottom_toBottomOf="@id/progress_event_demand"
+                        app:layout_constraintEnd_toEndOf="@id/progress_event_demand"
+                        app:layout_constraintHorizontal_bias="0.50"
+                        app:layout_constraintStart_toStartOf="@id/progress_event_demand"
+                        app:layout_constraintTop_toTopOf="@id/progress_event_demand" />
+
+                    <ImageView
+                        android:id="@+id/iv_event_ms_75"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:contentDescription="@string/dashboard_event_ms_75"
+                        android:src="@drawable/ic_event_ms_off"
+                        app:layout_constraintBottom_toBottomOf="@id/progress_event_demand"
+                        app:layout_constraintEnd_toEndOf="@id/progress_event_demand"
+                        app:layout_constraintHorizontal_bias="0.75"
+                        app:layout_constraintStart_toStartOf="@id/progress_event_demand"
+                        app:layout_constraintTop_toTopOf="@id/progress_event_demand" />
+
+                    <ImageView
+                        android:id="@+id/iv_event_ms_100"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:contentDescription="@string/dashboard_event_ms_100"
+                        android:src="@drawable/ic_event_ms_off"
+                        app:layout_constraintBottom_toBottomOf="@id/progress_event_demand"
+                        app:layout_constraintEnd_toEndOf="@id/progress_event_demand"
+                        app:layout_constraintHorizontal_bias="1.0"
+                        app:layout_constraintStart_toStartOf="@id/progress_event_demand"
+                        app:layout_constraintTop_toTopOf="@id/progress_event_demand" />
+
+                    <LinearLayout
+                        android:id="@+id/ll_event_ms_15"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center_horizontal"
+                        android:orientation="vertical"
+                        app:layout_constraintEnd_toEndOf="@id/progress_event_demand"
+                        app:layout_constraintHorizontal_bias="0.15"
+                        app:layout_constraintStart_toStartOf="@id/progress_event_demand"
+                        app:layout_constraintTop_toBottomOf="@id/iv_event_ms_15">
+
+                        <TextView
+                            android:id="@+id/tv_event_ms_15"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dashboard_event_ms_qty_15"
+                            android:textColor="@color/event_gold_dark"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ImageView
+                            android:id="@+id/iv_event_ms_15_icon"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:layout_marginTop="1dp"
+                            android:contentDescription="@string/dashboard_event_ms_15"
+                            android:src="@drawable/ic_beecoin" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/ll_event_ms_30"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center_horizontal"
+                        android:orientation="vertical"
+                        app:layout_constraintEnd_toEndOf="@id/progress_event_demand"
+                        app:layout_constraintHorizontal_bias="0.30"
+                        app:layout_constraintStart_toStartOf="@id/progress_event_demand"
+                        app:layout_constraintTop_toBottomOf="@id/iv_event_ms_30">
+
+                        <TextView
+                            android:id="@+id/tv_event_ms_30"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dashboard_event_ms_qty_30"
+                            android:textColor="@color/event_gold_dark"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ImageView
+                            android:id="@+id/iv_event_ms_30_icon"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:layout_marginTop="1dp"
+                            android:contentDescription="@string/dashboard_event_ms_30"
+                            android:src="@drawable/ic_tratamiento" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/ll_event_ms_50"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center_horizontal"
+                        android:orientation="vertical"
+                        app:layout_constraintEnd_toEndOf="@id/progress_event_demand"
+                        app:layout_constraintHorizontal_bias="0.50"
+                        app:layout_constraintStart_toStartOf="@id/progress_event_demand"
+                        app:layout_constraintTop_toBottomOf="@id/iv_event_ms_50">
+
+                        <TextView
+                            android:id="@+id/tv_event_ms_50"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dashboard_event_ms_qty_50"
+                            android:textColor="@color/event_gold_dark"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ImageView
+                            android:id="@+id/iv_event_ms_50_icon"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:layout_marginTop="1dp"
+                            android:contentDescription="@string/dashboard_event_ms_50"
+                            android:src="@drawable/ic_beecoin" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/ll_event_ms_75"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center_horizontal"
+                        android:orientation="vertical"
+                        app:layout_constraintEnd_toEndOf="@id/progress_event_demand"
+                        app:layout_constraintHorizontal_bias="0.75"
+                        app:layout_constraintStart_toStartOf="@id/progress_event_demand"
+                        app:layout_constraintTop_toBottomOf="@id/iv_event_ms_75">
+
+                        <TextView
+                            android:id="@+id/tv_event_ms_75"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dashboard_event_ms_qty_75"
+                            android:textColor="@color/event_gold_dark"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ImageView
+                            android:id="@+id/iv_event_ms_75_icon"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:layout_marginTop="1dp"
+                            android:contentDescription="@string/dashboard_event_ms_75"
+                            android:src="@drawable/ic_apialimento" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/ll_event_ms_100"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center_horizontal"
+                        android:orientation="vertical"
+                        app:layout_constraintEnd_toEndOf="@id/progress_event_demand"
+                        app:layout_constraintHorizontal_bias="1.0"
+                        app:layout_constraintStart_toStartOf="@id/progress_event_demand"
+                        app:layout_constraintTop_toBottomOf="@id/iv_event_ms_100">
+
+                        <TextView
+                            android:id="@+id/tv_event_ms_100"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dashboard_event_ms_qty_100"
+                            android:textColor="@color/event_gold_dark"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+
+                        <ImageView
+                            android:id="@+id/iv_event_ms_100_icon"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
+                            android:layout_marginTop="1dp"
+                            android:contentDescription="@string/dashboard_event_ms_100"
+                            android:src="@drawable/ic_queen" />
+                    </LinearLayout>
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <TextView
+                    android:id="@+id/tv_event_progress"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:gravity="center"
+                    android:textColor="@color/event_ink_muted"
+                    android:textSize="11sp"
+                    tools:text="1.240 / 3.000 kg · 42%" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_sell_event_honey"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/dashboard_global_event_sell"
+                android:textAllCaps="false"
+                android:textColor="@color/event_ink"
+                android:textStyle="bold"
+                android:visibility="gone"
+                app:backgroundTint="@color/event_gold"
+                app:cornerRadius="14dp"
+                app:icon="@drawable/ic_venta"
+                app:iconGravity="textStart"
+                app:iconTint="@color/event_ink"
+                tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_claim_event_reward"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/dashboard_global_event_claim"
+                android:textAllCaps="false"
+                android:textColor="@color/event_ink"
+                android:textStyle="bold"
+                android:visibility="gone"
+                app:backgroundTint="@color/event_gold"
+                app:cornerRadius="14dp"
+                tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_treat_event"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/dashboard_treat_now"
+                android:textAllCaps="false"
+                android:visibility="gone"
+                app:backgroundTint="@color/dash_bad"
+                app:cornerRadius="12dp" />
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

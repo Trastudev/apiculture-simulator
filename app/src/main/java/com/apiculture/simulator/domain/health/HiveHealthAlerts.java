@@ -29,7 +29,9 @@ public final class HiveHealthAlerts {
             out.add("Infestación moderada (varroa)");
         }
         if (h.honeyProduction < com.apiculture.simulator.domain.game.HiveHoneyRules.MIN_HIVE_STOCK_KG) {
-            out.add("Reservas de miel bajo el mínimo (3 kg)");
+            out.add(String.format(Locale.getDefault(),
+                    "Reservas de miel bajo el mínimo (%.1f kg)",
+                    com.apiculture.simulator.domain.game.HiveHoneyRules.MIN_HIVE_STOCK_KG));
         }
         if (h.reserves < 18) {
             out.add("Reservas de pienso bajas");

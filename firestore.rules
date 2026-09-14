@@ -79,23 +79,35 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == playerId;
     }
 
-    // Mercado global de miel: kg vendidos ese día de juego por tipo (todos los jugadores).
+    // Mercado global (legado). El cliente ya no escribe aquí.
     match /globalHoneyMarket/{dayKey}/floraSales/{floraId} {
       allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Mercado global UTC: oferta del día civil UTC (reseteo a medianoche UTC).
+    match /globalHoneyMarket/{dayKey}/floraSalesUtc/{floraId} {
+      allow read: if request.auth != null;
       allow create: if request.auth != null
-          && request.resource.data.keys().hasOnly(['kgSold'])
+          && request.resource.data.keys().hasOnly(['kgSold', 'marketDayKey'])
           && request.resource.data.kgSold is number
           && request.resource.data.kgSold >= 0.0
-          && request.resource.data.kgSold <= 100000000.0;
+          && request.resource.data.kgSold <= 100000000.0
+          && request.resource.data.marketDayKey is int
+          && request.resource.data.marketDayKey == int(dayKey);
       allow update: if request.auth != null
-          && request.resource.data.keys().hasOnly(['kgSold'])
+          && request.resource.data.keys().hasOnly(['kgSold', 'marketDayKey'])
           && request.resource.data.kgSold is number
           && request.resource.data.kgSold >= resource.data.kgSold
-          && request.resource.data.kgSold <= resource.data.kgSold + 1000000.0;
+          && request.resource.data.kgSold <= resource.data.kgSold + 1000000.0
+          && request.resource.data.marketDayKey is int
+          && request.resource.data.marketDayKey == resource.data.marketDayKey
+          && request.resource.data.marketDayKey == int(dayKey);
       allow delete: if false;
     }
 
     // Terrenos hex (dueño en documento; solo comprados tienen doc).
+    // Opcional: floras (lista de mapas: floraKey, plantedAt, readyAt) sincronizada con Room.
     match /hexParcels/{hexId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
@@ -105,6 +117,40 @@ service cloud.firestore {
           && request.resource.data.ownerId == resource.data.ownerId;
       allow delete: if request.auth != null
           && resource.data.ownerId == request.auth.uid;
+    }
+
+    function isGameAdmin() {
+      return request.auth != null
+          && exists(/databases/$(database)/documents/uniquePlayerNames/aleix)
+          && get(/databases/$(database)/documents/uniquePlayerNames/aleix).data.ownerUid
+              == request.auth.uid;
+    }
+
+    match /globalGameEvents/{eventId} {
+      allow read: if request.auth != null;
+      allow write: if isGameAdmin();
+    }
+
+    match /globalEventProgress/{eventId} {
+      allow read: if request.auth != null;
+      allow create: if isGameAdmin();
+      allow update: if isGameAdmin()
+          || (request.auth != null
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['kgSold', 'updatedAtMs', 'instanceId'])
+          && request.resource.data.kgSold is number
+          && request.resource.data.kgSold >= resource.data.kgSold
+          && request.resource.data.kgSold <= resource.data.kgSold + 1000000.0);
+      allow delete: if isGameAdmin();
+
+      match /participants/{uid} {
+        allow read: if request.auth != null;
+        allow write: if request.auth.uid == uid;
+      }
+    }
+
+    match /users/{userId}/eventClaims/{claimId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

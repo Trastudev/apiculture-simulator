@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Márgenes horizontales de pantalla (teléfono) -->
+    <dimen name="screen_horizontal_padding">12dp</dimen>
+    <dimen name="screen_vertical_padding">8dp</dimen>
+    <!-- Dashboard -->
+    <dimen name="dash_header_padding_v">10dp</dimen>
+    <dimen name="dash_header_brand_text">16sp</dimen>
+    <dimen name="dash_section_spacing">10dp</dimen>
+    <dimen name="dash_content_padding_h">12dp</dimen>
+</resources>

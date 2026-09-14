@@ -2,27 +2,27 @@ package com.apiculture.simulator.domain.game;
 
 /**
  * Sistema de niveles y experiencia del jugador.
- *
- * Nivel 0 empieza con 0 XP. La XP máxima del nivel actual se calcula con
- * una progresión simple para poder escalar fácilmente en el futuro.
+ * Nivel 0 empieza con 0 XP. Cada nivel pide ×1,5 respecto al anterior (base 100).
  */
 public class LevelSystem {
 
-    private static final int BASE_XP_PER_LEVEL = 1_000;
+    public static final int BASE_XP_PER_LEVEL = 100;
+    public static final double XP_GROWTH = 1.5;
+    private static final int MAX_XP_PER_LEVEL = 2_000_000;
 
     private LevelSystem() {
-        // Utilidad estática
     }
 
     /**
-     * XP necesaria para completar un nivel concreto.
+     * XP necesaria para completar un nivel concreto (pasar de {@code level} a {@code level + 1}).
      */
     public static int xpForLevel(int level) {
-        if (level < 0) {
-            level = 0;
+        int l = Math.max(0, level);
+        double raw = BASE_XP_PER_LEVEL * Math.pow(XP_GROWTH, l);
+        if (raw >= MAX_XP_PER_LEVEL) {
+            return MAX_XP_PER_LEVEL;
         }
-        // Progresión lineal simple: (nivel + 1) * BASE
-        return (level + 1) * BASE_XP_PER_LEVEL;
+        return Math.max(1, (int) Math.round(raw));
     }
 
     /**
@@ -30,14 +30,15 @@ public class LevelSystem {
      */
     public static Result addXp(int currentLevel, int currentXp, int xpToAdd) {
         if (xpToAdd <= 0) {
-            return new Result(currentLevel, currentXp, xpForLevel(currentLevel));
+            int lvl = Math.max(0, currentLevel);
+            return new Result(lvl, Math.max(0, currentXp), xpForLevel(lvl));
         }
 
         int level = Math.max(0, currentLevel);
         int xp = Math.max(0, currentXp) + xpToAdd;
         int maxXp = xpForLevel(level);
 
-        while (xp >= maxXp) {
+        while (xp >= maxXp && maxXp > 0) {
             xp -= maxXp;
             level++;
             maxXp = xpForLevel(level);
@@ -58,4 +59,3 @@ public class LevelSystem {
         }
     }
 }
-

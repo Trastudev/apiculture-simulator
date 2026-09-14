@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 
 import com.apiculture.simulator.domain.market.HoneyMarketEngine;
 
+import androidx.annotation.Nullable;
+
 import org.json.JSONObject;
 
 import java.util.Iterator;
@@ -23,8 +25,21 @@ public class EconomyRepository {
     private static final String KEY_HONEY_BUCKETS_JSON = "honey_buckets_json";
     private final SharedPreferences prefs;
 
+    @Nullable
+    private Runnable economyChangedCallback;
+
     public EconomyRepository(Context context) {
         prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    public void setEconomyChangedCallback(@Nullable Runnable callback) {
+        economyChangedCallback = callback;
+    }
+
+    private void notifyEconomyChanged() {
+        if (economyChangedCallback != null) {
+            economyChangedCallback.run();
+        }
     }
 
     public double getBalance() {
@@ -34,6 +49,7 @@ public class EconomyRepository {
 
     public void setBalance(double balance) {
         prefs.edit().putLong(KEY_BALANCE, Double.doubleToRawLongBits(balance)).apply();
+        notifyEconomyChanged();
     }
 
     /** Descuento atómico respecto a otras operaciones de saldo en este repositorio. */
@@ -71,6 +87,11 @@ public class EconomyRepository {
     public double getHoneyStockForFlora(String floraType) {
         String key = HoneyMarketEngine.canonicalFloraKey(floraType);
         return readBuckets().getOrDefault(key, 0.0);
+    }
+
+    /** Copia de cubos de miel en almacén (flora → kg). */
+    public Map<String, Double> copyHoneyBuckets() {
+        return new LinkedHashMap<>(readBuckets());
     }
 
     public synchronized void addHoney(String floraType, double kg) {
@@ -137,8 +158,29 @@ public class EconomyRepository {
      * Saldo inicial y stock de miel al reiniciar juego (no borra prefs de otros datos).
      */
     public synchronized void applyNewGameEconomyDefaults() {
-        setBalance(DEFAULT_STARTING_BALANCE_EUR);
-        prefs.edit().remove(KEY_HONEY_STOCK).remove(KEY_HONEY_BUCKETS_JSON).apply();
+        prefs.edit()
+                .putLong(KEY_BALANCE, Double.doubleToRawLongBits(DEFAULT_STARTING_BALANCE_EUR))
+                .remove(KEY_HONEY_STOCK)
+                .remove(KEY_HONEY_BUCKETS_JSON)
+                .commit();
+        notifyEconomyChanged();
+    }
+
+    /**
+     * Aplica valores leídos de Firestore sin disparar el callback de push (evita bucles).
+     */
+    public synchronized void applyFromCloud(double balanceEur, @Nullable String honeyBucketsJson) {
+        prefs.edit().putLong(KEY_BALANCE, Double.doubleToRawLongBits(balanceEur)).apply();
+        if (honeyBucketsJson != null && !honeyBucketsJson.trim().isEmpty()) {
+            prefs.edit().putString(KEY_HONEY_BUCKETS_JSON, honeyBucketsJson).apply();
+        }
+    }
+
+    /** JSON de cubos de miel para subir a la nube (migra legado si hace falta). */
+    public synchronized String snapshotHoneyBucketsJsonForCloud() {
+        migrateLegacyHoneyIfNeeded();
+        String json = prefs.getString(KEY_HONEY_BUCKETS_JSON, null);
+        return json != null && !json.isEmpty() ? json : "{}";
     }
 
     private void migrateLegacyHoneyIfNeeded() {
@@ -188,6 +230,7 @@ public class EconomyRepository {
                 }
             }
             prefs.edit().putString(KEY_HONEY_BUCKETS_JSON, o.toString()).apply();
+            notifyEconomyChanged();
         } catch (Exception ignored) {
         }
     }

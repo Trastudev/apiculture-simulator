@@ -5,17 +5,20 @@ import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.text.InputType;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
+import com.apiculture.simulator.presentation.common.GameNotice;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
@@ -24,21 +27,32 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.Navigation;
 
 import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
 import com.apiculture.simulator.data.remote.OpenMeteoElevation;
+import com.apiculture.simulator.data.repository.EventInventoryStore;
 import com.apiculture.simulator.data.repository.HiveLast6DaysCharts;
+import com.apiculture.simulator.data.repository.HiveRepository;
+import com.apiculture.simulator.data.repository.WeatherRepository;
 import com.apiculture.simulator.databinding.DialogSuperPurchaseBinding;
 import com.apiculture.simulator.databinding.FragmentHiveDetailBinding;
 import com.apiculture.simulator.domain.game.ColonyGameRules;
 import com.apiculture.simulator.domain.game.DailySkyCondition;
+import com.apiculture.simulator.domain.game.DailyWeather;
 import com.apiculture.simulator.domain.game.GameCalendar;
+import com.apiculture.simulator.domain.game.HexNectarRules;
+import com.apiculture.simulator.domain.game.Hemispheres;
+import com.apiculture.simulator.domain.game.IberianClimateZone;
+import com.apiculture.simulator.domain.game.SouthernAfricanClimateZone;
+import com.apiculture.simulator.domain.game.HiveCareRules;
+import com.apiculture.simulator.domain.game.HiveFeedType;
+import com.apiculture.simulator.domain.game.HiveFeedingBonuses;
 import com.apiculture.simulator.domain.game.HiveHoneyRules;
 import com.apiculture.simulator.domain.game.HoneyDailyProduction;
 import com.apiculture.simulator.domain.health.HiveHealthAlerts;
-import com.apiculture.simulator.domain.health.HiveHealthBand;
 import com.apiculture.simulator.domain.population.HivePopulationState;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -47,11 +61,16 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.Map;
 
 public class HiveDetailFragment extends Fragment {
     private FragmentHiveDetailBinding binding;
     private HiveViewModel hiveViewModel;
     private String hiveId;
+    /** Evita aplicar una respuesta de Open-Meteo obsoleta si el usuario cambia de colmena rápido. */
+    private int weatherFetchSeq;
+    private String lastChartsHiveId;
+    private int lastChartsSummaryDayKey = Integer.MIN_VALUE;
 
     @Nullable
     @Override
@@ -72,13 +91,13 @@ public class HiveDetailFragment extends Fragment {
 
         hiveId = getArguments() != null ? getArguments().getString("hiveId") : null;
         if (hiveId == null) {
-            Toast.makeText(requireContext(), "No se recibió colmena.", Toast.LENGTH_SHORT).show();
+            GameNotice.show(requireContext(), R.string.hive_missing_id);
             return;
         }
 
         hiveViewModel.hiveById(hiveId).observe(getViewLifecycleOwner(), hive -> {
             if (hive == null) {
-                Toast.makeText(requireContext(), "Colmena no encontrada.", Toast.LENGTH_SHORT).show();
+                GameNotice.show(requireContext(), R.string.hive_not_found);
                 return;
             }
 
@@ -93,10 +112,83 @@ public class HiveDetailFragment extends Fragment {
             binding.tvHiveHeaderHoney.setText(String.format(Locale.getDefault(), "%.1f kg",
                     Math.max(0.0, hive.honeyProduction)));
             binding.tvHiveHeaderBees.setText(String.format(Locale.getDefault(), "%,d", pop.workersAdult));
+            bindHeaderQueen(hive, pop);
             boolean swarmRisk = ColonyGameRules.swarmRiskForAdultWorkers(pop.workersAdult) > 0.0
                     || pop.workersAdult >= ColonyGameRules.SPLIT_RECOMMEND_BEES;
             binding.ivHiveSwarmDangerIcon.setVisibility(swarmRisk ? View.VISIBLE : View.GONE);
             binding.tvHiveSwarmWarn.setVisibility(swarmRisk ? View.VISIBLE : View.GONE);
+
+            int elevForHeader = hive.elevationMeters >= 0
+                    ? hive.elevationMeters
+                    : OpenMeteoElevation.FALLBACK_METERS;
+            String skyKey = "hive:" + hive.id;
+            int productionDayKey = hive.lastSummaryDayKey > 0
+                    ? hive.lastSummaryDayKey
+                    : GameCalendar.toDayKey(LocalDate.now(GameCalendar.userTimeZone()));
+            DailySkyCondition headerSky = DailySkyCondition.forHexElevationAndDay(
+                    skyKey, productionDayKey, elevForHeader);
+            binding.ivHiveHeaderWeather.setImageResource(weatherIconRes(headerSky));
+            binding.ivHiveHeaderWeather.setContentDescription(
+                    getString(R.string.hive_detail_weather_icon_cd) + " (" + headerSky.emoji() + ")");
+
+            String zoneLabel;
+            int shift;
+            if (Hemispheres.isSouthern(hive.lat)) {
+                SouthernAfricanClimateZone za = SouthernAfricanClimateZone.forHive(
+                        hive.lat, hive.lng, elevForHeader);
+                zoneLabel = za.labelEs();
+                shift = za.bloomShiftDays();
+            } else {
+                IberianClimateZone zone = IberianClimateZone.forHive(hive.lat, hive.lng, elevForHeader);
+                zoneLabel = zone.labelEs();
+                shift = zone.bloomShiftDays();
+            }
+            int year = GameCalendar.fromDayKey(productionDayKey).getYear();
+            double vint = HexNectarRules.vintageFactor(hive.hexId, hive.floraType, year);
+            int vintPct = (int) Math.round(vint * 100);
+            String shiftTxt = "";
+            if (shift < 0) {
+                shiftTxt = getString(R.string.hive_climate_bloom_early, -shift);
+            } else if (shift > 0) {
+                shiftTxt = getString(R.string.hive_climate_bloom_late, shift);
+            }
+            binding.tvClimateLine.setText(getString(R.string.hive_climate_line,
+                    zoneLabel, HexNectarRules.vintageLabelEs(vint), vintPct, shiftTxt));
+
+            LocalDate meanTempDay = GameCalendar.fromDayKey(productionDayKey).minusDays(1);
+            boolean sameDayCharts = hive.id.equals(lastChartsHiveId)
+                    && hive.lastSummaryDayKey == lastChartsSummaryDayKey;
+            if (!sameDayCharts) {
+                lastChartsHiveId = hive.id;
+                lastChartsSummaryDayKey = hive.lastSummaryDayKey;
+                binding.tvHiveHeaderWeatherTemp.setText("—");
+                final int fetchId = ++weatherFetchSeq;
+                final double lat = hive.lat;
+                final double lng = hive.lng;
+                WeatherRepository weatherRepo = app.getWeatherRepository();
+                new Thread(() -> {
+                    DailyWeather dayW = weatherRepo.fetchCalendarDayWeatherBlocking(
+                            lat, lng, meanTempDay);
+                    requireActivity().runOnUiThread(() -> {
+                        if (!isAdded() || binding == null || fetchId != weatherFetchSeq) {
+                            return;
+                        }
+                        Double mean = dayW != null ? dayW.meanTempC : null;
+                        if (mean == null || Double.isNaN(mean)) {
+                            binding.tvHiveHeaderWeatherTemp.setText("—");
+                        } else {
+                            binding.tvHiveHeaderWeatherTemp.setText(
+                                    String.format(Locale.getDefault(), "%.0f°C", mean));
+                        }
+                        DailySkyCondition obs = DailySkyCondition.forHiveDay(
+                                skyKey, productionDayKey, elevForHeader, dayW);
+                        binding.ivHiveHeaderWeather.setImageResource(weatherIconRes(obs));
+                        binding.ivHiveHeaderWeather.setContentDescription(
+                                getString(R.string.hive_detail_weather_icon_cd) + " (" + obs.emoji() + ")");
+                    });
+                }).start();
+            }
+
             NumberFormat popNf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
             binding.tvPopHeadline.setText(getString(R.string.hive_detail_pop_headline_obreras,
                     popNf.format(pop.workersAdult)));
@@ -111,9 +203,24 @@ public class HiveDetailFragment extends Fragment {
                     "%s  ·  Tendencia: %s",
                     pop.queenStatusLabelEs(),
                     pop.lastTrend.labelEs()));
+            binding.tvQueenGenetic.setText(
+                    getString(R.string.hive_detail_queen_genetic_pct, hive.queenGeneticQuality));
+            binding.tvQueenGeneticHint.setText(getString(R.string.hive_detail_queen_genetic_hint,
+                    HiveCareRules.STARTER_QUEEN_QUALITY_MIN,
+                    HiveCareRules.STARTER_QUEEN_QUALITY_MAX,
+                    HiveCareRules.QUEEN_QUALITY_MIN,
+                    HiveCareRules.QUEEN_QUALITY_MAX));
+            int todayKey = GameCalendar.toDayKey(LocalDate.now(GameCalendar.userTimeZone()));
+            int feedLeft = HiveFeedingBonuses.feedingDaysRemaining(hive, todayKey);
+            if (feedLeft > 0) {
+                binding.tvFeedingBonusStatus.setVisibility(View.VISIBLE);
+                int pctOff = (int) Math.round((1.0 - HiveCareRules.FEED_CONSUMPTION_MULTIPLIER) * 100.0);
+                binding.tvFeedingBonusStatus.setText(
+                        getString(R.string.hive_feed_status_consumption, pctOff, feedLeft));
+            } else {
+                binding.tvFeedingBonusStatus.setVisibility(View.GONE);
+            }
 
-            HiveHealthBand band = HiveHealthBand.fromHealth(hive.health);
-            binding.tvHiveStatus.setText(band.labelEs());
             int healthColor = healthBarColor(requireContext(), hive.health);
             binding.barHealth.setProgress(hive.health);
             binding.barHealth.setProgressTintList(ColorStateList.valueOf(healthColor));
@@ -204,7 +311,7 @@ public class HiveDetailFragment extends Fragment {
             String floraLabel = hive.floraType != null
                     ? hive.floraType
                     : getString(R.string.hive_flora_unknown_label);
-            setFloraHeroScaled(HiveSiteSummaryUi.floraIllustrationDrawable(hive.floraType));
+            setFloraHeroJar(HiveSiteSummaryUi.floraHoneyJarIcon(hive.floraType));
             binding.tvHoneyFloraTitle.setText(getString(R.string.hive_detail_miel_de, floraLabel));
             if (hive.elevationMeters >= 0) {
                 binding.tvElevationMeters.setText(String.format(Locale.getDefault(),
@@ -222,6 +329,7 @@ public class HiveDetailFragment extends Fragment {
             double stockKg = Math.max(0.0, hive.honeyProduction);
             binding.tvHoneyStockInHive.setText("En colmena: " + nf.format(stockKg) + " kg");
 
+            if (!sameDayCharts) {
             hiveViewModel.loadLast6DaysHiveCharts(hive.id, hive.ownerId, charts -> {
                 if (!isAdded() || binding == null) {
                     return;
@@ -249,7 +357,9 @@ public class HiveDetailFragment extends Fragment {
                     barValueViews[i].setText(barValNf.format(values[i]));
                 }
 
-                LocalDate today = LocalDate.now(GameCalendar.userTimeZone());
+                LocalDate chartEnd = charts.chartEndDayKey > 0
+                        ? GameCalendar.fromDayKey(charts.chartEndDayKey)
+                        : LocalDate.now(GameCalendar.userTimeZone());
                 DateTimeFormatter dayFmt = DateTimeFormatter.ofPattern("dd/MM");
                 TextView[] dayViews = new TextView[]{
                         binding.tvDay1, binding.tvDay2, binding.tvDay3, binding.tvDay4,
@@ -262,14 +372,42 @@ public class HiveDetailFragment extends Fragment {
                 int elevForUi = hive.elevationMeters >= 0
                         ? hive.elevationMeters
                         : OpenMeteoElevation.FALLBACK_METERS;
-                String skyKey = "hive:" + hive.id;
                 for (int i = 0; i < n; i++) {
-                    LocalDate d = today.minusDays(6 - i);
+                    LocalDate d = chartEnd.minusDays(6 - i);
                     dayViews[i].setText(d.format(dayFmt));
                     int dayKey = GameCalendar.toDayKey(d);
                     skyViews[i].setText(DailySkyCondition.forHexElevationAndDay(skyKey, dayKey, elevForUi)
                             .emoji());
                 }
+                final LocalDate chartFrom = chartEnd.minusDays(6);
+                final LocalDate chartTo = chartEnd;
+                final int nDays = n;
+                final String skyKeyCharts = skyKey;
+                final int elevCharts = elevForUi;
+                final double latCharts = hive.lat;
+                final double lngCharts = hive.lng;
+                final int skyFetchId = weatherFetchSeq;
+                WeatherRepository weatherForCharts = app.getWeatherRepository();
+                new Thread(() -> {
+                    Map<Integer, DailyWeather> series = weatherForCharts.fetchDailyWeatherRangeBlocking(
+                            latCharts, lngCharts, chartFrom, chartTo);
+                    requireActivity().runOnUiThread(() -> {
+                        if (!isAdded() || binding == null || skyFetchId != weatherFetchSeq) {
+                            return;
+                        }
+                        TextView[] skies = new TextView[]{
+                                binding.tvSky1, binding.tvSky2, binding.tvSky3, binding.tvSky4,
+                                binding.tvSky5, binding.tvSky6, binding.tvSky7
+                        };
+                        for (int i = 0; i < nDays && i < skies.length; i++) {
+                            LocalDate d = chartTo.minusDays(6 - i);
+                            int dayKey = GameCalendar.toDayKey(d);
+                            DailyWeather w = series.get(dayKey);
+                            skies[i].setText(DailySkyCondition.forHiveDay(
+                                    skyKeyCharts, dayKey, elevCharts, w).emoji());
+                        }
+                    });
+                }).start();
 
                 View[] bars = new View[]{
                         binding.bar1, binding.bar2, binding.bar3, binding.bar4,
@@ -288,39 +426,27 @@ public class HiveDetailFragment extends Fragment {
                     lp.height = (int) (heightDp * density);
                     bars[i].setLayoutParams(lp);
                 }
-                fillChartDayRow(binding.layoutWorkerNetDays, today);
-                fillChartDayRow(binding.layoutEggsDays, today);
+                fillChartDayRow(binding.layoutWorkerNetDays, chartEnd);
+                fillChartDayRow(binding.layoutEggsDays, chartEnd);
                 bindWorkerNetChart(charts.workerNetDelta);
                 bindEggsChart(charts.eggsLaid);
             });
+            }
 
-            Runnable doFeed = () -> hiveViewModel.feedHive(hive);
-            Runnable doTreat = () -> hiveViewModel.treatDisease(hive);
+            Runnable doFeed = () -> showFeedHiveDialog(hive);
+            Runnable doTreat = () -> showTreatHiveDialog(hive);
             Runnable doSplit = () -> hiveViewModel.splitHive(hive, msg -> {
                 if (!isAdded() || binding == null) {
                     return;
                 }
                 if (msg != null) {
-                    Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+                    GameNotice.show(requireContext(), msg);
                 } else {
-                    Toast.makeText(requireContext(), R.string.hive_split_ok, Toast.LENGTH_SHORT).show();
+                    GameNotice.showSuccess(requireContext(), R.string.hive_split_ok);
                 }
             });
-            Runnable doReplaceQueen = () -> hiveViewModel.replaceQueen(hive);
-            Runnable doHarvest = () -> {
-                double harvested = hiveViewModel.harvestHoney(hive);
-                if (harvested <= 0.0) {
-                    Toast.makeText(requireContext(), R.string.hive_harvest_need_stock, Toast.LENGTH_LONG).show();
-                    return;
-                }
-                String flora = hive.floraType != null && !hive.floraType.isEmpty()
-                        ? hive.floraType
-                        : "Mil flores";
-                app.getEconomyRepository().addHoney(flora, harvested);
-                Toast.makeText(requireContext(),
-                        getString(R.string.hive_harvest_ok_kg, harvested),
-                        Toast.LENGTH_SHORT).show();
-            };
+            Runnable doReplaceQueen = () -> showReplaceQueenDialog(hive);
+            Runnable doHarvest = () -> showHarvestHoneyDialog(hive);
 
             binding.btnFeed.setOnClickListener(v -> doFeed.run());
             binding.btnFeedTop.setOnClickListener(v -> doFeed.run());
@@ -335,16 +461,276 @@ public class HiveDetailFragment extends Fragment {
 
             binding.btnReplaceQueen.setOnClickListener(v -> doReplaceQueen.run());
             binding.btnReplaceQueenTop.setOnClickListener(v -> doReplaceQueen.run());
+            bindQueenActionButtons(pop.needsQueenIntroduction());
             binding.btnHarvest.setOnClickListener(v -> doHarvest.run());
             binding.btnHarvestTop.setOnClickListener(v -> doHarvest.run());
         });
+    }
+
+    private void showFeedHiveDialog(HiveEntity hive) {
+        if (!isAdded()) {
+            return;
+        }
+        int owned = EventInventoryStore.feed(requireContext());
+        String[] items = new String[]{
+                getString(R.string.hive_feed_option_1_day_inv, owned),
+                getString(R.string.hive_feed_option_7_days_inv, owned)
+        };
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.hive_feed_title)
+                .setItems(items, (dialog, which) -> {
+                    HiveFeedType type = which == 1 ? HiveFeedType.DAYS_7 : HiveFeedType.DAYS_1;
+                    hiveViewModel.applyHiveFeeding(hive, type, msg -> handleCareResult(msg, R.string.hive_feed_ok));
+                })
+                .setNeutralButton(R.string.inventory_go_shop, (d, w) -> goShop())
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showTreatHiveDialog(HiveEntity hive) {
+        if (!isAdded()) {
+            return;
+        }
+        int owned = EventInventoryStore.treatments(requireContext());
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.hive_treat_title)
+                .setMessage(getString(R.string.hive_treat_message_inv, owned, HiveCareRules.TREAT_DAYS))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setNeutralButton(R.string.inventory_go_shop, (d, w) -> goShop())
+                .setPositiveButton(R.string.hive_treat_confirm_inv,
+                        (d, w) -> hiveViewModel.treatDisease(hive,
+                                msg -> handleCareResult(msg, R.string.hive_treat_ok)))
+                .show();
+    }
+
+    private void bindHeaderQueen(HiveEntity hive, HivePopulationState pop) {
+        boolean missing = pop != null && pop.needsQueenIntroduction();
+        if (missing) {
+            binding.tvHiveHeaderQueen.setText(R.string.hive_detail_queen_missing);
+            binding.tvHiveHeaderQueen.setTextColor(ContextCompat.getColor(requireContext(), R.color.dash_bad));
+        } else {
+            binding.tvHiveHeaderQueen.setText(getString(R.string.hive_detail_queen_quality_short,
+                    hive.queenGeneticQuality));
+            binding.tvHiveHeaderQueen.setTextColor(ContextCompat.getColor(requireContext(), R.color.dash_text_card));
+        }
+        binding.ivHiveHeaderQueen.setImageResource(R.drawable.ic_queen);
+    }
+
+    private void showHarvestHoneyDialog(HiveEntity hive) {
+        if (!isAdded() || hive == null) {
+            return;
+        }
+        double stock = Math.max(0.0, hive.honeyProduction);
+        if (stock <= 1e-9) {
+            GameNotice.show(requireContext(), R.string.hive_harvest_need_stock);
+            return;
+        }
+        double suggested = Math.max(0.0, stock - HiveHoneyRules.MIN_HIVE_STOCK_KG);
+        EditText input = new EditText(requireContext());
+        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setHint(R.string.hive_harvest_amount_hint);
+        NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
+        nf.setMaximumFractionDigits(2);
+        nf.setMinimumFractionDigits(suggested > 0 && suggested < 1 ? 2 : 1);
+        input.setText(nf.format(suggested > 1e-9 ? suggested : stock));
+        input.setSelectAllOnFocus(true);
+        int pad = (int) (20 * getResources().getDisplayMetrics().density);
+        LinearLayout wrap = new LinearLayout(requireContext());
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        wrap.setPadding(pad, pad / 2, pad, 0);
+        TextView msg = new TextView(requireContext());
+        msg.setText(getString(R.string.hive_harvest_choose_message, stock, HiveHoneyRules.MIN_HIVE_STOCK_KG));
+        wrap.addView(msg);
+        wrap.addView(input);
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.hive_harvest_choose_title)
+                .setView(wrap)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.hive_action_harvest, (d, w) -> {
+                    Double kg = parseHarvestKg(input.getText() != null ? input.getText().toString() : "");
+                    if (kg == null || kg <= 1e-9) {
+                        GameNotice.show(requireContext(), R.string.hive_harvest_invalid_amount);
+                        return;
+                    }
+                    if (kg > stock + 1e-6) {
+                        GameNotice.show(requireContext(), getString(R.string.hive_harvest_too_much, stock));
+                        return;
+                    }
+                    double harvested = hiveViewModel.harvestHoney(hive, kg);
+                    if (harvested <= 0.0) {
+                        GameNotice.show(requireContext(), R.string.hive_harvest_need_stock);
+                        return;
+                    }
+                    String flora = hive.floraType != null && !hive.floraType.isEmpty()
+                            ? hive.floraType
+                            : "Mil flores";
+                    ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
+                    app.getEconomyRepository().addHoney(flora, harvested);
+                    GameNotice.showSuccess(requireContext(),
+                            getString(R.string.hive_harvest_ok_kg, harvested));
+                })
+                .show();
+    }
+
+    @Nullable
+    private static Double parseHarvestKg(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String t = raw.trim().replace(" ", "").replace(',', '.');
+        if (t.isEmpty()) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(t);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private void bindQueenActionButtons(boolean needsQueen) {
+        int label = needsQueen ? R.string.hive_action_introduce_queen : R.string.hive_action_replace_queen;
+        int bg = needsQueen ? R.color.dash_bad : R.color.dash_soft_blue;
+        int fg = needsQueen ? R.color.white : R.color.dash_text_card;
+        ColorStateList bgList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), bg));
+        ColorStateList fgList = ColorStateList.valueOf(ContextCompat.getColor(requireContext(), fg));
+        binding.btnReplaceQueen.setText(label);
+        binding.btnReplaceQueenTop.setText(label);
+        binding.btnReplaceQueen.setBackgroundTintList(bgList);
+        binding.btnReplaceQueenTop.setBackgroundTintList(bgList);
+        binding.btnReplaceQueen.setTextColor(fgList);
+        binding.btnReplaceQueenTop.setTextColor(fgList);
+        binding.btnReplaceQueen.setIconTint(fgList);
+        binding.btnReplaceQueenTop.setIconTint(fgList);
+    }
+
+    private void showReplaceQueenDialog(HiveEntity hive) {
+        if (!isAdded()) {
+            return;
+        }
+        HivePopulationState pop = HivePopulationState.fromHiveEntityOrDefault(
+                hive, HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
+        boolean needsIntroduce = pop.needsQueenIntroduction();
+        java.util.List<Integer> queens = EventInventoryStore.queens(requireContext());
+        int title = needsIntroduce
+                ? R.string.hive_introduce_queen_title
+                : R.string.hive_replace_queen_title;
+        if (queens.isEmpty()) {
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(title)
+                    .setMessage(R.string.hive_need_shop_queen)
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .setPositiveButton(R.string.inventory_go_shop, (d, w) -> goShop())
+                    .show();
+            return;
+        }
+        int pad = (int) (20 * getResources().getDisplayMetrics().density);
+        LinearLayout wrap = new LinearLayout(requireContext());
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        wrap.setPadding(pad, pad / 2, pad, 0);
+        TextView msg = new TextView(requireContext());
+        msg.setText(R.string.hive_replace_queen_message_inv);
+        wrap.addView(msg);
+        final int[] selectedIndex = {0};
+        if (queens.size() == 1) {
+            TextView one = new TextView(requireContext());
+            one.setPadding(0, pad / 2, 0, 0);
+            one.setText(getString(R.string.inventory_queen_row, 1, queens.get(0)));
+            wrap.addView(one);
+        } else {
+            Spinner spinner = new Spinner(requireContext());
+            String[] items = new String[queens.size()];
+            for (int i = 0; i < queens.size(); i++) {
+                items[i] = getString(R.string.inventory_queen_row, i + 1, queens.get(i));
+            }
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                    requireContext(), android.R.layout.simple_spinner_dropdown_item, items);
+            spinner.setAdapter(adapter);
+            spinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                    selectedIndex[0] = position;
+                }
+
+                @Override
+                public void onNothingSelected(android.widget.AdapterView<?> parent) {
+                }
+            });
+            wrap.addView(spinner);
+        }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(title)
+                .setView(wrap)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.hive_replace_queen_confirm_inv, (d, w) ->
+                        hiveViewModel.replaceQueenFromInventory(hive, selectedIndex[0],
+                                msgResult -> handleCareResult(msgResult, R.string.hive_replace_queen_ok)))
+                .show();
+    }
+
+    private void handleCareResult(String msg, int okRes) {
+        if (!isAdded()) {
+            return;
+        }
+        if (msg == null) {
+            GameNotice.showSuccess(requireContext(), okRes);
+            return;
+        }
+        if ("SHOP_FEED".equals(msg)) {
+            GameNotice.show(requireContext(), R.string.hive_need_shop_feed);
+            goShop();
+            return;
+        }
+        if ("SHOP_TREAT".equals(msg)) {
+            GameNotice.show(requireContext(), R.string.hive_need_shop_treat);
+            goShop();
+            return;
+        }
+        if ("SHOP_QUEEN".equals(msg)) {
+            GameNotice.show(requireContext(), R.string.hive_need_shop_queen);
+            goShop();
+            return;
+        }
+        GameNotice.show(requireContext(), msg);
+    }
+
+    private void goShop() {
+        if (!isAdded()) {
+            return;
+        }
+        Navigation.findNavController(requireView()).navigate(R.id.shopFragment);
+    }
+
+    @DrawableRes
+    private static int weatherIconRes(DailySkyCondition sky) {
+        if (sky == null) {
+            return R.drawable.ic_weather_cloud;
+        }
+        switch (sky) {
+            case SUN:
+                return R.drawable.ic_sol_prado;
+            case CLOUDY:
+                return R.drawable.ic_weather_cloud;
+            case WINDY:
+                return R.drawable.ic_weather_wind;
+            case RAINY:
+            default:
+                return R.drawable.ic_weather_rain;
+        }
+    }
+
+    private void setFloraHeroJar(@DrawableRes int resId) {
+        android.widget.ImageView iv = binding.ivHoneyFloraHero;
+        iv.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        iv.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        iv.setImageResource(resId);
     }
 
     /**
      * Carga la miniatura con {@link BitmapFactory} y submuestreo para PNG/JPG grandes; evita OOM y acota decodificación.
      */
     private void setFloraHeroScaled(@DrawableRes int resId) {
-        com.google.android.material.imageview.ShapeableImageView iv = binding.ivHoneyFloraHero;
+        android.widget.ImageView iv = binding.ivHoneyFloraHero;
         try {
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
@@ -361,7 +747,7 @@ public class HiveDetailFragment extends Fragment {
             }
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inSampleSize = inSample;
-            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+            opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
             Bitmap bmp = BitmapFactory.decodeResource(getResources(), resId, opts);
             if (bmp != null) {
                 iv.setImageBitmap(bmp);
@@ -533,7 +919,7 @@ public class HiveDetailFragment extends Fragment {
                 .setPositiveButton(R.string.hive_rename_save, (d, w) -> {
                     String name = input.getText().toString().trim();
                     if (name.isEmpty()) {
-                        Toast.makeText(requireContext(), R.string.hive_rename_empty, Toast.LENGTH_SHORT).show();
+                        GameNotice.show(requireContext(), R.string.hive_rename_empty);
                         return;
                     }
                     hiveViewModel.updateHiveName(hive.id, name);
@@ -548,7 +934,7 @@ public class HiveDetailFragment extends Fragment {
         }
         int current = Math.max(0, Math.min(2, hive.superCount));
         if (current >= 2) {
-            Toast.makeText(requireContext(), R.string.hive_super_already_max, Toast.LENGTH_SHORT).show();
+            GameNotice.show(requireContext(), R.string.hive_super_already_max);
             return;
         }
         int room = 2 - current;
@@ -584,9 +970,9 @@ public class HiveDetailFragment extends Fragment {
                 }
                 if (msg == null) {
                     dialog.dismiss();
-                    Toast.makeText(requireContext(), R.string.hive_super_purchase_ok, Toast.LENGTH_SHORT).show();
+                    GameNotice.show(requireContext(), R.string.hive_super_purchase_ok);
                 } else {
-                    Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+                    GameNotice.show(requireContext(), msg);
                 }
             });
         }));

@@ -15,13 +15,14 @@ public class HiveEntity {
     public int health;
     public double honeyProduction;
     public int reserves;
+    /** Legado; ya no se muestra ni evoluciona en la jugabilidad actual. */
     public int queenAgeDays;
     public int queenGeneticQuality;
     public double lat;
     public double lng;
     /**
      * Terreno padre (hexágono Iberia, {@link com.apiculture.simulator.domain.parcel.HexParcel#id}).
-     * La transhumancia a otro hex tuyo actualiza este id y la flora del hex destino.
+     * La transhumancia a otro hex tuyo actualiza este id; la flora de la colmena no cambia.
      */
     public String hexId;
     /**
@@ -58,4 +59,14 @@ public class HiveEntity {
     public int lastSummaryEggsLaid;
     /** Si el último tick aplicó enjambrazón (resumen / diálogo de inicio). */
     public boolean lastSummarySwarmed;
+    /**
+     * Primer {@code dayKey} sin alimentación (activo mientras el día simulado sea anterior a este).
+     */
+    public int feedHoneyBonusEndDayKeyExclusive = 0;
+    public double feedHoneyBonusMultiplier = 1.0;
+    /** Legado: bono de puesta por alimento proteico (ya no se aplica en nuevas alimentaciones). */
+    public int feedBroodBonusEndDayKeyExclusive = 0;
+    public double feedBroodBonusMultiplier = 1.0;
+    /** Primer {@code dayKey} en el que la colmena ya está instalada tras transhumancia (0 = no viaja). */
+    public int transhumanceArrivesDayKey = 0;
 }

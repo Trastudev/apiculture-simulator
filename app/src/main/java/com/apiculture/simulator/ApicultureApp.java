@@ -1,6 +1,8 @@
 package com.apiculture.simulator;
 
 import android.app.Application;
+import android.os.Handler;
+import android.os.Looper;
 
 import com.apiculture.simulator.data.local.AppDatabase;
 import com.apiculture.simulator.data.repository.AuthRepository;
@@ -12,14 +14,22 @@ import com.apiculture.simulator.data.repository.LeaderboardRepository;
 import com.apiculture.simulator.data.repository.PlayerProgressRepository;
 import com.apiculture.simulator.data.repository.HexOverlaySeedInstaller;
 import com.apiculture.simulator.data.repository.IberiaHexOverlayStore;
-import com.apiculture.simulator.data.repository.LandMaskAssets;
+import com.apiculture.simulator.data.repository.GlobalEventRepository;
 import com.apiculture.simulator.data.repository.MarketRepository;
 import com.apiculture.simulator.data.repository.MultiplayerRepository;
 import com.apiculture.simulator.data.repository.ProfileRepository;
+import com.apiculture.simulator.data.repository.UserGameStateRepository;
 import com.apiculture.simulator.data.repository.WeatherRepository;
+import com.apiculture.simulator.domain.map.PlayableMapRegion;
+import com.google.android.gms.ads.MobileAds;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.apiculture.simulator.domain.game.GameBalanceConfig;
 import com.apiculture.simulator.domain.parcel.HexParcel;
 import com.apiculture.simulator.notification.GameNotificationChannels;
+import com.apiculture.simulator.presentation.common.GameNotice;
+import com.apiculture.simulator.presentation.common.LevelUpDialog;
 
 import java.util.List;
 
@@ -36,14 +46,24 @@ public class ApicultureApp extends Application {
     private HexFloraRepository hexFloraRepository;
     private ProfileRepository profileRepository;
     private PlayerProgressRepository playerProgressRepository;
+    private UserGameStateRepository userGameStateRepository;
     private LeaderboardRepository leaderboardRepository;
+    private GlobalEventRepository globalEventRepository;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        try {
+            MobileAds.initialize(this, initializationStatus -> {
+            });
+        } catch (Throwable ignored) {
+        }
         GameNotificationChannels.ensureCreated(this);
+        GameNotice.install(this);
+        LevelUpDialog.install(this);
+        GameBalanceConfig.load(this);
         database = AppDatabase.getInstance(this);
-        authRepository = new AuthRepository();
+        authRepository = new AuthRepository(this);
         weatherRepository = new WeatherRepository();
         economyRepository = new EconomyRepository(this);
         FirebaseFirestore firestore = null;
@@ -54,11 +74,20 @@ public class ApicultureApp extends Application {
         }
         profileRepository = new ProfileRepository(firestore);
         marketRepository = new MarketRepository(this, firestore, authRepository);
+        globalEventRepository = new GlobalEventRepository(this, firestore);
+        globalEventRepository.setMarketRepository(marketRepository);
+        globalEventRepository.setEconomyRepository(economyRepository);
+        globalEventRepository.startListening();
+        hexFloraRepository = new HexFloraRepository(
+                database.hexFloraDao(),
+                database.hexParcelFloraDao(),
+                database.hexParcelOwnershipDao(),
+                this);
         hexParcelRepository = new HexParcelRepository(
                 database.hexParcelOwnershipDao(),
                 economyRepository,
-                this);
-        hexFloraRepository = new HexFloraRepository(database.hexFloraDao());
+                this,
+                hexFloraRepository);
         hiveRepository = new HiveRepository(
                 database.hiveDao(),
                 database.hiveDailyYieldDao(),
@@ -72,14 +101,32 @@ public class ApicultureApp extends Application {
         hiveRepository.runBroodPipelineReseedMigrationIfNeeded();
         multiplayerRepository = new MultiplayerRepository();
         playerProgressRepository = new PlayerProgressRepository(this);
+        hiveRepository.setPlayerProgressRepository(playerProgressRepository);
+        hexParcelRepository.setPlayerProgressRepository(playerProgressRepository);
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+        userGameStateRepository = new UserGameStateRepository(
+                this, firestore, economyRepository, playerProgressRepository, mainHandler);
         leaderboardRepository = new LeaderboardRepository(
                 firestore, hiveRepository, economyRepository, playerProgressRepository);
+        economyRepository.setEconomyChangedCallback(() -> mainHandler.post(() -> {
+            FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+            if (u != null) {
+                userGameStateRepository.enqueuePush(u.getUid());
+            }
+        }));
+        playerProgressRepository.setProgressChangedCallback(() -> mainHandler.post(() -> {
+            FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+            if (u != null) {
+                userGameStateRepository.enqueuePush(u.getUid());
+                leaderboardRepository.enqueuePublish(u.getUid());
+            }
+        }));
 
         new Thread(() -> {
-            LandMaskAssets.getOrLoadDefaultLandMask(this);
             HexOverlaySeedInstaller.installFromAssets(this);
             List<HexParcel> parcels = IberiaHexOverlayStore.getParcels(this);
             hexFloraRepository.seedAllParcelsBlocking(parcels);
+            IberiaHexOverlayStore.getParcels(this, PlayableMapRegion.SOUTH_AFRICA);
         }, "map-assets-preload").start();
     }
 
@@ -123,8 +170,16 @@ public class ApicultureApp extends Application {
         return playerProgressRepository;
     }
 
+    public UserGameStateRepository getUserGameStateRepository() {
+        return userGameStateRepository;
+    }
+
     public LeaderboardRepository getLeaderboardRepository() {
         return leaderboardRepository;
+    }
+
+    public GlobalEventRepository getGlobalEventRepository() {
+        return globalEventRepository;
     }
 
 }

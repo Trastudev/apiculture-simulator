@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 google-services.json
+tools/bots/state.json
+tools/bots/_secrets_out/

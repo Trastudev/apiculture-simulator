@@ -1,0 +1,80 @@
+# Tick diario de bots (live → Firestore / ranking)
+#
+# Necesita secrets del repo (Settings → Secrets and variables → Actions):
+#   GOOGLE_SERVICES_JSON_B64  — app/google-services.json en base64
+#   BOTS_STATE_B64            — tools/bots/state.json en base64
+#
+# Tras el tick se sube un artifact con el state actualizado; conviene
+# re-pegar BOTS_STATE_B64 de vez en cuando (o tras el primer run).
+
+name: Bots daily tick
+
+on:
+  schedule:
+    # 07:00 UTC ≈ 08:00 / 09:00 Europa según horario
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: bots-daily
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Restore google-services.json
+        env:
+          B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          if [ -z "$B64" ]; then
+            echo "Falta el secret GOOGLE_SERVICES_JSON_B64"
+            exit 1
+          fi
+          mkdir -p app
+          echo "$B64" | base64 -d | gzip -d > app/google-services.json
+          test -s app/google-services.json
+
+      - name: Restore bots state.json
+        env:
+          B64: ${{ secrets.BOTS_STATE_B64 }}
+        run: |
+          if [ -z "$B64" ]; then
+            echo "Falta el secret BOTS_STATE_B64"
+            exit 1
+          fi
+          mkdir -p tools/bots
+          echo "$B64" | base64 -d | gzip -d > tools/bots/state.json
+          test -s tools/bots/state.json
+
+      - name: Hex centers (opcional)
+        run: |
+          if [ ! -f tools/bots/hex_centers.json ]; then
+            node tools/bots/build_hex_centers.js || true
+          fi
+
+      - name: Daily live tick
+        run: node tools/bots/bot_farm.js tick --live
+
+      - name: Upload updated state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bots-state-${{ github.run_id }}
+          path: tools/bots/state.json
+          retention-days: 30
+
+      - name: Hint — refresh secret
+        if: success()
+        run: |
+          echo "Si el state cambió (nuevos hex/hives), descarga el artifact y actualiza el secret BOTS_STATE_B64."
+          echo "En PowerShell local: [Convert]::ToBase64String([IO.File]::ReadAllBytes('tools/bots/state.json'))"

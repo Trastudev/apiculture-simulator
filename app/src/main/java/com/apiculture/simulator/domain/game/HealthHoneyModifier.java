@@ -14,9 +14,9 @@ public final class HealthHoneyModifier {
      */
     public static double productionMultiplierForHealth(int health) {
         int h = Math.max(0, Math.min(100, health));
-        double f = 1.0 - ((100 - h) * 0.005);
-        if (f < 0.35) {
-            return 0.35;
+        double f = 1.0 - ((100 - h) * GameBalanceConfig.healthHoneyLossPerMissingPoint);
+        if (f < GameBalanceConfig.healthHoneyFloor) {
+            return GameBalanceConfig.healthHoneyFloor;
         }
         if (f > 1.0) {
             return 1.0;

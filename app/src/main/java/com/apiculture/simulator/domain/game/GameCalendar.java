@@ -2,18 +2,20 @@ package com.apiculture.simulator.domain.game;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 /**
- * Calendario del juego alineado con la <strong>zona horaria del dispositivo del jugador</strong>
- * (ajuste del sistema: España, Nueva York, etc.). No se usa UTC fijo: {@link #userTimeZone()}
- * equivale a la zona que el usuario tiene en Ajustes → Fecha y hora.
- * <p>
- * Las claves {@code yyyymmdd} se interpretan en esa zona. El tick de producción diaria se aplica
- * cada día civil una vez pasadas las {@link #PRODUCTION_HOUR}:{@link #PRODUCTION_MINUTE} locales.
+ * Dos relojes distintos a propósito, para un juego mundial:
+ * <ul>
+ *   <li>Colmenas, tick, alarmas: {@link #userTimeZone()} y las
+ *       {@link #PRODUCTION_HOUR}:00 <strong>locales</strong> de cada jugador.</li>
+ *   <li>Mercado de miel (oferta/demanda compartida): {@link #globalMarketTimeZone()} (UTC),
+ *       para que España, Sudáfrica y América escriban en el mismo día de mercado.</li>
+ * </ul>
  */
 public final class GameCalendar {
 
-    /** Hora local a la que se liquida el día de juego (producción, resúmenes). */
+    /** Hora local a la que se liquida el día de juego (producción, resúmenes, aviso). */
     public static final int PRODUCTION_HOUR = 8;
     public static final int PRODUCTION_MINUTE = 0;
 
@@ -22,6 +24,16 @@ public final class GameCalendar {
 
     public static int toDayKey(LocalDate date) {
         return date.getYear() * 10_000 + date.getMonthValue() * 100 + date.getDayOfMonth();
+    }
+
+    /** Día civil de hoy en la zona del dispositivo ({@code yyyymmdd}). */
+    public static int currentCivilDayKey() {
+        return toDayKey(LocalDate.now(userTimeZone()));
+    }
+
+    /** Día de mercado mundial ({@code yyyymmdd} en UTC). */
+    public static int currentGlobalMarketDayKey() {
+        return toDayKey(LocalDate.now(globalMarketTimeZone()));
     }
 
     public static LocalDate fromDayKey(int dayKey) {
@@ -36,5 +48,23 @@ public final class GameCalendar {
      */
     public static ZoneId userTimeZone() {
         return ZoneId.systemDefault();
+    }
+
+    /** Reloj único del mercado global. */
+    public static ZoneId globalMarketTimeZone() {
+        return ZoneOffset.UTC;
+    }
+
+    /**
+     * Fecha de UI: si el tick (p. ej. «Simular un día») va por delante del calendario real, se muestra
+     * esa fecha de simulación; si no, el día civil de hoy.
+     */
+    public static LocalDate uiDateForLastProcessed(int lastProcessedDayKey) {
+        LocalDate today = LocalDate.now(userTimeZone());
+        if (lastProcessedDayKey <= 0) {
+            return today;
+        }
+        LocalDate last = fromDayKey(lastProcessedDayKey);
+        return last.isAfter(today) ? last : today;
     }
 }

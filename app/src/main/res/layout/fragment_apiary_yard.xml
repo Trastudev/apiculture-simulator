@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#7EC8E3">
+
+    <com.apiculture.simulator.presentation.hive.ApiaryYardView
+        android:id="@+id/yard_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/apiary_yard_cd" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:orientation="vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_yard_header"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_yard_back"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:text="@string/apiary_yard_back"
+                android:textAllCaps="false"
+                android:textColor="@color/event_gold_dark"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tv_yard_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textColor="@color/event_ink"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="Olivar norte" />
+
+            <ImageView
+                android:id="@+id/iv_yard_weather"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginEnd="8dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_sol_prado" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_yard_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginHorizontal="28dp"
+        android:background="@drawable/bg_yard_header"
+        android:gravity="center"
+        android:padding="16dp"
+        android:text="@string/apiary_yard_empty"
+        android:textColor="@color/event_ink"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_yard_buy_hive"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="18dp"
+        android:text="@string/apiary_yard_buy_hive"
+        android:textAllCaps="false" />
+</FrameLayout>

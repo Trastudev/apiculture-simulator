@@ -5,7 +5,7 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
+import com.apiculture.simulator.presentation.common.GameNotice;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -55,7 +55,7 @@ public class ProfileSetupFragment extends Fragment {
     private void submit() {
         FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
         if (u == null) {
-            Toast.makeText(requireContext(), R.string.profile_setup_need_login, Toast.LENGTH_SHORT).show();
+            GameNotice.show(requireContext(), R.string.profile_setup_need_login);
             return;
         }
         String brand = binding.etHoneyBrand.getText() != null
@@ -63,7 +63,7 @@ public class ProfileSetupFragment extends Fragment {
         String name = binding.etPlayerName.getText() != null
                 ? binding.etPlayerName.getText().toString().trim() : "";
         if (TextUtils.isEmpty(brand) || TextUtils.isEmpty(name)) {
-            Toast.makeText(requireContext(), R.string.profile_setup_fill_all, Toast.LENGTH_SHORT).show();
+            GameNotice.show(requireContext(), R.string.profile_setup_fill_all);
             return;
         }
         viewModel.submit(u.getUid(), brand, name, () -> {
@@ -99,7 +99,7 @@ public class ProfileSetupFragment extends Fragment {
                 msg = R.string.profile_setup_error_generic;
                 break;
         }
-        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+        GameNotice.show(requireContext(), msg);
     }
 
     @Override

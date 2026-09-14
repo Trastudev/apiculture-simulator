@@ -49,7 +49,7 @@
                     android:textColor="@color/login_text_dark"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    tools:text="Saldo: 2000 € · Miel: 12 kg" />
+                    tools:text="Saldo: 2000 B · Miel: 12 kg · Jugadores: 24" />
             </LinearLayout>
 
             <View

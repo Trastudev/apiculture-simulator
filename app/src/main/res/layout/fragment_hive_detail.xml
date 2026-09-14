@@ -103,110 +103,158 @@
                     android:visibility="gone" />
 
                 <LinearLayout
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:orientation="vertical">
 
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:contentDescription="@string/cd_hive_header_honey"
-                        android:src="@drawable/ic_recolectar" />
-
-                    <TextView
-                        android:id="@+id/tv_hive_header_honey"
-                        android:layout_width="wrap_content"
+                    <!-- Fila 1: miel total · abejas total -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="4dp"
-                        android:textColor="@color/dash_text_card"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        tools:text="12,4 kg" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginStart="14dp"
-                        android:contentDescription="@string/cd_stat_bees"
-                        android:src="@drawable/ic_abeja" />
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:contentDescription="@string/cd_hive_header_honey"
+                            android:src="@drawable/ic_recolectar" />
 
-                    <TextView
-                        android:id="@+id/tv_hive_header_bees"
-                        android:layout_width="wrap_content"
+                        <TextView
+                            android:id="@+id/tv_hive_header_honey"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="12,4 kg" />
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_marginStart="20dp"
+                            android:contentDescription="@string/cd_stat_bees"
+                            android:src="@drawable/ic_abeja" />
+
+                        <TextView
+                            android:id="@+id/tv_hive_header_bees"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="5.200" />
+                    </LinearLayout>
+
+                    <!-- Fila 2: salud · varroa -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="4dp"
-                        android:textColor="@color/dash_text_card"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        tools:text="5.200" />
+                        android:layout_marginTop="6dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginStart="14dp"
-                        android:contentDescription="@string/cd_hive_header_health"
-                        android:src="@drawable/ic_health_cross_red" />
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:contentDescription="@string/cd_hive_header_health"
+                            android:src="@drawable/ic_health_cross_red" />
 
-                    <TextView
-                        android:id="@+id/tv_hive_header_health"
-                        android:layout_width="wrap_content"
+                        <TextView
+                            android:id="@+id/tv_hive_header_health"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="85 %" />
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_marginStart="20dp"
+                            android:contentDescription="@string/cd_hive_header_varroa"
+                            android:src="@drawable/ic_varroa" />
+
+                        <TextView
+                            android:id="@+id/tv_hive_header_varroa"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="2,5 %" />
+                    </LinearLayout>
+
+                    <!-- Fila 3: alzas -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="4dp"
-                        android:textColor="@color/dash_text_card"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        tools:text="85 %" />
+                        android:layout_marginTop="6dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginStart="14dp"
-                        android:contentDescription="@string/cd_hive_header_varroa"
-                        android:src="@drawable/ic_varroa" />
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:contentDescription="@string/cd_hive_header_supers"
+                            android:src="@drawable/ic_alza"
+                            app:tint="@null" />
 
-                    <TextView
-                        android:id="@+id/tv_hive_header_varroa"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="4dp"
-                        android:textColor="@color/dash_text_card"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        tools:text="2,5 %" />
+                        <TextView
+                            android:id="@+id/tv_hive_header_supers"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="1" />
 
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginStart="14dp"
-                        android:contentDescription="@string/cd_hive_header_supers"
-                        android:src="@drawable/ic_alza"
-                        app:tint="@null" />
+                        <ImageView
+                            android:id="@+id/iv_hive_header_weather"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_marginStart="20dp"
+                            android:contentDescription="@string/hive_detail_weather_icon_cd"
+                            android:scaleType="fitCenter"
+                            tools:src="@drawable/ic_weather_sun" />
 
-                    <TextView
-                        android:id="@+id/tv_hive_header_supers"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="4dp"
-                        android:textColor="@color/dash_text_card"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        tools:text="1" />
+                        <TextView
+                            android:id="@+id/tv_hive_header_weather_temp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="18°C" />
+
+                        <ImageView
+                            android:id="@+id/iv_hive_header_queen"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_marginStart="20dp"
+                            android:contentDescription="@string/cd_hive_header_queen"
+                            android:src="@drawable/ic_queen" />
+
+                        <TextView
+                            android:id="@+id/tv_hive_header_queen"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="82 %" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
-
-            <TextView
-                android:id="@+id/tv_hive_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_dash_pill_day"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="4dp"
-                android:text="Próspera"
-                android:textColor="@color/login_text_dark"
-                android:textSize="12sp"
-                android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Acciones rápidas -->
@@ -256,7 +304,7 @@
                         android:text="@string/hive_action_feed"
                         android:textAllCaps="false"
                         app:backgroundTint="@color/dash_soft_green"
-                        app:icon="@drawable/ic_alimento"
+                        app:icon="@drawable/ic_apialimento"
                         app:iconGravity="textStart"
                         app:iconTint="@null" />
 
@@ -283,17 +331,12 @@
                     android:gravity="center"
                     android:orientation="horizontal">
 
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="0.5" />
-
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_split_top"
                         style="@style/Widget.Apisim.HiveActionCompact"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginEnd="4dp"
+                        android:layout_marginEnd="3dp"
                         android:layout_weight="1"
                         android:text="@string/hive_action_split"
                         android:textAllCaps="false"
@@ -307,48 +350,49 @@
                         style="@style/Widget.Apisim.HiveActionCompact"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="4dp"
+                        android:layout_marginHorizontal="3dp"
                         android:layout_weight="1"
                         android:text="@string/hive_action_replace_queen"
                         android:textAllCaps="false"
                         app:backgroundTint="@color/dash_soft_blue"
-                        app:icon="@drawable/ic_abeja"
+                        app:icon="@drawable/ic_queen"
                         app:iconGravity="textStart"
                         app:iconTint="@null" />
 
-                    <Space
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_buy_super_top"
+                        style="@style/Widget.Apisim.HiveActionCompact"
                         android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="0.5" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="3dp"
+                        android:layout_weight="1"
+                        android:text="@string/hive_card_buy_super"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@color/dash_header_bar"
+                        app:icon="@drawable/ic_alza"
+                        app:iconGravity="textStart"
+                        app:iconTint="@null" />
                 </LinearLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_buy_super_top"
-                    style="@style/Widget.Apisim.HiveActionCompact"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:text="@string/hive_card_buy_super"
-                    android:textAllCaps="false"
-                    app:backgroundTint="@color/dash_header_bar"
-                    app:icon="@drawable/ic_alza"
-                    app:iconGravity="textStart"
-                    app:iconTint="@null" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Resumen compacto -->
+        <!-- Resumen compacto: 2 filas (flora+elevación | población+crecimiento) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:baselineAligned="false"
+                android:orientation="horizontal">
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_honey_flora"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginEnd="4dp"
                 android:layout_weight="1"
                 app:cardBackgroundColor="@color/dash_card_bg"
@@ -366,16 +410,14 @@
                     android:paddingTop="8dp"
                     android:paddingBottom="6dp">
 
-                    <com.google.android.material.imageview.ShapeableImageView
+                    <ImageView
                         android:id="@+id/iv_honey_flora_hero"
                         android:layout_width="100dp"
                         android:layout_height="100dp"
                         android:layout_gravity="center_horizontal"
+                        android:background="@android:color/transparent"
                         android:contentDescription="@string/cd_honey_flora_illustration"
-                        android:scaleType="centerCrop"
-                        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Apisim.FloraThumbSmall"
-                        app:strokeColor="@android:color/transparent"
-                        app:strokeWidth="0dp" />
+                        android:scaleType="fitCenter" />
 
                     <TextView
                         android:id="@+id/tv_honey_flora_title"
@@ -395,8 +437,8 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_elevation"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginHorizontal="4dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
                 android:layout_weight="1"
                 app:cardBackgroundColor="@color/dash_card_bg"
                 app:cardCornerRadius="14dp"
@@ -445,14 +487,35 @@
                         android:text="Cota media"
                         android:textColor="@color/dash_muted"
                         android:textSize="8sp" />
+
+                    <TextView
+                        android:id="@+id/tv_climate_line"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="3"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="10sp"
+                        tools:text="Atlántico · añada media (98%)" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:baselineAligned="false"
+                android:orientation="horizontal">
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_population_compact"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginHorizontal="4dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
                 android:layout_weight="1"
                 app:cardBackgroundColor="@color/dash_card_bg"
                 app:cardCornerRadius="14dp"
@@ -594,7 +657,7 @@
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_health_compact"
                 android:layout_width="0dp"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:layout_weight="1"
                 app:cardBackgroundColor="@color/dash_card_bg"
@@ -662,12 +725,13 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            </LinearLayout>
+
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_hive_actions"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginStart="4dp"
-                android:layout_weight="1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
                 android:visibility="gone"
                 app:cardBackgroundColor="@color/dash_card_bg"
                 app:cardCornerRadius="14dp"
@@ -705,7 +769,7 @@
                         android:text="@string/hive_action_feed"
                         android:textAllCaps="false"
                         app:backgroundTint="@color/dash_soft_green"
-                        app:icon="@drawable/ic_abeja"
+                        app:icon="@drawable/ic_apialimento"
                         app:iconGravity="textStart"
                         app:iconTint="@color/dash_text_card" />
 
@@ -742,7 +806,7 @@
                         android:text="@string/hive_action_replace_queen"
                         android:textAllCaps="false"
                         app:backgroundTint="@color/dash_soft_blue"
-                        app:icon="@drawable/ic_abeja"
+                        app:icon="@drawable/ic_queen"
                         app:iconGravity="textStart"
                         app:iconTint="@color/dash_text_card" />
                 </LinearLayout>
@@ -881,6 +945,35 @@
                     android:layout_marginTop="10dp"
                     android:textColor="@color/dash_muted"
                     android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tv_queen_genetic"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="@color/dash_text_card"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    tools:text="Calidad genética de la reina: 82%" />
+
+                <TextView
+                    android:id="@+id/tv_queen_genetic_hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/dash_muted"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/tv_feeding_bonus_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:textColor="@color/dash_muted"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    tools:text="Bonus jarabe…"
+                    tools:visibility="visible" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

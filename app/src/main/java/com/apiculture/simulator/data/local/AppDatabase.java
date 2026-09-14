@@ -11,12 +11,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import com.apiculture.simulator.data.local.dao.GameProductionStateDao;
 import com.apiculture.simulator.data.local.dao.HexFloraDao;
+import com.apiculture.simulator.data.local.dao.HexParcelFloraDao;
 import com.apiculture.simulator.data.local.dao.HexParcelOwnershipDao;
 import com.apiculture.simulator.data.local.dao.HiveDailyYieldDao;
 import com.apiculture.simulator.data.local.dao.HiveDao;
 import com.apiculture.simulator.data.local.entity.GameEventEntity;
 import com.apiculture.simulator.data.local.entity.GameProductionStateEntity;
 import com.apiculture.simulator.data.local.entity.HexFloraEntity;
+import com.apiculture.simulator.data.local.entity.HexParcelFloraEntity;
 import com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity;
 import com.apiculture.simulator.data.local.entity.HiveDailyYieldEntity;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
@@ -34,9 +36,10 @@ import com.apiculture.simulator.data.local.entity.PlayerEntity;
                 HoneyBatchEntity.class,
                 GameEventEntity.class,
                 HexParcelOwnershipEntity.class,
-                HexFloraEntity.class
+                HexFloraEntity.class,
+                HexParcelFloraEntity.class
         },
-        version = 17,
+        version = 20,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -184,6 +187,37 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    private static final Migration MIGRATION_17_18 = new Migration(17, 18) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS hex_parcel_flora ("
+                    + "hexId TEXT NOT NULL, "
+                    + "floraKey TEXT NOT NULL, "
+                    + "plantedAtEpochMs INTEGER NOT NULL, "
+                    + "readyAtEpochMs INTEGER NOT NULL, "
+                    + "PRIMARY KEY(hexId, floraKey))");
+            db.execSQL("INSERT OR IGNORE INTO hex_parcel_flora (hexId, floraKey, plantedAtEpochMs, readyAtEpochMs) "
+                    + "SELECT hexId, floraType, 0, 0 FROM hex_flora");
+        }
+    };
+
+    private static final Migration MIGRATION_18_19 = new Migration(18, 19) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE hives ADD COLUMN feedHoneyBonusEndDayKeyExclusive INTEGER NOT NULL DEFAULT 0");
+            db.execSQL("ALTER TABLE hives ADD COLUMN feedHoneyBonusMultiplier REAL NOT NULL DEFAULT 1.0");
+            db.execSQL("ALTER TABLE hives ADD COLUMN feedBroodBonusEndDayKeyExclusive INTEGER NOT NULL DEFAULT 0");
+            db.execSQL("ALTER TABLE hives ADD COLUMN feedBroodBonusMultiplier REAL NOT NULL DEFAULT 1.0");
+        }
+    };
+
+    private static final Migration MIGRATION_19_20 = new Migration(19, 20) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE hives ADD COLUMN transhumanceArrivesDayKey INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     private static volatile AppDatabase INSTANCE;
 
     public abstract HiveDao hiveDao();
@@ -196,6 +230,8 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract HexFloraDao hexFloraDao();
 
+    public abstract HexParcelFloraDao hexParcelFloraDao();
+
     public static AppDatabase getInstance(Context context) {
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
@@ -206,7 +242,8 @@ public abstract class AppDatabase extends RoomDatabase {
                             "apiculture_db"
                     ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
                             MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-                            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+                            MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
+                            MIGRATION_18_19, MIGRATION_19_20)
                     .build();
                 }
             }

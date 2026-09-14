@@ -2,6 +2,8 @@ package com.apiculture.simulator.data.repository;
 
 import android.util.Log;
 
+import com.apiculture.simulator.domain.game.DailyWeather;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -13,6 +15,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Clima vía <a href="https://open-meteo.com/">Open-Meteo</a> (sin API key).
@@ -113,32 +117,75 @@ public class WeatherRepository {
      * Temperatura media diaria (°C) para un día de calendario: forecast con días pasados o archivo.
      */
     public Double fetchCalendarDayMeanTemperatureCelsiusBlocking(double lat, double lng, LocalDate calendarDay) {
+        DailyWeather w = fetchCalendarDayWeatherBlocking(lat, lng, calendarDay);
+        if (w == null || w.meanTempC == null || Double.isNaN(w.meanTempC)) {
+            return null;
+        }
+        return w.meanTempC;
+    }
+
+    /** Observación diaria (temp, precipitación, código WMO, viento). */
+    public DailyWeather fetchCalendarDayWeatherBlocking(double lat, double lng, LocalDate calendarDay) {
         if (calendarDay == null) {
             return null;
         }
         String iso = calendarDay.format(DateTimeFormatter.ISO_LOCAL_DATE);
-        Double v = fetchOpenMeteoDailyMeanFromForecast(lat, lng, iso);
-        if (v != null && !Double.isNaN(v)) {
+        DailyWeather v = fetchOpenMeteoDailyWeatherFromForecast(lat, lng, iso);
+        if (v != null && v.meanTempC != null && !Double.isNaN(v.meanTempC)) {
             return v;
         }
-        return fetchOpenMeteoDailyMeanFromArchive(lat, lng, iso);
+        DailyWeather arch = fetchOpenMeteoDailyWeatherFromArchive(lat, lng, iso);
+        return arch != null ? arch : v;
     }
 
-    private static Double fetchOpenMeteoDailyMeanFromForecast(double lat, double lng, String isoDay) {
+    /**
+     * Varios días en una sola petición (forecast con past_days). Clave = dayKey yyyyMMdd.
+     */
+    public Map<Integer, DailyWeather> fetchDailyWeatherRangeBlocking(
+            double lat, double lng, LocalDate fromInclusive, LocalDate toInclusive) {
+        Map<Integer, DailyWeather> out = new HashMap<>();
+        if (fromInclusive == null || toInclusive == null || toInclusive.isBefore(fromInclusive)) {
+            return out;
+        }
         String urlStr = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lng
-                + "&daily=temperature_2m_mean,temperature_2m_max,temperature_2m_min"
+                + "&daily=" + DAILY_VARS
                 + "&past_days=16&forecast_days=1&timezone=auto";
-        return readOpenMeteoDailyMean(urlStr, isoDay);
+        Map<String, DailyWeather> byIso = readOpenMeteoDailyWeatherMap(urlStr);
+        LocalDate d = fromInclusive;
+        while (!d.isAfter(toInclusive)) {
+            String iso = d.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            DailyWeather w = byIso.get(iso);
+            if (w == null) {
+                w = fetchOpenMeteoDailyWeatherFromArchive(lat, lng, iso);
+            }
+            if (w != null) {
+                out.put(d.getYear() * 10_000 + d.getMonthValue() * 100 + d.getDayOfMonth(), w);
+            }
+            d = d.plusDays(1);
+        }
+        return out;
     }
 
-    private static Double fetchOpenMeteoDailyMeanFromArchive(double lat, double lng, String isoDay) {
+    private static final String DAILY_VARS =
+            "temperature_2m_mean,temperature_2m_max,temperature_2m_min,"
+                    + "precipitation_sum,weather_code,wind_speed_10m_max";
+
+    private static DailyWeather fetchOpenMeteoDailyWeatherFromForecast(double lat, double lng, String isoDay) {
+        String urlStr = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lng
+                + "&daily=" + DAILY_VARS
+                + "&past_days=16&forecast_days=1&timezone=auto";
+        return readOpenMeteoDailyWeatherMap(urlStr).get(isoDay);
+    }
+
+    private static DailyWeather fetchOpenMeteoDailyWeatherFromArchive(double lat, double lng, String isoDay) {
         String urlStr = "https://archive-api.open-meteo.com/v1/archive?latitude=" + lat + "&longitude=" + lng
                 + "&start_date=" + isoDay + "&end_date=" + isoDay
-                + "&daily=temperature_2m_mean,temperature_2m_max,temperature_2m_min";
-        return readOpenMeteoDailyMean(urlStr, isoDay);
+                + "&daily=" + DAILY_VARS + "&timezone=auto";
+        return readOpenMeteoDailyWeatherMap(urlStr).get(isoDay);
     }
 
-    private static Double readOpenMeteoDailyMean(String urlStr, String isoDay) {
+    private static Map<String, DailyWeather> readOpenMeteoDailyWeatherMap(String urlStr) {
+        Map<String, DailyWeather> map = new HashMap<>();
         HttpURLConnection connection = null;
         try {
             URL url = new URL(urlStr);
@@ -160,44 +207,59 @@ public class WeatherRepository {
             }
             reader.close();
             if (code < 200 || code >= 300) {
-                return null;
+                return map;
             }
-            return extractDailyMeanForDay(new JSONObject(sb.toString()), isoDay);
+            fillDailyWeatherMap(new JSONObject(sb.toString()), map);
         } catch (Exception e) {
             Log.w(TAG, "Open-Meteo error: " + urlStr, e);
-            return null;
         } finally {
             if (connection != null) {
                 connection.disconnect();
             }
         }
+        return map;
     }
 
-    private static Double extractDailyMeanForDay(JSONObject root, String isoDay) {
+    private static void fillDailyWeatherMap(JSONObject root, Map<String, DailyWeather> map) {
         JSONObject daily = root.optJSONObject("daily");
         if (daily == null) {
-            return null;
+            return;
         }
         JSONArray times = daily.optJSONArray("time");
         if (times == null) {
-            return null;
+            return;
         }
+        JSONArray mean = daily.optJSONArray("temperature_2m_mean");
+        JSONArray max = daily.optJSONArray("temperature_2m_max");
+        JSONArray min = daily.optJSONArray("temperature_2m_min");
+        JSONArray rain = daily.optJSONArray("precipitation_sum");
+        JSONArray wmo = daily.optJSONArray("weather_code");
+        if (wmo == null) {
+            wmo = daily.optJSONArray("weathercode");
+        }
+        JSONArray wind = daily.optJSONArray("wind_speed_10m_max");
         for (int i = 0; i < times.length(); i++) {
-            if (!isoDay.equals(times.optString(i, ""))) {
+            String iso = times.optString(i, "");
+            if (iso.isEmpty()) {
                 continue;
             }
-            JSONArray mean = daily.optJSONArray("temperature_2m_mean");
+            DailyWeather w = new DailyWeather();
             if (mean != null && i < mean.length() && !mean.isNull(i)) {
-                return mean.optDouble(i, Double.NaN);
-            }
-            JSONArray max = daily.optJSONArray("temperature_2m_max");
-            JSONArray min = daily.optJSONArray("temperature_2m_min");
-            if (max != null && min != null && i < max.length() && i < min.length()
+                w.meanTempC = mean.optDouble(i, Double.NaN);
+            } else if (max != null && min != null && i < max.length() && i < min.length()
                     && !max.isNull(i) && !min.isNull(i)) {
-                return (max.optDouble(i) + min.optDouble(i)) / 2.0;
+                w.meanTempC = (max.optDouble(i) + min.optDouble(i)) / 2.0;
             }
-            return null;
+            if (rain != null && i < rain.length() && !rain.isNull(i)) {
+                w.precipitationMm = rain.optDouble(i);
+            }
+            if (wmo != null && i < wmo.length() && !wmo.isNull(i)) {
+                w.weatherCode = wmo.optInt(i);
+            }
+            if (wind != null && i < wind.length() && !wind.isNull(i)) {
+                w.windMaxKmh = wind.optDouble(i);
+            }
+            map.put(iso, w);
         }
-        return null;
     }
 }

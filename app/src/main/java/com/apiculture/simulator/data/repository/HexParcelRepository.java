@@ -5,11 +5,15 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 
 import com.apiculture.simulator.data.local.dao.HexParcelOwnershipDao;
 import com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity;
-import com.apiculture.simulator.domain.parcel.HexParcelGameRules;
+import com.apiculture.simulator.domain.market.HoneyMarketEngine;
+import com.apiculture.simulator.domain.parcel.HexFlora;
+import com.apiculture.simulator.domain.game.XpAwards;
+import com.apiculture.simulator.domain.parcel.FloraProgression;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentChange;
@@ -34,6 +38,9 @@ public class HexParcelRepository {
 
     private final HexParcelOwnershipDao dao;
     private final EconomyRepository economyRepository;
+    @Nullable
+    private PlayerProgressRepository playerProgressRepository;
+    private final HexFloraRepository hexFloraRepository;
     private final FirebaseFirestore firestore;
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -43,9 +50,11 @@ public class HexParcelRepository {
     public HexParcelRepository(
             HexParcelOwnershipDao dao,
             EconomyRepository economyRepository,
-            Context appContext) {
+            Context appContext,
+            HexFloraRepository hexFloraRepository) {
         this.dao = dao;
         this.economyRepository = economyRepository;
+        this.hexFloraRepository = hexFloraRepository;
         this.appContext = appContext.getApplicationContext();
         FirebaseFirestore fs;
         try {
@@ -54,6 +63,10 @@ public class HexParcelRepository {
             fs = null;
         }
         this.firestore = fs;
+    }
+
+    public void setPlayerProgressRepository(@Nullable PlayerProgressRepository playerProgressRepository) {
+        this.playerProgressRepository = playerProgressRepository;
     }
 
     public LiveData<List<HexParcelOwnershipEntity>> observeOwnerships() {
@@ -110,6 +123,7 @@ public class HexParcelRepository {
                             String hexId = dc.getDocument().getId();
                             if (dc.getType() == DocumentChange.Type.REMOVED) {
                                 dao.deleteByHexId(hexId);
+                                hexFloraRepository.clearAllFlorasForHexBlocking(hexId);
                                 continue;
                             }
                             String ownerId = dc.getDocument().getString("ownerId");
@@ -122,6 +136,11 @@ public class HexParcelRepository {
                             String pn = dc.getDocument().getString("parcelName");
                             row.parcelName = (pn != null && !pn.trim().isEmpty()) ? pn.trim() : null;
                             dao.upsert(row);
+                            Object florasObj = dc.getDocument().get("floras");
+                            if (florasObj instanceof List) {
+                                hexFloraRepository.replaceParcelFlorasFromFirestoreMapsBlocking(
+                                        hexId, (List<?>) florasObj);
+                            }
                         }
                     });
                 });
@@ -144,6 +163,11 @@ public class HexParcelRepository {
             return;
         }
         List<HexParcelOwnershipEntity> snapshot = new ArrayList<>(dao.getAllForOwnerSync(ownerId));
+        for (HexParcelOwnershipEntity row : snapshot) {
+            if (row != null && row.hexId != null && !row.hexId.isEmpty()) {
+                hexFloraRepository.clearAllFlorasForHexBlocking(row.hexId);
+            }
+        }
         dao.deleteAllForOwner(ownerId);
         if (firestore == null) {
             return;
@@ -254,10 +278,31 @@ public class HexParcelRepository {
         dao.upsert(row);
     }
 
+    /** Sube la lista de floras del hex a Firestore (merge del campo {@code floras}). */
+    public void syncHexParcelFlorasToCloudBlocking(String hexId) {
+        if (firestore == null || hexId == null || hexId.isEmpty()) {
+            return;
+        }
+        try {
+            List<Map<String, Object>> arr = hexFloraRepository.parcelFlorasToFirestoreListBlocking(hexId);
+            Map<String, Object> patch = new HashMap<>();
+            patch.put("floras", arr);
+            Tasks.await(firestore.collection(COLLECTION).document(hexId).set(patch, SetOptions.merge()));
+        } catch (Exception e) {
+            Log.w(TAG, "syncHexParcelFlorasToCloudBlocking", e);
+        }
+    }
+
     /**
-     * Compra de terreno: cobra, escribe dueño; en fallo remoto revierte saldo y fila local.
+     * Compra de terreno: cobra (base + prima por flora nativa del hex), escribe dueño y flora ya lista.
+     * La flora nativa es la vista previa del mapa; no hay siembra ni espera.
      */
-    public void purchaseHex(String hexId, String buyerId, String parcelName, Consumer<String> onMainMessage) {
+    public void purchaseHex(
+            String hexId,
+            String buyerId,
+            String parcelName,
+            int playerLevel,
+            Consumer<String> onMainMessage) {
         if (hexId == null || hexId.isEmpty() || buyerId == null || buyerId.isEmpty()) {
             mainHandler.post(() -> onMainMessage.accept("Sesión no válida."));
             return;
@@ -267,7 +312,17 @@ public class HexParcelRepository {
             mainHandler.post(() -> onMainMessage.accept("Escribe un nombre para el terreno."));
             return;
         }
+        String nativeFlora = HexFlora.nativeFloraForParcel(
+                IberiaHexOverlayStore.findById(appContext, hexId));
+        final String floraKey = HoneyMarketEngine.canonicalFloraKey(nativeFlora);
+        if (!FloraProgression.isFloraUnlockedForPlayerLevel(floraKey, playerLevel)) {
+            mainHandler.post(() -> onMainMessage.accept(
+                    "Tu nivel aún no permite comprar terrenos con la flora de esta parcela."));
+            return;
+        }
+        final int totalPriceEuros = FloraProgression.terrainPurchaseTotalEurosForNativeFlora(floraKey);
         ioExecutor.execute(() -> {
+            double spentAmount = 0.0;
             try {
                 HexParcelOwnershipEntity existing = dao.getByHexIdSync(hexId);
                 if (existing != null) {
@@ -278,19 +333,27 @@ public class HexParcelRepository {
                     }
                     return;
                 }
-                if (!economyRepository.trySpend(HexParcelGameRules.HEX_PURCHASE_PRICE_EUR)) {
+                if (!economyRepository.trySpend(totalPriceEuros)) {
                     mainHandler.post(() -> onMainMessage.accept(
-                            "Saldo insuficiente (" + (int) HexParcelGameRules.HEX_PURCHASE_PRICE_EUR + " €)."));
+                            "Saldo insuficiente (" + totalPriceEuros + " B)."));
                     return;
                 }
+                spentAmount = totalPriceEuros;
                 publishOwnershipCloudThenLocal(hexId, buyerId, nameToSave);
+                hexFloraRepository.addReadyFloraNowBlocking(hexId, floraKey);
+                syncHexParcelFlorasToCloudBlocking(hexId);
+                if (playerProgressRepository != null) {
+                    playerProgressRepository.addXp(buyerId, XpAwards.buyTerrain(totalPriceEuros));
+                }
                 mainHandler.post(() -> onMainMessage.accept(null));
             } catch (Exception e) {
                 Log.e(TAG, "purchaseHex", e);
-                economyRepository.setBalance(
-                        economyRepository.getBalance() + HexParcelGameRules.HEX_PURCHASE_PRICE_EUR);
+                if (spentAmount > 0.0) {
+                    economyRepository.setBalance(economyRepository.getBalance() + spentAmount);
+                }
                 try {
                     dao.deleteByHexId(hexId);
+                    hexFloraRepository.clearAllFlorasForHexBlocking(hexId);
                 } catch (RuntimeException ignored) {
                 }
                 String msg = e instanceof FirebaseFirestoreException

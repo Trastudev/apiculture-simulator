@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="screen_horizontal_padding">24dp</dimen>
+    <dimen name="screen_vertical_padding">12dp</dimen>
+    <dimen name="dash_header_padding_v">12dp</dimen>
+    <dimen name="dash_header_brand_text">18sp</dimen>
+    <dimen name="dash_section_spacing">14dp</dimen>
+    <dimen name="dash_content_padding_h">20dp</dimen>
+</resources>

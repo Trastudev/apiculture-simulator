@@ -29,4 +29,27 @@
     <color name="dash_header_bar">#EDE8DF</color>
     <color name="dash_pill_day_bg">#FFE0C2</color>
     <color name="dash_text_card">#2C2419</color>
+    <color name="event_cream">#FFF8EC</color>
+    <color name="event_gold">#C9892A</color>
+    <color name="event_gold_dark">#8A5A16</color>
+    <color name="event_gold_stroke">#E8D5A3</color>
+    <color name="event_ink">#4A2E10</color>
+    <color name="event_ink_muted">#8A6A42</color>
+
+    <!-- Relleno de hexágonos en el mapa -->
+    <color name="hex_own_lilac">#BA68C8</color>
+    <color name="hex_buyable_green">#81C784</color>
+    <color name="hex_other_blue">#2979FF</color>
+
+    <!-- Borde de hexágono en el mapa (zona climática) -->
+    <color name="climate_atlantic">#EB087891</color>
+    <color name="climate_mountain">#EBA8BCD6</color>
+    <color name="climate_mediterranean">#EBD28C12</color>
+    <color name="climate_south">#EBC84824</color>
+    <color name="climate_continental">#EB628030</color>
+    <color name="climate_fynbos">#EB7B3FA0</color>
+    <color name="climate_karoo">#EBC49A3C</color>
+    <color name="climate_highveld">#EBD4A017</color>
+    <color name="climate_subtropical">#EB1B8A7A</color>
+    <color name="climate_bushveld">#EB5A7A38</color>
 </resources>

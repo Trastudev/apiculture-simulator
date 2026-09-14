@@ -33,34 +33,17 @@ public final class TemperatureHoneyModifier {
             return 1.0;
         }
         double t = tempCelsius;
-        if (t > 50) {
+        if (t > GameBalanceConfig.temperatureOverCZero) {
             return 0.0;
         }
-        if (t < 10) {
-            return 0.15;
+        java.util.List<GameBalanceConfig.TempBand> bands = GameBalanceConfig.temperatureBands;
+        if (bands != null) {
+            for (GameBalanceConfig.TempBand b : bands) {
+                if (t < b.belowC) {
+                    return b.mult;
+                }
+            }
         }
-        if (t < 15) {
-            return 0.40;
-        }
-        if (t < 20) {
-            return 0.75;
-        }
-        if (t < 25) {
-            return 1.00;
-        }
-        if (t < 30) {
-            return 0.90;
-        }
-        if (t < 35) {
-            return 0.55;
-        }
-        if (t < 40) {
-            return 0.25;
-        }
-        if (t < 45) {
-            return 0.10;
-        }
-        // [45, 50]
-        return 0.10;
+        return 0.0;
     }
 }
