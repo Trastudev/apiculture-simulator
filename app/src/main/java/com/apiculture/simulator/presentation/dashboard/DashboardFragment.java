@@ -1,12 +1,17 @@
 package com.apiculture.simulator.presentation.dashboard;
 
+import android.app.Dialog;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -15,6 +20,7 @@ import com.google.android.material.button.MaterialButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
@@ -25,15 +31,18 @@ import com.apiculture.simulator.R;
 import com.apiculture.simulator.databinding.FragmentDashboardBinding;
 import com.apiculture.simulator.databinding.IncludeGlobalEventCardBinding;
 import com.apiculture.simulator.presentation.common.GameNotice;
+import com.apiculture.simulator.presentation.hive.HiveSiteSummaryUi;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 import com.apiculture.simulator.domain.parcel.FloraPlantingProgressRow;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class DashboardFragment extends Fragment {
 
@@ -258,15 +267,15 @@ public class DashboardFragment extends Fragment {
         NavController nav = Navigation.findNavController(view);
         binding.tileQuickHarvest.setOnClickListener(v -> {
             setQuickActionsEnabled(false);
-            viewModel.harvestAllHives((ok, message) -> {
+            viewModel.harvestAllHives(result -> {
                 if (binding == null || !isAdded()) {
                     return;
                 }
                 setQuickActionsEnabled(true);
-                if (ok) {
-                    GameNotice.showSuccess(requireContext(), message);
+                if (result.success) {
+                    showHarvestSummaryDialog(result);
                 } else {
-                    GameNotice.show(requireContext(), message);
+                    GameNotice.show(requireContext(), result.message);
                 }
             });
         });
@@ -425,6 +434,55 @@ public class DashboardFragment extends Fragment {
                     });
                 })
                 .show();
+    }
+
+    private void showHarvestSummaryDialog(@NonNull DashboardViewModel.HarvestAllResult result) {
+        if (!isAdded()) {
+            return;
+        }
+        Dialog dialog = new Dialog(requireContext());
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_harvest_summary);
+        dialog.setCancelable(true);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        TextView tvSub = dialog.findViewById(R.id.tv_harvest_summary_subtitle);
+        TextView tvTotal = dialog.findViewById(R.id.tv_harvest_summary_total);
+        LinearLayout rows = dialog.findViewById(R.id.ll_harvest_honey_rows);
+        MaterialButton btnOk = dialog.findViewById(R.id.btn_harvest_summary_ok);
+
+        tvSub.setText(getString(R.string.dashboard_harvest_summary_subtitle, result.hiveCount));
+        tvTotal.setText(getString(R.string.dashboard_harvest_summary_total, result.totalKg));
+
+        LayoutInflater inflater = getLayoutInflater();
+        rows.removeAllViews();
+        List<Map.Entry<String, Double>> entries = new ArrayList<>(result.kgByFlora.entrySet());
+        for (int i = 0; i < entries.size(); i++) {
+            Map.Entry<String, Double> e = entries.get(i);
+            View row = inflater.inflate(R.layout.item_daily_honey_row, rows, false);
+            ImageView iv = row.findViewById(R.id.iv_daily_honey_flora);
+            TextView tvFlora = row.findViewById(R.id.tv_daily_honey_flora);
+            TextView tvKg = row.findViewById(R.id.tv_daily_honey_kg);
+            iv.setImageResource(HiveSiteSummaryUi.floraHoneyJarIcon(e.getKey()));
+            tvFlora.setText(e.getKey());
+            tvKg.setText(getString(R.string.dashboard_harvest_summary_kg, e.getValue()));
+            rows.addView(row);
+            if (i < entries.size() - 1) {
+                View divider = new View(requireContext());
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, 1);
+                divider.setLayoutParams(lp);
+                divider.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.event_gold_stroke));
+                rows.addView(divider);
+            }
+        }
+
+        btnOk.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
     }
 
     private void setQuickActionsEnabled(boolean enabled) {

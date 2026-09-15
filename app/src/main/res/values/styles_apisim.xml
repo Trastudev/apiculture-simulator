@@ -53,4 +53,21 @@
         <item name="iconPadding">4dp</item>
         <item name="cornerRadius">8dp</item>
     </style>
+
+    <!-- Acciones de colmena: 2 columnas × 3 filas, más visuales -->
+    <style name="Widget.Apisim.HiveActionTile" parent="Widget.MaterialComponents.Button">
+        <item name="android:minHeight">72dp</item>
+        <item name="android:paddingTop">10dp</item>
+        <item name="android:paddingBottom">10dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:maxLines">2</item>
+        <item name="android:gravity">center</item>
+        <item name="iconGravity">textTop</item>
+        <item name="iconSize">28dp</item>
+        <item name="iconPadding">6dp</item>
+        <item name="cornerRadius">14dp</item>
+    </style>
 </resources>

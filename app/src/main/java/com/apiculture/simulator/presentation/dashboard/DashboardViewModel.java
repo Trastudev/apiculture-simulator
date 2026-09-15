@@ -44,6 +44,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -283,24 +284,20 @@ public class DashboardViewModel extends AndroidViewModel {
         hiveRepository.debugSimulateNextProductionDay(ownerId, onMainThreadMessage);
     }
 
-    /**
-     * Reinicia economía, nivel, terrenos y colmenas al estado inicial.
-     * {@code onResult} recibe {@code null} si hubo éxito.
-     */
     public void resetGameToStarterState(String ownerId, Consumer<String> onResult) {
         if (ownerId == null || ownerId.isEmpty()) {
             onResult.accept("Sesión no válida.");
             return;
         }
-        hiveRepository.resetGameToStarterState(ownerId, msg -> {
+        ApicultureApp app = (ApicultureApp) getApplication();
+        app.resetPlayerToStarterState(ownerId, 0L, msg -> {
             if (msg == null) {
-                playerProgressRepository.resetToNewGame(ownerId);
                 loadAndApplyProgress(ownerId);
                 refreshEconomyDisplay();
                 refreshFloraPlantings(ownerId);
                 refreshGameClock();
                 refreshSwarmRiskBannerNow();
-                leaderboardRepository.enqueuePublish(ownerId);
+                refreshInventoryDisplay();
             }
             onResult.accept(msg);
         });
@@ -310,15 +307,42 @@ public class DashboardViewModel extends AndroidViewModel {
         void onDone(boolean success, String message);
     }
 
+    /** Resultado de «Recolectar» en el dashboard, con desglose por flora. */
+    public static final class HarvestAllResult {
+        public final boolean success;
+        public final String message;
+        public final double totalKg;
+        public final int hiveCount;
+        /** kg por tipo de flora (solo si {@link #success}). */
+        @NonNull
+        public final Map<String, Double> kgByFlora;
+
+        public HarvestAllResult(boolean success, String message, double totalKg, int hiveCount,
+                @Nullable Map<String, Double> kgByFlora) {
+            this.success = success;
+            this.message = message != null ? message : "";
+            this.totalKg = totalKg;
+            this.hiveCount = hiveCount;
+            this.kgByFlora = kgByFlora == null
+                    ? Collections.emptyMap()
+                    : Collections.unmodifiableMap(new LinkedHashMap<>(kgByFlora));
+        }
+    }
+
+    public interface HarvestAllCallback {
+        void onDone(@NonNull HarvestAllResult result);
+    }
+
     /**
      * Recolecta de cada colmena la miel por encima de 3 kg de reserva habitual.
      */
-    public void harvestAllHives(@Nullable ActionNoticeCallback onDone) {
+    public void harvestAllHives(@Nullable HarvestAllCallback onDone) {
         Application ap = getApplication();
         String uid = ownerIdForHives.getValue();
         if (uid == null || uid.isEmpty()) {
             if (onDone != null) {
-                onDone.onDone(false, ap.getString(R.string.dashboard_harvest_all_session));
+                onDone.onDone(new HarvestAllResult(false,
+                        ap.getString(R.string.dashboard_harvest_all_session), 0, 0, null));
             }
             return;
         }
@@ -326,6 +350,7 @@ public class DashboardViewModel extends AndroidViewModel {
             List<HiveEntity> list = hiveRepository.getLocalHivesSync(uid);
             double totalKg = 0.0;
             int hiveCount = 0;
+            Map<String, Double> byFlora = new LinkedHashMap<>();
             if (list != null) {
                 for (HiveEntity h : list) {
                     if (h == null) {
@@ -342,7 +367,10 @@ public class DashboardViewModel extends AndroidViewModel {
                     String flora = (h.floraType != null && !h.floraType.isEmpty())
                             ? h.floraType
                             : "Mil flores";
-                    economyRepository.addHoney(flora, harvested);
+                    String floraKey = HoneyMarketEngine.canonicalFloraKey(flora);
+                    economyRepository.addHoney(floraKey, harvested);
+                    Double prev = byFlora.get(floraKey);
+                    byFlora.put(floraKey, (prev == null ? 0.0 : prev) + harvested);
                     totalKg += harvested;
                     hiveCount++;
                 }
@@ -352,6 +380,7 @@ public class DashboardViewModel extends AndroidViewModel {
             }
             final double kgDone = totalKg;
             final int nDone = hiveCount;
+            final Map<String, Double> floraDone = byFlora;
             mainHandler.post(() -> {
                 refreshEconomyDisplay();
                 refreshSwarmRiskBannerNow();
@@ -360,9 +389,10 @@ public class DashboardViewModel extends AndroidViewModel {
                     return;
                 }
                 if (kgDone <= 1e-9) {
-                    onDone.onDone(false, ap.getString(R.string.dashboard_harvest_all_none));
+                    onDone.onDone(new HarvestAllResult(false,
+                            ap.getString(R.string.dashboard_harvest_all_none), 0, 0, null));
                 } else {
-                    onDone.onDone(true, ap.getString(R.string.dashboard_harvest_all_ok, kgDone, nDone));
+                    onDone.onDone(new HarvestAllResult(true, "", kgDone, nDone, floraDone));
                 }
             });
         });

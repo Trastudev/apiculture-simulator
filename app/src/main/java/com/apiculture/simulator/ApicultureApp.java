@@ -4,9 +4,14 @@ import android.app.Application;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import com.apiculture.simulator.data.local.AppDatabase;
+import com.apiculture.simulator.data.repository.AdminGameResetRepository;
 import com.apiculture.simulator.data.repository.AuthRepository;
 import com.apiculture.simulator.data.repository.EconomyRepository;
+import com.apiculture.simulator.data.repository.EventInventoryStore;
 import com.apiculture.simulator.data.repository.HexFloraRepository;
 import com.apiculture.simulator.data.repository.HexParcelRepository;
 import com.apiculture.simulator.data.repository.HiveRepository;
@@ -32,6 +37,7 @@ import com.apiculture.simulator.presentation.common.GameNotice;
 import com.apiculture.simulator.presentation.common.LevelUpDialog;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public class ApicultureApp extends Application {
 
@@ -49,6 +55,8 @@ public class ApicultureApp extends Application {
     private UserGameStateRepository userGameStateRepository;
     private LeaderboardRepository leaderboardRepository;
     private GlobalEventRepository globalEventRepository;
+    private AdminGameResetRepository adminGameResetRepository;
+    private FirebaseFirestore firestore;
 
     @Override
     public void onCreate() {
@@ -66,7 +74,6 @@ public class ApicultureApp extends Application {
         authRepository = new AuthRepository(this);
         weatherRepository = new WeatherRepository();
         economyRepository = new EconomyRepository(this);
-        FirebaseFirestore firestore = null;
         try {
             firestore = FirebaseFirestore.getInstance();
         } catch (Exception e) {
@@ -78,6 +85,7 @@ public class ApicultureApp extends Application {
         globalEventRepository.setMarketRepository(marketRepository);
         globalEventRepository.setEconomyRepository(economyRepository);
         globalEventRepository.startListening();
+        adminGameResetRepository = new AdminGameResetRepository(this, firestore);
         hexFloraRepository = new HexFloraRepository(
                 database.hexFloraDao(),
                 database.hexParcelFloraDao(),
@@ -107,7 +115,7 @@ public class ApicultureApp extends Application {
         userGameStateRepository = new UserGameStateRepository(
                 this, firestore, economyRepository, playerProgressRepository, mainHandler);
         leaderboardRepository = new LeaderboardRepository(
-                firestore, hiveRepository, economyRepository, playerProgressRepository);
+                this, firestore, hiveRepository, economyRepository, playerProgressRepository);
         economyRepository.setEconomyChangedCallback(() -> mainHandler.post(() -> {
             FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
             if (u != null) {
@@ -180,6 +188,62 @@ public class ApicultureApp extends Application {
 
     public GlobalEventRepository getGlobalEventRepository() {
         return globalEventRepository;
+    }
+
+    public AdminGameResetRepository getAdminGameResetRepository() {
+        return adminGameResetRepository;
+    }
+
+    /**
+     * Reinicia la partida local+nube del jugador al estado inicial.
+     * Si {@code markGeneration} &gt; 0, marca esa generación de reset admin como aplicada.
+     */
+    public void resetPlayerToStarterState(@Nullable String uid, long markGeneration,
+            @NonNull Consumer<String> onMainMessage) {
+        if (uid == null || uid.isEmpty()) {
+            onMainMessage.accept("Sesión no válida.");
+            return;
+        }
+        hiveRepository.resetGameToStarterState(uid, msg -> {
+            if (msg == null) {
+                EventInventoryStore.clearAll(this);
+                EventInventoryStore.persistCloud(firestore, uid, this);
+                playerProgressRepository.resetToNewGame(uid);
+                if (markGeneration > 0L) {
+                    AdminGameResetRepository.setAppliedGeneration(this, markGeneration);
+                }
+                userGameStateRepository.pushImmediate(uid);
+                leaderboardRepository.enqueuePublish(uid);
+            }
+            onMainMessage.accept(msg);
+        });
+    }
+
+    /**
+     * Si hay un reset admin pendiente (generación remota &gt; local), lo aplica y luego ejecuta {@code thenOnMain}.
+     */
+    public void applyAdminForcedResetIfNeeded(@Nullable String uid, @NonNull Runnable thenOnMain) {
+        if (uid == null || uid.isEmpty() || adminGameResetRepository == null) {
+            thenOnMain.run();
+            return;
+        }
+        adminGameResetRepository.fetchRemoteGeneration(gen -> {
+            long applied = AdminGameResetRepository.getAppliedGeneration(this);
+            if (gen <= applied) {
+                thenOnMain.run();
+                return;
+            }
+            resetPlayerToStarterState(uid, gen, msg -> {
+                if (msg == null) {
+                    GameNotice.showSuccess(this, R.string.admin_global_reset_forced_notice);
+                    hiveRepository.startRealtimeCloudSync(uid);
+                    hexParcelRepository.startRealtimeCloudSync();
+                } else {
+                    GameNotice.show(this, msg);
+                }
+                thenOnMain.run();
+            });
+        });
     }
 
 }

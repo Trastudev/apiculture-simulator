@@ -30,6 +30,8 @@ function ensureBotShape(bot) {
   bot.ownedHexIds = bot.ownedHexIds || [];
   bot.hives = bot.hives || [];
   bot.honeyByFlora = bot.honeyByFlora || {};
+  bot.honeySoldByFlora = bot.honeySoldByFlora || {};
+  bot.honeySoldKgTotal = bot.honeySoldKgTotal || 0;
   bot.persona = bot.persona || personaForBotId(bot.id).id;
   bot.missedDays = bot.missedDays || 0;
   bot.hiveCount = bot.hives.length || bot.hiveCount || 0;
@@ -134,6 +136,9 @@ function planDay(bot, dayKey, opts) {
     const price = sellPriceEurPerKg(flora, dayKey + bot.id);
     bot.honeyByFlora[flora] = round2(stock - sellKg);
     bot.balanceEur = round2((bot.balanceEur || 0) + sellKg * price);
+    bot.honeySoldByFlora = bot.honeySoldByFlora || {};
+    bot.honeySoldByFlora[flora] = round2((bot.honeySoldByFlora[flora] || 0) + sellKg);
+    bot.honeySoldKgTotal = round2((bot.honeySoldKgTotal || 0) + sellKg);
     actions.push({ type: "sell", flora, kg: sellKg, price, revenue: round2(sellKg * price) });
   }
 

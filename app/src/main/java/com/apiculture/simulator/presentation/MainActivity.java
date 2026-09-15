@@ -171,10 +171,11 @@ public class MainActivity extends AppCompatActivity {
                     .document(user.getUid())
                     .set(profile, SetOptions.merge());
             ApicultureApp app = (ApicultureApp) getApplication();
-            app.getUserGameStateRepository().pullAndApplyThen(user.getUid(),
-                    () -> app.getHiveRepository().tickDailyProductionForOwner(
-                            user.getUid(),
-                            result -> DailySummaryDialog.show(MainActivity.this, result)));
+            app.applyAdminForcedResetIfNeeded(user.getUid(), () ->
+                    app.getUserGameStateRepository().pullAndApplyThen(user.getUid(),
+                            () -> app.getHiveRepository().tickDailyProductionForOwner(
+                                    user.getUid(),
+                                    result -> DailySummaryDialog.show(MainActivity.this, result))));
         } else {
             DailyProductionAlarmScheduler.markSessionActive(this, false);
         }

@@ -14,16 +14,20 @@ import androidx.navigation.Navigation;
 
 import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
+import com.apiculture.simulator.data.repository.AdminGameResetRepository;
 import com.apiculture.simulator.databinding.FragmentAdminGrantsBinding;
 import com.apiculture.simulator.domain.parcel.HexFlora;
 import com.apiculture.simulator.presentation.common.GameNotice;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class AdminGrantsFragment extends Fragment {
 
     private FragmentAdminGrantsBinding binding;
     private AdminGrantsViewModel viewModel;
+    private boolean globalResetBusy;
 
     @Nullable
     @Override
@@ -51,6 +55,7 @@ public class AdminGrantsFragment extends Fragment {
 
         binding.btnGrantCoins.setEnabled(false);
         binding.btnGrantHoney.setEnabled(false);
+        binding.btnAdminGlobalReset.setEnabled(false);
         viewModel.isAdmin().observe(getViewLifecycleOwner(), admin -> {
             if (binding == null) {
                 return;
@@ -60,9 +65,10 @@ public class AdminGrantsFragment extends Fragment {
                 Navigation.findNavController(view).popBackStack();
                 return;
             }
-            boolean ok = Boolean.TRUE.equals(admin);
+            boolean ok = Boolean.TRUE.equals(admin) && !globalResetBusy;
             binding.btnGrantCoins.setEnabled(ok);
             binding.btnGrantHoney.setEnabled(ok);
+            binding.btnAdminGlobalReset.setEnabled(ok);
         });
         viewModel.snapshot().observe(getViewLifecycleOwner(), this::bindSnapshot);
         viewModel.checkAdmin(FirebaseAuth.getInstance().getUid());
@@ -71,6 +77,7 @@ public class AdminGrantsFragment extends Fragment {
                 Navigation.findNavController(view).popBackStack());
         binding.btnGrantCoins.setOnClickListener(v -> onGrantCoins());
         binding.btnGrantHoney.setOnClickListener(v -> onGrantHoney());
+        binding.btnAdminGlobalReset.setOnClickListener(v -> confirmGlobalReset(app));
     }
 
     private void bindSnapshot(AdminGrantsViewModel.Snapshot snap) {
@@ -81,6 +88,73 @@ public class AdminGrantsFragment extends Fragment {
                 Math.round(snap.balance)));
         binding.tvAdminGrantHoneyStock.setText(getString(R.string.admin_grants_honey_stock,
                 snap.honeyKg));
+    }
+
+    private void confirmGlobalReset(@NonNull ApicultureApp app) {
+        if (!Boolean.TRUE.equals(viewModel.isAdmin().getValue()) || globalResetBusy) {
+            return;
+        }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.admin_global_reset_confirm_title)
+                .setMessage(R.string.admin_global_reset_confirm_message)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.admin_global_reset_action, (d, w) -> runGlobalReset(app))
+                .show();
+    }
+
+    private void runGlobalReset(@NonNull ApicultureApp app) {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            GameNotice.show(requireContext(), R.string.admin_not_allowed);
+            return;
+        }
+        setGlobalResetBusy(true);
+        GameNotice.show(requireContext(), R.string.admin_global_reset_busy);
+        AdminGameResetRepository repo = app.getAdminGameResetRepository();
+        repo.issueGlobalPlayerReset(user.getUid(), err -> {
+            if (!isAdded() || binding == null) {
+                return;
+            }
+            if (err != null) {
+                setGlobalResetBusy(false);
+                GameNotice.show(requireContext(), err);
+            }
+        }, okMsg -> {
+            if (!isAdded() || binding == null) {
+                return;
+            }
+            GameNotice.showSuccess(requireContext(), okMsg);
+            repo.fetchRemoteGeneration(gen -> {
+                if (!isAdded()) {
+                    return;
+                }
+                app.resetPlayerToStarterState(user.getUid(), gen, localErr -> {
+                    if (!isAdded() || binding == null) {
+                        return;
+                    }
+                    setGlobalResetBusy(false);
+                    if (localErr == null) {
+                        app.getHiveRepository().startRealtimeCloudSync(user.getUid());
+                        app.getHexParcelRepository().startRealtimeCloudSync();
+                        viewModel.refresh();
+                        GameNotice.showSuccess(requireContext(), R.string.admin_global_reset_local_ok);
+                    } else {
+                        GameNotice.show(requireContext(), localErr);
+                    }
+                });
+            });
+        });
+    }
+
+    private void setGlobalResetBusy(boolean busy) {
+        globalResetBusy = busy;
+        if (binding == null) {
+            return;
+        }
+        boolean ok = Boolean.TRUE.equals(viewModel.isAdmin().getValue()) && !busy;
+        binding.btnGrantCoins.setEnabled(ok);
+        binding.btnGrantHoney.setEnabled(ok);
+        binding.btnAdminGlobalReset.setEnabled(ok);
     }
 
     private void onGrantCoins() {

@@ -1,5 +1,6 @@
 package com.apiculture.simulator.presentation.ranking;
 
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
@@ -18,6 +19,10 @@ public class RankingViewModel extends ViewModel {
     private final MutableLiveData<String> error = new MutableLiveData<>();
     private final MutableLiveData<LeaderboardRepository.Metric> metric =
             new MutableLiveData<>(LeaderboardRepository.Metric.LEVEL);
+    /** null = global */
+    private final MutableLiveData<String> regionFilter = new MutableLiveData<>(null);
+    /** null = miel vendida total */
+    private final MutableLiveData<String> floraFilter = new MutableLiveData<>(null);
 
     public RankingViewModel(LeaderboardRepository repository) {
         this.repository = repository;
@@ -39,8 +44,29 @@ public class RankingViewModel extends ViewModel {
         return metric;
     }
 
+    public LiveData<String> regionFilter() {
+        return regionFilter;
+    }
+
+    public LiveData<String> floraFilter() {
+        return floraFilter;
+    }
+
     public void setMetric(LeaderboardRepository.Metric m) {
         metric.setValue(m);
+        if (m != LeaderboardRepository.Metric.HONEY_SOLD) {
+            floraFilter.setValue(null);
+        }
+        fetchRanking();
+    }
+
+    public void setRegionFilter(@Nullable String region) {
+        regionFilter.setValue(region);
+        fetchRanking();
+    }
+
+    public void setFloraFilter(@Nullable String floraKey) {
+        floraFilter.setValue(floraKey);
         fetchRanking();
     }
 
@@ -51,7 +77,11 @@ public class RankingViewModel extends ViewModel {
         }
         loading.setValue(true);
         LeaderboardRepository.Metric chosen = m;
-        repository.fetchLeaderboard(chosen, new LeaderboardRepository.FetchCallback() {
+        String region = regionFilter.getValue();
+        String flora = chosen == LeaderboardRepository.Metric.HONEY_SOLD
+                ? floraFilter.getValue()
+                : null;
+        repository.fetchLeaderboard(chosen, region, flora, new LeaderboardRepository.FetchCallback() {
             @Override
             public void onSuccess(List<RankingEntry> result) {
                 loading.postValue(false);

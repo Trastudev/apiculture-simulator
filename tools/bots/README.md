@@ -37,7 +37,10 @@ node tools/bots/bot_farm.js loop --hours 4
 
 Estado local: `tools/bots/state.json` (gitignore). Credenciales de Auth ahí.
 
-## GitHub Actions (1 vez al día, ~gratis)
+## Reset global (admin en la app)
+
+Si Aleix lanza **Reiniciar TODOS los jugadores**, Firestore publica `globalGameEvents/game_reset`.
+En el próximo `tick --live` (o Action diaria) los bots detectan la generación y vuelven a terreno + 3 colmenas de inicio.
 
 **No hace falta que yo inicie sesión en tu cuenta.** Tú subes el workflow y creas 2 secrets.
 

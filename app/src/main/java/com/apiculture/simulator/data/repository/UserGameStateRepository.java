@@ -23,6 +23,8 @@ public class UserGameStateRepository {
 
     static final String FIELD_ECONOMY_BALANCE = "economyBalanceEur";
     static final String FIELD_ECONOMY_BUCKETS_JSON = "economyHoneyBucketsJson";
+    static final String FIELD_ECONOMY_SOLD_TOTAL = "economyHoneySoldKgTotal";
+    static final String FIELD_ECONOMY_SOLD_BY_FLORA_JSON = "economyHoneySoldByFloraJson";
     static final String FIELD_PLAYER_LEVEL = "playerLevel";
     static final String FIELD_PLAYER_XP = "playerXp";
     private static final String FIELD_UPDATED = "gameStateUpdatedAt";
@@ -79,9 +81,16 @@ public class UserGameStateRepository {
         Object balObj = snap.get(FIELD_ECONOMY_BALANCE);
         String buckets = snap.getString(FIELD_ECONOMY_BUCKETS_JSON);
         boolean hasBuckets = buckets != null && !buckets.trim().isEmpty();
-        if (balObj instanceof Number || hasBuckets) {
+        Object soldTotalObj = snap.get(FIELD_ECONOMY_SOLD_TOTAL);
+        String soldByFlora = snap.getString(FIELD_ECONOMY_SOLD_BY_FLORA_JSON);
+        boolean hasSold = soldTotalObj instanceof Number
+                || (soldByFlora != null && !soldByFlora.trim().isEmpty());
+        if (balObj instanceof Number || hasBuckets || hasSold) {
             double b = balObj instanceof Number ? ((Number) balObj).doubleValue() : economy.getBalance();
-            economy.applyFromCloud(b, hasBuckets ? buckets : null);
+            Double soldTotal = soldTotalObj instanceof Number
+                    ? ((Number) soldTotalObj).doubleValue() : null;
+            economy.applyFromCloud(b, hasBuckets ? buckets : null, soldTotal,
+                    hasSold ? soldByFlora : null);
         }
         Integer lvl = intField(snap, FIELD_PLAYER_LEVEL);
         Integer xpVal = intField(snap, FIELD_PLAYER_XP);
@@ -91,7 +100,8 @@ public class UserGameStateRepository {
             progress.applyFromCloud(uid, level, xp);
         }
         EventInventoryStore.applyFromCloudIfHigher(snap, app);
-        boolean hasAnyGameField = balObj instanceof Number || hasBuckets || lvl != null || xpVal != null;
+        boolean hasAnyGameField = balObj instanceof Number || hasBuckets || hasSold
+                || lvl != null || xpVal != null;
         if (!hasAnyGameField) {
             pushSnapshotSync(uid);
         }
@@ -146,10 +156,13 @@ public class UserGameStateRepository {
             Map<String, Object> m = new HashMap<>();
             m.put(FIELD_ECONOMY_BALANCE, economy.getBalance());
             m.put(FIELD_ECONOMY_BUCKETS_JSON, economy.snapshotHoneyBucketsJsonForCloud());
+            m.put(FIELD_ECONOMY_SOLD_TOTAL, economy.getHoneySoldTotalKg());
+            m.put(FIELD_ECONOMY_SOLD_BY_FLORA_JSON, economy.snapshotHoneySoldByFloraJsonForCloud());
             m.put(FIELD_PLAYER_LEVEL, progress.getLevel(uid));
             m.put(FIELD_PLAYER_XP, progress.getXp(uid));
             m.put(FIELD_UPDATED, FieldValue.serverTimestamp());
             Tasks.await(firestore.collection("users").document(uid).set(m, SetOptions.merge()));
+            EventInventoryStore.persistCloud(firestore, uid, app);
         } catch (Exception ignored) {
         }
     }

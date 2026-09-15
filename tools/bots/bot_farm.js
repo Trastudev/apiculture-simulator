@@ -283,6 +283,8 @@ async function publishProfile(token, bot) {
       playerXp: bot.xp | 0,
       economyBalanceEur: Number(bot.balanceEur),
       economyHoneyBucketsJson: honeyBucketsJson(bot),
+      economyHoneySoldKgTotal: Number(bot.honeySoldKgTotal || 0),
+      economyHoneySoldByFloraJson: JSON.stringify(bot.honeySoldByFlora || {}),
       isBot: true,
       botPersona: bot.persona || personaForBotId(bot.id).id,
     },
@@ -292,6 +294,9 @@ async function publishProfile(token, bot) {
 }
 
 async function publishPlayer(token, bot) {
+  const mapRegion =
+    bot.timeZoneId && String(bot.timeZoneId).startsWith("Africa") ? "za" : "iberia";
+  const soldByFlora = bot.honeySoldByFlora || {};
   await fsPatch(
     token,
     {
@@ -304,6 +309,9 @@ async function publishPlayer(token, bot) {
       hiveCount: (bot.hives && bot.hives.length) || bot.hiveCount || 0,
       adultBeeCount: bot.adultBeeCount | 0,
       totalHoneyKg: round2(honeyStock(bot)),
+      honeySoldKgTotal: round2(bot.honeySoldKgTotal || 0),
+      honeySoldKgByFlora: soldByFlora,
+      mapRegion,
       isBot: true,
       botPersona: bot.persona || personaForBotId(bot.id).id,
     },
@@ -429,6 +437,83 @@ function claimTerrainLocal(bot, flora, price, expandSecondary, occupied) {
     return hexId;
   }
   return null;
+}
+
+async function fsDelete(token, ...parts) {
+  await requestJson("DELETE", fsUrl(...parts), null, token);
+}
+
+function resetBotLocalEconomy(bot) {
+  bot.level = 0;
+  bot.xp = 0;
+  bot.balanceEur = RULES.STARTING_BALANCE;
+  bot.honeyByFlora = {};
+  for (const f of bot.homeFloras || []) bot.honeyByFlora[f] = 0;
+  bot.honeySoldByFlora = {};
+  bot.honeySoldKgTotal = 0;
+  bot.ownedHexIds = [];
+  bot.hives = [];
+  bot.hiveCount = 0;
+  bot.adultBeeCount = 0;
+  bot.missedDays = 0;
+}
+
+async function rebuildBotStarter(token, bot) {
+  resetBotLocalEconomy(bot);
+  const flora = (bot.homeFloras && bot.homeFloras[0]) || "Mil flores";
+  const price = require("./lib/rules").terrainPrice(flora);
+  const hex = await claimTerrainLive(token, bot, flora, price, false);
+  if (hex) {
+    for (let i = 0; i < 3; i++) {
+      const hive = makeLocalHive(bot, hex, flora, 0, i);
+      if (i === 0) hive.beeCount = 95000;
+      bot.hives.push(hive);
+      await publishHive(token, bot, hive);
+      await sleep(40);
+    }
+  }
+  bot.hiveCount = bot.hives.length;
+  bot.adultBeeCount = bot.hives.reduce((s, h) => s + (h.beeCount || 0), 0);
+  await publishProfile(token, bot);
+  await fsPatch(
+    token,
+    {
+      economyHoneySoldKgTotal: 0,
+      economyHoneySoldByFloraJson: "{}",
+      invTreatments: 0,
+      invFeed: 0,
+      invQueensJson: "[]",
+      invQueens100: 0,
+    },
+    "users",
+    bot.uid
+  );
+  await publishPlayer(token, bot);
+}
+
+async function applyAdminGameResetIfNeeded(apiKey, state) {
+  if (!state.bots || !state.bots.length) return;
+  const probe = state.bots[0];
+  const auth = await authSignIn(apiKey, probe.email, probe.password);
+  const doc = await fsGet(auth.idToken, "globalGameEvents", "game_reset");
+  const gen = doc ? Number(fromFields(doc).generation || 0) : 0;
+  const applied = Number(state.appliedGameResetGeneration || 0);
+  if (gen <= applied) return;
+  console.log(`\n⚠ Admin reset global gen=${gen} (local=${applied}) → reiniciando bots a starter…\n`);
+  for (const bot of state.bots) {
+    try {
+      const a = await authSignIn(apiKey, bot.email, bot.password);
+      bot.uid = a.localId;
+      await rebuildBotStarter(a.idToken, bot);
+      console.log(`[${String(bot.id).padStart(2, "0")}] ${bot.playerName}: reset starter OK`);
+    } catch (e) {
+      console.log(`[${String(bot.id).padStart(2, "0")}] ${bot.playerName}: reset ERROR ${e.message}`);
+    }
+    saveState(state);
+    await sleep(350);
+  }
+  state.appliedGameResetGeneration = gen;
+  saveState(state);
 }
 
 async function ensureBots(apiKey) {
@@ -587,6 +672,9 @@ async function cmdTick(apiKey, live) {
   const state = loadState();
   if (!state.bots || !state.bots.length) {
     throw new Error("No hay bots. Ejecuta: node tools/bots/bot_farm.js ensure");
+  }
+  if (live) {
+    await applyAdminGameResetIfNeeded(apiKey, state);
   }
   const dayKey = utcDayKey();
   const occupied = new Set();

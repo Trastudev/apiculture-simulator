@@ -1,6 +1,15 @@
 package com.apiculture.simulator.domain.health;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
+import com.apiculture.simulator.domain.game.ColonyGameRules;
+import com.apiculture.simulator.domain.game.GameBalanceConfig;
+import com.apiculture.simulator.domain.game.HiveHoneyRules;
+import com.apiculture.simulator.domain.population.HivePopulationState;
+import com.apiculture.simulator.domain.population.QueenMode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,36 +21,78 @@ import java.util.Locale;
  */
 public final class HiveHealthAlerts {
 
+    public static final class Tag {
+        @NonNull
+        public final String text;
+        /** Drawable de fondo tipo pill. */
+        public final int backgroundRes;
+
+        public Tag(@NonNull String text, int backgroundRes) {
+            this.text = text;
+            this.backgroundRes = backgroundRes;
+        }
+    }
+
     private HiveHealthAlerts() {
     }
 
-    public static List<String> alertsEs(HiveEntity h) {
+    /**
+     * Etiquetas visibles bajo la cabecera de la colmena.
+     */
+    @NonNull
+    public static List<Tag> alertTags(@Nullable HiveEntity h, @Nullable HivePopulationState pop) {
         if (h == null) {
             return Collections.emptyList();
         }
-        List<String> out = new ArrayList<>();
-        double v = h.varroaPct;
-        if (v >= 10) {
-            out.add("Infestación crítica de varroa");
-        } else if (v >= 5) {
-            out.add("Infestación alta (varroa)");
-        } else if (v >= 2.5) {
-            out.add("Infestación moderada (varroa)");
+        List<Tag> out = new ArrayList<>();
+        int workers = pop != null ? pop.workersAdult : Math.max(0, h.beeCount);
+
+        if (pop != null && (pop.queenMode == QueenMode.ORPHANED
+                || pop.queenMode == QueenMode.REPLACE_WINDOW
+                || pop.queenMode == QueenMode.COLLAPSED)) {
+            out.add(new Tag("Reina muerta", R.drawable.bg_swarm_warn_pill));
         }
-        if (h.honeyProduction < com.apiculture.simulator.domain.game.HiveHoneyRules.MIN_HIVE_STOCK_KG) {
-            out.add(String.format(Locale.getDefault(),
-                    "Reservas de miel bajo el mínimo (%.1f kg)",
-                    com.apiculture.simulator.domain.game.HiveHoneyRules.MIN_HIVE_STOCK_KG));
+
+        boolean swarm = ColonyGameRules.swarmRiskForAdultWorkers(workers) > 0.0
+                || workers >= ColonyGameRules.SPLIT_RECOMMEND_BEES;
+        if (swarm) {
+            out.add(new Tag("Alerta enjambrazón", R.drawable.bg_swarm_warn_pill));
         }
-        if (h.reserves < 18) {
-            out.add("Reservas de pienso bajas");
+
+        if (h.health < 40) {
+            out.add(new Tag(String.format(Locale.getDefault(),
+                    "Salud crítica (%d%%)", h.health), R.drawable.bg_swarm_warn_pill));
+        } else if (h.health < 60) {
+            out.add(new Tag(String.format(Locale.getDefault(),
+                    "Salud baja (%d%%)", h.health), R.drawable.bg_honey_cap_warn_pill));
+        } else if (h.health < 80) {
+            out.add(new Tag(String.format(Locale.getDefault(),
+                    "Salud regular (%d%%)", h.health), R.drawable.bg_honey_cap_warn_pill));
         }
-        if (h.varroaTreatmentDaysRemaining <= 0
-                && h.varroaReboundDaysRemaining > 0) {
-            out.add("Rebote de varroa tras tratamiento");
+
+        double varroaStart = GameBalanceConfig.varroaKStartPct;
+        if (h.varroaPct >= 10) {
+            out.add(new Tag(String.format(Locale.getDefault(),
+                    "Varroa crítica (%.1f%%)", h.varroaPct), R.drawable.bg_swarm_warn_pill));
+        } else if (h.varroaPct >= varroaStart) {
+            out.add(new Tag(String.format(Locale.getDefault(),
+                    "Varroa afectando (%.1f%%)", h.varroaPct), R.drawable.bg_honey_cap_warn_pill));
         }
-        if (h.varroaTreatmentDaysRemaining == 0 && v >= 6 && h.health < 70) {
-            out.add("Tratamiento antivarroa recomendado");
+
+        if (HiveHoneyRules.isHoneyAtCapacity(h)) {
+            out.add(new Tag("Reservas de miel a tope", R.drawable.bg_honey_cap_warn_pill));
+        } else if (h.honeyProduction < HiveHoneyRules.MIN_HIVE_STOCK_KG) {
+            out.add(new Tag("Reservas de miel al mínimo", R.drawable.bg_swarm_warn_pill));
+        }
+
+        return out;
+    }
+
+    public static List<String> alertsEs(HiveEntity h) {
+        List<Tag> tags = alertTags(h, null);
+        List<String> out = new ArrayList<>(tags.size());
+        for (Tag t : tags) {
+            out.add(t.text);
         }
         return out;
     }

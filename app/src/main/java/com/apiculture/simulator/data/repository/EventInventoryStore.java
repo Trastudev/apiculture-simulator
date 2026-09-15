@@ -133,6 +133,15 @@ public final class EventInventoryStore {
         addQueen(ctx, quality);
     }
 
+    public static void clearAll(Context ctx) {
+        prefs(ctx).edit()
+                .putInt(KEY_TREAT, 0)
+                .putInt(KEY_FEED, 0)
+                .putString(KEY_QUEENS_JSON, "[]")
+                .remove(KEY_QUEENS_LEGACY)
+                .apply();
+    }
+
     public static void persistCloud(@Nullable FirebaseFirestore firestore, @Nullable String uid, Context ctx) {
         if (firestore == null || uid == null || uid.isEmpty() || ctx == null) {
             return;
