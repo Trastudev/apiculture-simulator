@@ -84,9 +84,9 @@ public final class GameBalanceConfig {
     public static int splitRecommendAdults = 70_000;
 
     public static double foragerFraction = 0.24;
-    public static double kgPerForagerFullFlow = 1.35e-4;
+    public static double kgPerForagerFullFlow = 2.244375e-4;
     public static double consumptionBaseKg = 0.03;
-    public static double consumptionPerAdultKg = 4.8e-6;
+    public static double consumptionPerAdultKg = 3.6e-6;
     public static double consumptionPerBroodEqKg = 4.0e-6;
     public static double syrupConsumptionMultiplier = 0.55;
     public static double nectarNoiseMin = 0.94;
@@ -127,9 +127,10 @@ public final class GameBalanceConfig {
     public static double varroaChillyMult = 0.65;
     public static double varroaEnvMultFloor = 0.05;
 
-    public static double skyMultSun = 1.0;
-    public static double skyMultCloudy = 0.7;
-    public static double skyMultWindy = 0.5;
+    public static double skyMultSun = 1.25;
+    public static double skyMultVariable = 1.1;
+    public static double skyMultCloudy = 0.85;
+    public static double skyMultWindy = 0.7;
     public static double skyMultRain = 0.0;
     public static int skyLowElevMaxM = 800;
     public static int skyMidElevMaxM = 1500;
@@ -456,6 +457,7 @@ public final class GameBalanceConfig {
         JSONObject sky = root.optJSONObject("sky");
         if (sky != null) {
             skyMultSun = sky.optDouble("multSun", skyMultSun);
+            skyMultVariable = sky.optDouble("multVariable", skyMultVariable);
             skyMultCloudy = sky.optDouble("multCloudy", skyMultCloudy);
             skyMultWindy = sky.optDouble("multWindy", skyMultWindy);
             skyMultRain = sky.optDouble("multRain", skyMultRain);

@@ -1488,7 +1488,7 @@ public class HiveRepository {
 
     /**
 
-     * Producción de miel: últimos 7 días de calendario incluyendo hoy (más antiguo → índice 0).
+     * Recolección bruta de miel: últimos 7 días de calendario incluyendo hoy (más antiguo → índice 0).
 
      */
 
@@ -1564,6 +1564,8 @@ public class HiveRepository {
 
         int[] eggs = new int[7];
 
+        double[] consumption = new double[7];
+
         GameProductionStateEntity state = gameProductionStateDao.getByOwner(ownerId);
 
         LocalDate gameStart = state != null
@@ -1576,6 +1578,13 @@ public class HiveRepository {
 
         LocalDate chartEnd = GameCalendar.uiDateForLastProcessed(lastProcessedKey);
 
+        HiveEntity hive = hiveDao.getHiveByIdSync(hiveId);
+        HivePopulationState popEst = null;
+        if (hive != null) {
+            ensurePopulationJson(hive);
+            popEst = HivePopulationState.fromJson(hive.populationStateJson);
+        }
+
         for (int i = 0; i < 7; i++) {
 
             LocalDate d = chartEnd.minusDays(6 - i);
@@ -1587,6 +1596,8 @@ public class HiveRepository {
                 worker[i] = 0;
 
                 eggs[i] = 0;
+
+                consumption[i] = 0.0;
 
                 continue;
 
@@ -1602,9 +1613,21 @@ public class HiveRepository {
 
             eggs[i] = row != null ? row.eggsLaid : 0;
 
+            double cons = row != null ? row.consumptionKg : 0.0;
+            if (cons <= 1e-9 && popEst != null && row != null
+                    && (Math.abs(row.kg) > 1e-9 || row.eggsLaid > 0 || row.forageKg > 1e-9)) {
+                cons = HiveDailyBiology.consumptionKg(popEst, hive, row.eggsLaid, dayKey);
+            }
+            consumption[i] = cons;
+            double forage = row != null ? row.forageKg : 0.0;
+            if (forage <= 1e-9) {
+                forage = Math.max(0.0, honey[i] + cons);
+            }
+            honey[i] = Math.max(0.0, forage);
+
         }
 
-        return new HiveLast6DaysCharts(honey, worker, eggs, GameCalendar.toDayKey(chartEnd));
+        return new HiveLast6DaysCharts(honey, worker, eggs, consumption, GameCalendar.toDayKey(chartEnd));
 
     }
 
@@ -1716,6 +1739,8 @@ public class HiveRepository {
             e.workerNetDelta = w != null ? w.intValue() : 0;
             Long eg = snap.getLong("eggsLaid");
             e.eggsLaid = eg != null ? eg.intValue() : 0;
+            e.consumptionKg = snap.contains("consumptionKg") ? snap.getDouble("consumptionKg") : 0.0;
+            e.forageKg = snap.contains("forageKg") ? snap.getDouble("forageKg") : 0.0;
             return e;
         } catch (Exception e) {
             return null;
@@ -2096,7 +2121,13 @@ public class HiveRepository {
                         readyByHex.put(h.hexId, ready);
                     }
                 }
-                double kg = HiveDailyBiology.netHoneyKg(pop, h, day, dayKey, tempC, skyMult, nSame, ready);
+                int eggsCons = ranPopulationSim
+                        ? h.lastSummaryEggsLaid
+                        : HiveDailyBiology.eggsLaidToday(pop, h, day, dayKey, tempC);
+                double forage = HiveDailyBiology.grossForageKg(
+                        pop, h, day, dayKey, tempC, skyMult, nSame, ready);
+                double cons = HiveDailyBiology.consumptionKg(pop, h, eggsCons, dayKey);
+                double kg = forage - cons;
 
                 HiveDailyYieldEntity row = new HiveDailyYieldEntity();
 
@@ -2105,6 +2136,8 @@ public class HiveRepository {
                 row.dayKey = dayKey;
 
                 row.kg = kg;
+                row.consumptionKg = cons;
+                row.forageKg = forage;
 
                 int netWorkers = ranPopulationSim
 
@@ -2157,6 +2190,8 @@ public class HiveRepository {
                         y.put("workerNetDelta", yieldForDay.workerNetDelta);
 
                         y.put("eggsLaid", yieldForDay.eggsLaid);
+                        y.put("consumptionKg", yieldForDay.consumptionKg);
+                        y.put("forageKg", yieldForDay.forageKg);
 
                         y.put("dayKey", dayKey);
 

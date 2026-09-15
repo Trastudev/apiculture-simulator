@@ -7,9 +7,10 @@ import androidx.annotation.Nullable;
  * se usa esa; si no, un modelo determinista por altitud.
  */
 public enum DailySkyCondition {
-    SUN(1.0, "☀️"),
-    CLOUDY(0.7, "☁️"),
-    WINDY(0.5, "💨"),
+    SUN(1.25, "☀️"),
+    VARIABLE(1.1, "⛅"),
+    CLOUDY(0.85, "☁️"),
+    WINDY(0.7, "💨"),
     RAINY(0.0, "🌧️");
 
     private final double productionMultiplier;
@@ -24,6 +25,8 @@ public enum DailySkyCondition {
         switch (this) {
             case SUN:
                 return GameBalanceConfig.skyMultSun;
+            case VARIABLE:
+                return GameBalanceConfig.skyMultVariable;
             case CLOUDY:
                 return GameBalanceConfig.skyMultCloudy;
             case WINDY:
@@ -122,7 +125,10 @@ public enum DailySkyCondition {
             if (c == 0 || c == 1) {
                 return wind >= 40.0 ? WINDY : SUN;
             }
-            if (c == 2 || c == 3) {
+            if (c == 2) {
+                return wind >= 45.0 ? WINDY : VARIABLE;
+            }
+            if (c == 3) {
                 return wind >= 45.0 ? WINDY : CLOUDY;
             }
         }

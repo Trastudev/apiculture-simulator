@@ -238,13 +238,30 @@ public final class HiveDailyBiology {
     }
 
     /**
-     * Tope de gráfico: mielada plena, sol, 22 °C, flora lavanda, sin consumo.
+     * Qué neto habría salido el mismo día si el pecoreo hubiera usado otro multiplicador de cielo.
+     * El consumo no depende del tiempo.
+     */
+    public static double rescaleNetForSky(double netKg, double consumptionKg,
+                                         double fromSkyMult, double toSkyMult) {
+        double from = Math.max(0.0, fromSkyMult);
+        double cons = Math.max(0.0, consumptionKg);
+        double forage = Math.max(0.0, netKg + cons);
+        if (from <= 1e-12) {
+            return -cons;
+        }
+        double base = forage / from;
+        return base * Math.max(0.0, toSkyMult) - cons;
+    }
+
+    /**
+     * Tope de gráfico: mielada plena, sol (× pecoreo de sol), 22 °C, flora lavanda, sin consumo.
      */
     public static double maxChartDailyKgForAdults(int adultWorkers) {
         if (adultWorkers <= 0) {
             return 1.0;
         }
         return adultWorkers * GameBalanceConfig.foragerFraction * GameBalanceConfig.kgPerForagerFullFlow
-                * GameBalanceConfig.chartFloraBoost * GameBalanceConfig.chartTempBoost;
+                * GameBalanceConfig.chartFloraBoost * GameBalanceConfig.chartTempBoost
+                * GameBalanceConfig.skyMultSun;
     }
 }

@@ -55,9 +55,9 @@
   },
   "honey": {
     "foragerFraction": 0.24,
-    "kgPerForagerFullFlow": 0.000135,
+    "kgPerForagerFullFlow": 0.0002244375,
     "consumptionBaseKg": 0.03,
-    "consumptionPerAdultKg": 0.0000048,
+    "consumptionPerAdultKg": 0.0000036,
     "consumptionPerBroodEqKg": 0.000004,
     "syrupConsumptionMultiplier": 0.55,
     "nectarNoiseMin": 0.94,
@@ -97,9 +97,10 @@
     "varroaEnvMultFloor": 0.05
   },
   "sky": {
-    "multSun": 1.0,
-    "multCloudy": 0.7,
-    "multWindy": 0.5,
+    "multSun": 1.25,
+    "multVariable": 1.1,
+    "multCloudy": 0.85,
+    "multWindy": 0.7,
     "multRain": 0.0,
     "lowElevMaxM": 800,
     "midElevMaxM": 1500,

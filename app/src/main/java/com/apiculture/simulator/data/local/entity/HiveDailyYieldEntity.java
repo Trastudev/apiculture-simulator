@@ -13,4 +13,8 @@ public class HiveDailyYieldEntity {
     /** Nuevas obreras − muertes de obreras ese día (persistido para gráficos). */
     public int workerNetDelta;
     public int eggsLaid;
+    /** Consumo de miel (kg) ese día; 0 en filas antiguas. */
+    public double consumptionKg;
+    /** Pecoreo bruto (kg) ese día; 0 en filas antiguas (se reconstruye como neto + consumo). */
+    public double forageKg;
 }

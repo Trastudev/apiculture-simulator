@@ -94,6 +94,26 @@ public class HiveDailyBiologyBalanceTest {
         assertTrue("miel neta nov kg=" + kg, kg > 0.15);
     }
 
+    @Test
+    public void midSeptemberMediterraneanFairWeatherIsNetPositive() {
+        assertEquals(3.6e-6, GameBalanceConfig.consumptionPerAdultKg, 1e-12);
+        HiveEntity hive = colmena1Like(8.0);
+        HivePopulationState s = layingAdults(35_083);
+        LocalDate sep = LocalDate.of(2026, 9, 15);
+        double eggs = HiveDailyBiology.eggsLaidToday(s, hive, sep, 20260915, 24.0);
+        double forageSun = HiveDailyBiology.grossForageKg(
+                s, hive, sep, 20260915, 24.0, GameBalanceConfig.skyMultSun, 1, null);
+        double forageVar = HiveDailyBiology.grossForageKg(
+                s, hive, sep, 20260915, 24.0, GameBalanceConfig.skyMultVariable, 1, null);
+        double cons = HiveDailyBiology.consumptionKg(s, hive, (int) eggs, 20260915);
+        assertTrue("recolección con sol debe ser > 0, kg=" + forageSun, forageSun > 0);
+        assertTrue("recolección variable debe ser > 0, kg=" + forageVar, forageVar > 0);
+        assertTrue("sol 15 sep: forage=" + forageSun + " cons=" + cons,
+                forageSun > cons);
+        assertTrue("variable 15 sep: forage=" + forageVar + " cons=" + cons,
+                forageVar > cons);
+    }
+
     private static HivePopulationState layingAdults(int adults) {
         HivePopulationState s = new HivePopulationState();
         s.queenMode = QueenMode.LAYING;

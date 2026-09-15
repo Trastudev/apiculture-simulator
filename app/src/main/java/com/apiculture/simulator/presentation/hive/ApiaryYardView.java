@@ -300,6 +300,7 @@ public class ApiaryYardView extends View {
             case WINDY:
                 color = Color.argb(45, 90, 104, 116);
                 break;
+            case VARIABLE:
             case SUN:
             default:
                 return;
@@ -316,7 +317,16 @@ public class ApiaryYardView extends View {
 
     private void drawClouds(Canvas canvas, int w, float meadowTop) {
         boolean overcast = sky == DailySkyCondition.RAINY || sky == DailySkyCondition.CLOUDY;
-        int n = sky == DailySkyCondition.SUN ? 2 : (overcast ? 6 : 4);
+        int n;
+        if (sky == DailySkyCondition.SUN) {
+            n = 2;
+        } else if (sky == DailySkyCondition.VARIABLE) {
+            n = 4;
+        } else if (overcast) {
+            n = 6;
+        } else {
+            n = 4;
+        }
         float pxPerSec = sky == DailySkyCondition.WINDY ? w * 0.055f : w * 0.028f;
         float band = Math.max(meadowTop, getHeight() * 0.42f);
         for (int i = 0; i < n; i++) {
@@ -329,7 +339,8 @@ public class ApiaryYardView extends View {
             int color = overcast || sky == DailySkyCondition.WINDY
                     ? Color.parseColor("#90A4AE")
                     : Color.WHITE;
-            drawCloud(canvas, x, y, s, color, sky == DailySkyCondition.SUN ? 210 : 240);
+            int alpha = (sky == DailySkyCondition.SUN || sky == DailySkyCondition.VARIABLE) ? 210 : 240;
+            drawCloud(canvas, x, y, s, color, alpha);
         }
     }
 
@@ -434,6 +445,10 @@ public class ApiaryYardView extends View {
             case WINDY:
                 top = Color.parseColor("#90A4AE");
                 bot = Color.parseColor("#CFD8DC");
+                break;
+            case VARIABLE:
+                top = Color.parseColor("#6BB8E8");
+                bot = Color.parseColor("#F7F3EA");
                 break;
             case SUN:
             default:

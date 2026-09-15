@@ -29,6 +29,9 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
 
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
+
 import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
@@ -51,7 +54,6 @@ import com.apiculture.simulator.domain.game.HiveCareRules;
 import com.apiculture.simulator.domain.game.HiveFeedType;
 import com.apiculture.simulator.domain.game.HiveFeedingBonuses;
 import com.apiculture.simulator.domain.game.HiveHoneyRules;
-import com.apiculture.simulator.domain.game.HoneyDailyProduction;
 import com.apiculture.simulator.domain.health.HiveHealthAlerts;
 import com.apiculture.simulator.domain.population.HivePopulationState;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
@@ -60,6 +62,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -106,17 +109,15 @@ public class HiveDetailFragment extends Fragment {
 
             // Cabecera
             binding.tvHiveName.setText(hive.name);
-            boolean honeyAtCap = HiveHoneyRules.isHoneyAtCapacity(hive);
-            binding.ivHiveHoneyCapWarn.setVisibility(honeyAtCap ? View.VISIBLE : View.GONE);
-            binding.tvHiveHoneyCapWarn.setVisibility(honeyAtCap ? View.VISIBLE : View.GONE);
+            binding.ivHiveHoneyCapWarn.setVisibility(View.GONE);
+            binding.tvHiveHoneyCapWarn.setVisibility(View.GONE);
+            binding.ivHiveSwarmDangerIcon.setVisibility(View.GONE);
+            binding.tvHiveSwarmWarn.setVisibility(View.GONE);
             binding.tvHiveHeaderHoney.setText(String.format(Locale.getDefault(), "%.1f kg",
                     Math.max(0.0, hive.honeyProduction)));
             binding.tvHiveHeaderBees.setText(String.format(Locale.getDefault(), "%,d", pop.workersAdult));
             bindHeaderQueen(hive, pop);
-            boolean swarmRisk = ColonyGameRules.swarmRiskForAdultWorkers(pop.workersAdult) > 0.0
-                    || pop.workersAdult >= ColonyGameRules.SPLIT_RECOMMEND_BEES;
-            binding.ivHiveSwarmDangerIcon.setVisibility(swarmRisk ? View.VISIBLE : View.GONE);
-            binding.tvHiveSwarmWarn.setVisibility(swarmRisk ? View.VISIBLE : View.GONE);
+            bindHiveAlertChips(hive, pop);
 
             int elevForHeader = hive.elevationMeters >= 0
                     ? hive.elevationMeters
@@ -125,6 +126,7 @@ public class HiveDetailFragment extends Fragment {
             int productionDayKey = hive.lastSummaryDayKey > 0
                     ? hive.lastSummaryDayKey
                     : GameCalendar.toDayKey(LocalDate.now(GameCalendar.userTimeZone()));
+            bindFloraMonthChart(hive, GameCalendar.fromDayKey(productionDayKey));
             DailySkyCondition headerSky = DailySkyCondition.forHexElevationAndDay(
                     skyKey, productionDayKey, elevForHeader);
             binding.ivHiveHeaderWeather.setImageResource(weatherIconRes(headerSky));
@@ -300,11 +302,18 @@ public class HiveDetailFragment extends Fragment {
                 binding.tvTreatStatus.setText("Sin tratamiento antivarroa en curso");
             }
 
-            String alerts = HiveHealthAlerts.alertsSummaryLineEs(hive);
-            if ("Sin alertas".equals(alerts)) {
+            List<HiveHealthAlerts.Tag> alertTags = HiveHealthAlerts.alertTags(hive, pop);
+            if (alertTags.isEmpty()) {
                 binding.tvHealthAlerts.setText("Sin alertas");
             } else {
-                binding.tvHealthAlerts.setText("Alertas: " + alerts);
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < alertTags.size(); i++) {
+                    if (i > 0) {
+                        sb.append(" · ");
+                    }
+                    sb.append(alertTags.get(i).text);
+                }
+                binding.tvHealthAlerts.setText(sb.toString());
             }
 
             // Pastillas: miel / flora y elevación
@@ -334,6 +343,7 @@ public class HiveDetailFragment extends Fragment {
                 if (!isAdded() || binding == null) {
                     return;
                 }
+                // Recolección bruta (pecoreo). El consumo va en el gráfico de abajo.
                 double[] values = charts.honeyKg;
                 int n = values.length;
                 double totalPeriod = 0.0;
@@ -341,20 +351,27 @@ public class HiveDetailFragment extends Fragment {
                     totalPeriod += v;
                 }
                 double avgDaily = n > 0 ? totalPeriod / n : 0.0;
+                NumberFormat gramNf = NumberFormat.getIntegerInstance(new Locale("es", "ES"));
                 binding.tvHoneyTotal7d.setText(getString(R.string.hive_chart_honey_period_total,
-                        nf.format(totalPeriod)));
+                        gramNf.format(Math.round(totalPeriod * 1000.0))));
                 binding.tvHoneyAvg7d.setText(getString(R.string.hive_chart_honey_avg_daily,
-                        nf.format(avgDaily)));
+                        gramNf.format(Math.round(avgDaily * 1000.0))));
+                double consTotal = 0.0;
+                if (charts.consumptionKg != null) {
+                    for (double c : charts.consumptionKg) {
+                        consTotal += c;
+                    }
+                }
+                int consN = charts.consumptionKg != null ? charts.consumptionKg.length : 0;
+                binding.tvConsumptionAvg7d.setText(getString(R.string.hive_chart_consumption_avg,
+                        gramNf.format(Math.round((consN > 0 ? consTotal / consN : 0.0) * 1000.0))));
 
-                NumberFormat barValNf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
-                barValNf.setMinimumFractionDigits(0);
-                barValNf.setMaximumFractionDigits(2);
                 TextView[] barValueViews = new TextView[]{
                         binding.tvBarValue1, binding.tvBarValue2, binding.tvBarValue3, binding.tvBarValue4,
                         binding.tvBarValue5, binding.tvBarValue6, binding.tvBarValue7
                 };
                 for (int i = 0; i < n; i++) {
-                    barValueViews[i].setText(barValNf.format(values[i]));
+                    barValueViews[i].setText(gramNf.format(Math.round(values[i] * 1000.0)));
                 }
 
                 LocalDate chartEnd = charts.chartEndDayKey > 0
@@ -413,10 +430,11 @@ public class HiveDetailFragment extends Fragment {
                         binding.bar1, binding.bar2, binding.bar3, binding.bar4,
                         binding.bar5, binding.bar6, binding.bar7
                 };
-                double scaleMax = HoneyDailyProduction.maxChartDailyKgForBeeCount(
-                        ColonyGameRules.MAX_ADULT_WORKERS_PER_HIVE);
-                if (scaleMax <= 0) {
-                    scaleMax = 1.0;
+                double scaleMax = 0.05;
+                for (double v : values) {
+                    if (v > scaleMax) {
+                        scaleMax = v;
+                    }
                 }
                 float density = getResources().getDisplayMetrics().density;
                 for (int i = 0; i < n && i < bars.length; i++) {
@@ -428,8 +446,10 @@ public class HiveDetailFragment extends Fragment {
                 }
                 fillChartDayRow(binding.layoutWorkerNetDays, chartEnd);
                 fillChartDayRow(binding.layoutEggsDays, chartEnd);
+                fillChartDayRow(binding.layoutConsumptionDays, chartEnd);
                 bindWorkerNetChart(charts.workerNetDelta);
                 bindEggsChart(charts.eggsLaid);
+                bindConsumptionChart(charts.consumptionKg);
             });
             }
 
@@ -501,6 +521,38 @@ public class HiveDetailFragment extends Fragment {
                         (d, w) -> hiveViewModel.treatDisease(hive,
                                 msg -> handleCareResult(msg, R.string.hive_treat_ok)))
                 .show();
+    }
+
+    private void bindHiveAlertChips(@NonNull HiveEntity hive, @Nullable HivePopulationState pop) {
+        ChipGroup group = binding.chipGroupHiveAlerts;
+        group.removeAllViews();
+        List<HiveHealthAlerts.Tag> tags = HiveHealthAlerts.alertTags(hive, pop);
+        if (tags.isEmpty()) {
+            group.setVisibility(View.GONE);
+            return;
+        }
+        group.setVisibility(View.VISIBLE);
+        Context ctx = requireContext();
+        int padH = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f,
+                ctx.getResources().getDisplayMetrics());
+        int padV = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4f,
+                ctx.getResources().getDisplayMetrics());
+        for (HiveHealthAlerts.Tag tag : tags) {
+            Chip chip = new Chip(ctx);
+            chip.setText(tag.text);
+            chip.setClickable(false);
+            chip.setCheckable(false);
+            chip.setEnsureMinTouchTargetSize(false);
+            chip.setChipMinHeight(padV * 6);
+            chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+            chip.setTextColor(Color.WHITE);
+            chip.setChipBackgroundColor(ColorStateList.valueOf(
+                    ContextCompat.getColor(ctx, tag.backgroundRes == R.drawable.bg_swarm_warn_pill
+                            ? R.color.dash_bad
+                            : R.color.dash_warning)));
+            chip.setPadding(padH, padV, padH, padV);
+            group.addView(chip);
+        }
     }
 
     private void bindHeaderQueen(HiveEntity hive, HivePopulationState pop) {
@@ -601,7 +653,8 @@ public class HiveDetailFragment extends Fragment {
         binding.btnReplaceQueen.setTextColor(fgList);
         binding.btnReplaceQueenTop.setTextColor(fgList);
         binding.btnReplaceQueen.setIconTint(fgList);
-        binding.btnReplaceQueenTop.setIconTint(fgList);
+        // Icono a color en el tile superior; solo tinte blanco si hay urgencia.
+        binding.btnReplaceQueenTop.setIconTint(needsQueen ? fgList : null);
     }
 
     private void showReplaceQueenDialog(HiveEntity hive) {
@@ -709,6 +762,8 @@ public class HiveDetailFragment extends Fragment {
         switch (sky) {
             case SUN:
                 return R.drawable.ic_sol_prado;
+            case VARIABLE:
+                return R.drawable.ic_weather_variable;
             case CLOUDY:
                 return R.drawable.ic_weather_cloud;
             case WINDY:
@@ -893,6 +948,88 @@ public class HiveDetailFragment extends Fragment {
             col.addView(barWrap);
             host.addView(col);
         }
+    }
+
+    private void bindConsumptionChart(double[] kg) {
+        if (binding.layoutConsumptionBars == null) {
+            return;
+        }
+        if (kg == null || kg.length < 7) {
+            binding.layoutConsumptionBars.removeAllViews();
+            return;
+        }
+        Context ctx = requireContext();
+        LinearLayout host = binding.layoutConsumptionBars;
+        host.removeAllViews();
+        float density = ctx.getResources().getDisplayMetrics().density;
+        double maxKg = 0.05;
+        for (double v : kg) {
+            if (v > maxKg) {
+                maxKg = v;
+            }
+        }
+        NumberFormat nf = NumberFormat.getIntegerInstance(new Locale("es", "ES"));
+        for (int i = 0; i < 7; i++) {
+            double v = kg[i];
+            LinearLayout col = new LinearLayout(ctx);
+            col.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+            col.setOrientation(LinearLayout.VERTICAL);
+            col.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+            TextView tvVal = new TextView(ctx);
+            tvVal.setText(nf.format(Math.round(v * 1000.0)));
+            tvVal.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9);
+            tvVal.setGravity(Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM);
+            tvVal.setTextColor(ContextCompat.getColor(ctx, R.color.dash_text_card));
+            col.addView(tvVal);
+            FrameLayout barWrap = new FrameLayout(ctx);
+            LinearLayout.LayoutParams wrapLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+            barWrap.setLayoutParams(wrapLp);
+            barWrap.setMinimumHeight((int) (20 * density));
+            View bar = new View(ctx);
+            bar.setBackground(ContextCompat.getDrawable(ctx, R.drawable.bg_chart_bar_red));
+            double ratio = maxKg > 0 ? v / maxKg : 0;
+            int heightDp = 24 + (int) (56 * ratio);
+            FrameLayout.LayoutParams barLp = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, (int) (heightDp * density));
+            barLp.gravity = Gravity.BOTTOM;
+            barWrap.addView(bar, barLp);
+            col.addView(barWrap);
+            host.addView(col);
+        }
+    }
+
+    private void bindFloraMonthChart(HiveEntity hive, LocalDate monthDay) {
+        if (binding.floraMonthChart == null || hive == null || monthDay == null) {
+            return;
+        }
+        LocalDate start = monthDay.withDayOfMonth(1);
+        int days = start.lengthOfMonth();
+        double[] nectars = new double[days];
+        double sum = 0.0;
+        double peak = 0.0;
+        for (int i = 0; i < days; i++) {
+            double n = Math.max(0.0, HexNectarRules.nectar01(hive, start.plusDays(i), 1, null));
+            nectars[i] = Math.min(1.0, n);
+            sum += nectars[i];
+            if (nectars[i] > peak) {
+                peak = nectars[i];
+            }
+        }
+        Locale es = new Locale("es", "ES");
+        String monthLabel = start.format(DateTimeFormatter.ofPattern("LLLL yyyy", es));
+        if (!monthLabel.isEmpty()) {
+            monthLabel = Character.toUpperCase(monthLabel.charAt(0)) + monthLabel.substring(1);
+        }
+        binding.tvFloraMonthTitle.setText(getString(R.string.hive_chart_flora_month_title, monthLabel));
+        String floraLabel = hive.floraType != null && !hive.floraType.trim().isEmpty()
+                ? hive.floraType.trim()
+                : getString(R.string.hive_flora_unknown_label);
+        NumberFormat pctNf = NumberFormat.getPercentInstance(es);
+        pctNf.setMaximumFractionDigits(0);
+        binding.tvFloraMonthAvg.setText(getString(R.string.hive_chart_flora_month_avg,
+                floraLabel, pctNf.format(days > 0 ? sum / days : 0.0), pctNf.format(peak)));
+        binding.floraMonthChart.setSeries(nectars, monthDay.getDayOfMonth() - 1);
     }
 
     private void showRenameHiveDialog(HiveEntity hive) {

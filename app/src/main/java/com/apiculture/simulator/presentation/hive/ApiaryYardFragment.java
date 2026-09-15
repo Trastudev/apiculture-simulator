@@ -146,6 +146,8 @@ public class ApiaryYardFragment extends Fragment {
         switch (sky) {
             case CLOUDY:
                 return R.drawable.ic_weather_cloud;
+            case VARIABLE:
+                return R.drawable.ic_weather_variable;
             case WINDY:
                 return R.drawable.ic_weather_wind;
             case RAINY:
