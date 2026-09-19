@@ -17,7 +17,7 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-const { RULES } = require("./lib/rules");
+const { RULES, canUseHex, terrainPrice } = require("./lib/rules");
 const { PERSONAS, personaForBotId } = require("./lib/personas");
 const {
   ensureBotShape,
@@ -235,11 +235,31 @@ function hexCenters() {
   return hexCenters.cache;
 }
 
-function coordsForHex(hexId) {
+function hash32(s) {
+  let h = 2166136261;
+  const str = String(s);
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function seededRng(seed) {
+  let s = (seed >>> 0) || 1;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
+
+function coordsForHex(hexId, ownerId) {
   const c = hexCenters()[hexId];
-  if (c) return { lat: c.lat + (Math.random() - 0.5) * 0.01, lng: c.lng + (Math.random() - 0.5) * 0.01 };
-  if (String(hexId).includes("_za_")) return { lat: -30.5 + Math.random(), lng: 24 + Math.random() };
-  return { lat: 40 + Math.random(), lng: -4 + Math.random() };
+  const rng = seededRng(hash32(`${hexId}::${ownerId || "bot"}`));
+  const jitter = 0.016;
+  if (c) return { lat: c.lat + (rng() - 0.5) * jitter, lng: c.lng + (rng() - 0.5) * jitter };
+  if (String(hexId).includes("_za_")) return { lat: -30.5 + rng(), lng: 24 + rng() };
+  return { lat: 40 + rng(), lng: -4 + rng() };
 }
 
 function hexCandidatesForBot(bot, expandSecondary) {
@@ -247,10 +267,14 @@ function hexCandidatesForBot(bot, expandSecondary) {
   const south = bot.timeZoneId && bot.timeZoneId.startsWith("Africa");
   const primary = south ? pool.za : pool.iberia;
   const secondary = south ? pool.iberia : pool.za;
-  const start = (Number(bot.id) * 11) % primary.length;
-  const ordered = primary.slice(start).concat(primary.slice(0, start));
-  if (expandSecondary) return ordered.concat(secondary);
-  return ordered;
+  const start = (Number(bot.id) * 11) % Math.max(1, primary.length);
+  const raw = primary.slice(start).concat(primary.slice(0, start));
+  const extra = expandSecondary ? secondary : [];
+  return raw.concat(extra).filter((hexId) => canUseHex(bot, hexId));
+}
+
+function parcelDocId(hexId, uid) {
+  return `${hexId}::${uid}`;
 }
 
 async function publishProfile(token, bot) {
@@ -321,7 +345,13 @@ async function publishPlayer(token, bot) {
 }
 
 function hiveDocFields(bot, hive) {
-  const { lat, lng } = coordsForHex(hive.hexId);
+  const site =
+    (bot.apiarySites && bot.apiarySites[hive.hexId]) || coordsForHex(hive.hexId, bot.uid);
+  const jitter = hash32(hive.id || hive.hexId) % 1000;
+  const lat = hive.lat || site.lat + ((jitter % 17) - 8) * 0.00004;
+  const lng = hive.lng || site.lng + ((Math.floor(jitter / 17) % 17) - 8) * 0.00004;
+  hive.lat = lat;
+  hive.lng = lng;
   return {
     id: hive.id,
     ownerId: bot.uid,
@@ -396,44 +426,61 @@ async function sellToMarket(token, flora, kg) {
   await fsPatch(token, payload, "globalHoneyMarket", dayS, "floraSalesUtc", flora);
 }
 
-async function claimTerrainLive(token, bot, flora, price, expandSecondary) {
+async function claimTerrainLive(token, bot, flora, price, expandSecondary, extra) {
+  extra = extra || {};
   const firstName = String(bot.playerName).split(" ")[0];
   const parcelName = `Apiario ${firstName}`;
-  const now = Date.now();
   for (const hexId of hexCandidatesForBot(bot, expandSecondary)) {
     if ((bot.ownedHexIds || []).includes(hexId)) continue;
-    const existing = await fsGet(token, "hexParcels", hexId);
+    const docId = parcelDocId(hexId, bot.uid);
+    const existing = await fsGet(token, "hexParcels", docId);
     if (existing) {
-      const owner = fromFields(existing).ownerId;
-      if (owner === bot.uid && !(bot.ownedHexIds || []).includes(hexId)) {
-        bot.ownedHexIds.push(hexId);
+      const row = fromFields(existing);
+      if (!(bot.ownedHexIds || []).includes(hexId)) bot.ownedHexIds.push(hexId);
+      if (row.siteLat && row.siteLng) {
+        bot.apiarySites = bot.apiarySites || {};
+        bot.apiarySites[hexId] = { lat: Number(row.siteLat), lng: Number(row.siteLng) };
       }
       continue;
     }
+    const site = coordsForHex(hexId, bot.uid);
+    const withWarehouse = !!extra.withWarehouse;
+    const fields = {
+      ownerId: bot.uid,
+      hexId,
+      parcelName,
+      isPrimary: !(bot.ownedHexIds || []).length,
+      siteLat: site.lat,
+      siteLng: site.lng,
+      hasWarehouse: withWarehouse,
+      warehouseLevel: withWarehouse ? 1 : 0,
+    };
+    if (withWarehouse) {
+      fields.warehouseLat = site.lat + 0.00034;
+      fields.warehouseLng = site.lng + 0.00022;
+    }
     try {
-      await fsCreate(token, "hexParcels", hexId, {
-        ownerId: bot.uid,
-        hexId,
-        parcelName,
-        floras: [{ floraKey: flora, plantedAt: now, readyAt: now }],
-      });
+      await fsCreate(token, "hexParcels", docId, fields);
     } catch (e) {
       const msg = String(e.message);
       if (msg.includes("ALREADY_EXISTS") || msg.includes("409")) continue;
       throw e;
     }
-    applyTerrainPurchase(bot, hexId, flora, price);
+    applyTerrainPurchase(bot, hexId, flora, price, { site, withWarehouse });
     return hexId;
   }
   return null;
 }
 
-function claimTerrainLocal(bot, flora, price, expandSecondary, occupied) {
+function claimTerrainLocal(bot, flora, price, expandSecondary, occupied, extra) {
+  extra = extra || {};
   for (const hexId of hexCandidatesForBot(bot, expandSecondary)) {
     if ((bot.ownedHexIds || []).includes(hexId)) continue;
-    if (occupied.has(hexId)) continue;
-    occupied.add(hexId);
-    applyTerrainPurchase(bot, hexId, flora, price);
+    const key = `${hexId}::${bot.uid || bot.id}`;
+    if (occupied.has(key)) continue;
+    occupied.add(key);
+    const site = coordsForHex(hexId, bot.uid || bot.id);
+    applyTerrainPurchase(bot, hexId, flora, price, { site, withWarehouse: !!extra.withWarehouse });
     return hexId;
   }
   return null;
@@ -456,21 +503,21 @@ function resetBotLocalEconomy(bot) {
   bot.hiveCount = 0;
   bot.adultBeeCount = 0;
   bot.missedDays = 0;
+  bot.hexFlora = {};
+  bot.apiarySites = {};
+  bot.warehouseHexIds = [];
 }
 
 async function rebuildBotStarter(token, bot) {
   resetBotLocalEconomy(bot);
   const flora = (bot.homeFloras && bot.homeFloras[0]) || "Mil flores";
-  const price = require("./lib/rules").terrainPrice(flora);
-  const hex = await claimTerrainLive(token, bot, flora, price, false);
+  const price = terrainPrice(flora);
+  const hex = await claimTerrainLive(token, bot, flora, price, false, { withWarehouse: false });
   if (hex) {
-    for (let i = 0; i < 3; i++) {
-      const hive = makeLocalHive(bot, hex, flora, 0, i);
-      if (i === 0) hive.beeCount = 95000;
-      bot.hives.push(hive);
-      await publishHive(token, bot, hive);
-      await sleep(40);
-    }
+    const hive = makeLocalHive(bot, hex, flora, 0, 0);
+    bot.hives.push(hive);
+    bot.balanceEur = round2((bot.balanceEur || 0) - RULES.HIVE_PRICE[0]);
+    await publishHive(token, bot, hive);
   }
   bot.hiveCount = bot.hives.length;
   bot.adultBeeCount = bot.hives.reduce((s, h) => s + (h.beeCount || 0), 0);
@@ -571,8 +618,9 @@ async function ensureBots(apiKey) {
       auth.idToken,
       bot,
       floras[0] || "Mil flores",
-      require("./lib/rules").terrainPrice(floras[0] || "Mil flores"),
-      false
+      terrainPrice(floras[0] || "Mil flores"),
+      false,
+      { withWarehouse: false }
     );
     if (hex && !bot.hives.length) {
       const hive = makeLocalHive(bot, hex, floras[0] || "Mil flores", 0, 0);
@@ -608,24 +656,40 @@ async function executeDay(bot, dayKey, opts) {
   }
 
   for (const a of planned.actions) {
-    if (a.type === "want_terrain") {
+    if (a.type === "want_apiary" || a.type === "want_terrain") {
+      const extra = { withWarehouse: !!a.withWarehouse };
       let hex = null;
       if (live && token) {
-        hex = await claimTerrainLive(token, bot, a.flora, a.price, a.expandSecondary);
+        hex = await claimTerrainLive(token, bot, a.flora, a.price, a.expandSecondary, extra);
       } else {
-        hex = claimTerrainLocal(bot, a.flora, a.price, a.expandSecondary, occupied);
+        hex = claimTerrainLocal(bot, a.flora, a.price, a.expandSecondary, occupied, extra);
       }
       if (hex) {
-        notes.push(`terreno ${hex}`);
-        // Si acabamos de comprar y no hay colmena, planDay no la creó en buy_hive
-        if (bot.hives.some((h) => h.hexId === hex && h.needsPublish) && live && token) {
-          for (const h of bot.hives) {
-            if (h.needsPublish) await publishHive(token, bot, h);
-          }
-        }
+        notes.push(`apiario ${hex}${a.withWarehouse ? "+almacén" : ""}`);
       } else {
-        notes.push("sin terreno libre");
+        notes.push("sin hex disponible");
       }
+      continue;
+    }
+    if (a.type === "buy_warehouse") {
+      if (live && token && bot.uid) {
+        const site =
+          (bot.apiarySites && bot.apiarySites[a.hexId]) || coordsForHex(a.hexId, bot.uid);
+        await fsPatch(
+          token,
+          {
+            hasWarehouse: true,
+            warehouseLevel: 1,
+            ownerId: bot.uid,
+            hexId: a.hexId,
+            warehouseLat: site.lat + 0.00034,
+            warehouseLng: site.lng + 0.00022,
+          },
+          "hexParcels",
+          parcelDocId(a.hexId, bot.uid)
+        );
+      }
+      notes.push("almacén");
       continue;
     }
     if (a.type === "sell") {
@@ -636,15 +700,26 @@ async function executeDay(bot, dayKey, opts) {
       continue;
     }
     if (a.type === "buy_hive") {
-      notes.push(`+colmena ${a.flora}`);
+      notes.push(`+colmena ${a.flora}${a.supers ? ` ${a.supers} alza` : ""}`);
       continue;
     }
     if (a.type === "buy_super") {
-      notes.push(`+alza`);
+      notes.push("+alza");
       continue;
     }
     if (a.type === "harvest") {
       notes.push(`cosecha ${a.kg}kg`);
+      continue;
+    }
+    if (a.type === "move_hive") {
+      const destSite = (bot.apiarySites && bot.apiarySites[a.to]) || coordsForHex(a.to, bot.uid || bot.id);
+      const hive = (bot.hives || []).find((h) => h.id === a.hiveId);
+      if (hive) {
+        hive.lat = destSite.lat;
+        hive.lng = destSite.lng;
+        hive.needsPublish = true;
+      }
+      notes.push(`mueve→${a.to}`);
       continue;
     }
   }
@@ -764,11 +839,11 @@ async function cmdSimulate(apiKey, days, live) {
     const avgX = list.reduce((s, b) => s + (b.ownedHexIds || []).length, 0) / list.length;
     const label = PERSONAS[pid] ? PERSONAS[pid].label : pid;
     console.log(
-      `  ${label.padEnd(14)} n=${list.length}  colmenas≈${avgH.toFixed(1)}  terrenos≈${avgX.toFixed(1)}  saldo≈${avgB.toFixed(0)}€`
+      `  ${label.padEnd(14)} n=${list.length}  colmenas≈${avgH.toFixed(1)}  apiarios≈${avgX.toFixed(1)}  saldo≈${avgB.toFixed(0)}€`
     );
   }
   console.log(
-    `\nLogins≈${totals.login}  ausencias≈${totals.skip}  +terrenos≈${totals.terrain}  +colmenas≈${totals.hives}  días-con-venta≈${totals.sells}`
+    `\nLogins≈${totals.login}  ausencias≈${totals.skip}  +apiarios≈${totals.terrain}  +colmenas≈${totals.hives}  días-con-venta≈${totals.sells}`
   );
   console.log("Estado guardado en", STATE_PATH);
 }

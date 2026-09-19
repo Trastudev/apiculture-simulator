@@ -41,7 +41,7 @@ const UNLOCK_ORDER = (() => {
 })();
 
 const RULES = {
-  STARTING_BALANCE: 2000,
+  STARTING_BALANCE: 10000,
   TERRAIN_BASE: 1000,
   HIVE_PRICE: [200, 250, 300],
   SUPER_PRICE: 50,
@@ -57,6 +57,8 @@ const RULES = {
   XP_BUY_TERRAIN_BASE: 80,
   XP_BUY_TERRAIN_PER_1000: 10,
   XP_BUY_SUPER: 15,
+  WAREHOUSE_COST: 300,
+  CLIMATE_ZA_LEVEL: 25,
 };
 
 function unlockIndex(flora) {
@@ -102,7 +104,7 @@ function sellPriceEurPerKg(flora, daySeed) {
 }
 
 function xpForNextLevel(level) {
-  const raw = 100 * Math.pow(1.5, Math.max(0, level));
+  const raw = 100 * Math.pow(1.12, Math.max(0, level));
   return Math.min(2000000, Math.max(1, Math.round(raw)));
 }
 
@@ -114,6 +116,21 @@ function addXp(bot, amount) {
     bot.xp -= xpForNextLevel(bot.level);
     bot.level += 1;
   }
+}
+
+function floraValue(flora) {
+  return FLORA_CEILINGS[flora] || 15.5;
+}
+
+function isZaHex(hexId) {
+  const id = String(hexId || "");
+  return id.includes("_za_") || id.startsWith("za_") || id.startsWith("hex_za_");
+}
+
+function canUseHex(bot, hexId) {
+  if (!isZaHex(hexId)) return true;
+  if (bot && bot.timeZoneId && String(bot.timeZoneId).startsWith("Africa")) return true;
+  return (bot.level || 0) >= RULES.CLIMATE_ZA_LEVEL;
 }
 
 function affordableFloraForLevel(level, preferred) {
@@ -141,4 +158,7 @@ module.exports = {
   xpForNextLevel,
   addXp,
   affordableFloraForLevel,
+  floraValue,
+  isZaHex,
+  canUseHex,
 };

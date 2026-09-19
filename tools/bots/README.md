@@ -1,12 +1,14 @@
 # Bots autónomos (20 jugadores)
 
-Simulación de apicultores bot con tres arquetipos de decisión (estilo idle/strategy AI):
+Simulación de apicultores bot con tres arquetipos. Juegan como un jugador bueno: producen, cosechan, venden al mayor, instalan apiarios, compran colmenas con alzas y mueven a hexes más productivos.
+
+**No compran comandas ni aceptan contratos de polinización.**
 
 | Arquetipo | Login | Expansión | Notas |
 |-----------|-------|-----------|--------|
-| **casual** (poco activo) | ~38 %/día (vuelve tras 2–3 días) | máx. 6 terrenos, pocas colmenas | Solo región natal |
-| **regular** (activo) | ~72 %/día | máx. 10 terrenos | Ritmo de jugador típico |
-| **competitive** | ~94 %/día | máx. 30 terrenos, llena hex | Puede abrir la otra región |
+| **casual** (poco activo) | ~38 %/día (vuelve tras 2–3 días) | máx. 6 apiarios | Solo región natal |
+| **regular** (activo) | ~72 %/día | máx. 12 apiarios | Ritmo de jugador típico |
+| **competitive** | ~94 %/día | máx. 28 apiarios | Puede abrir ZA al nivel 25 |
 
 ## Comandos
 
@@ -28,19 +30,23 @@ node tools/bots/bot_farm.js loop --hours 4
 
 ## Flujo diario de cada bot (si “se conecta”)
 
-1. Producción de miel en cada colmena (tope por alzas).
-2. Cosecha → almacén por flora.
-3. Venta al mercado global (umbral y fracción según persona).
-4. Compra de alzas si la colmena se llena.
-5. Compra de colmenas en terrenos con hueco.
-6. Compra de terreno si hay saldo y cupo (precio = base 1000 + prima por flora desbloqueada).
+1. Producción de miel (tope por alzas, bonus por flora cara).
+2. Cosecha antes de llenar del todo → almacén por flora.
+3. Venta al mayor (nunca comandas).
+4. Compra de alzas en las colmenas más llenas.
+5. Mover colmenas al apiario propio con mejor flora / menos saturación.
+6. Comprar colmenas (con 0–2 alzas si el saldo da) en el mejor apiario con hueco.
+7. Instalar un apiario nuevo (hex compartible; doc `hexId::uid` + punto aleatorio).
+8. Opcional: almacén (300 B) en el primer apiario.
+
+Arranque / reset: 10 000 B, un apiario y una colmena pagada. Sin almacén automático.
 
 Estado local: `tools/bots/state.json` (gitignore). Credenciales de Auth ahí.
 
 ## Reset global (admin en la app)
 
 Si Aleix lanza **Reiniciar TODOS los jugadores**, Firestore publica `globalGameEvents/game_reset`.
-En el próximo `tick --live` (o Action diaria) los bots detectan la generación y vuelven a terreno + 3 colmenas de inicio.
+En el próximo `tick --live` (o Action diaria) los bots detectan la generación y vuelven al starter.
 
 **No hace falta que yo inicie sesión en tu cuenta.** Tú subes el workflow y creas 2 secrets.
 
