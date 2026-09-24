@@ -8,6 +8,8 @@ const { handleHive } = require("./hives");
 const { handleTable } = require("./tables");
 const tripClock = require("./tripClock");
 const offerClock = require("./offerClock");
+const productionClock = require("./productionClock");
+const actions = require("./actions");
 const auth = require("./auth");
 
 const apiToken = process.env.API_TOKEN || "";
@@ -202,8 +204,15 @@ async function authorized(req) {
   }
   if (auth.isConfigured()) return false;
   if (!apiToken) return false;
-  if (req.headers.authorization === "Bearer " + apiToken) return true;
+  if (req.headers.authorization === "Bearer " + apiToken) {
+    req.legacyAdmin = true;
+    return true;
+  }
   return false;
+}
+
+function ownerAllowed(req, ownerId) {
+  return !req.authUid || String(ownerId || "") === String(req.authUid);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -223,19 +232,55 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === "POST" && urlPath === "/trip-clock/run") {
-      await tripClock.tick(pool);
-      send(res, 200, { ok: true });
+    if (req.method === "GET" && urlPath === "/production-reports") {
+      const params = new URL(req.url, "http://localhost").searchParams;
+      const requested = params.get("ownerId") || "";
+      if (req.authUid && requested && requested !== req.authUid) {
+        send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+        return;
+      }
+      const ownerId = req.authUid || requested;
+      const days = await productionClock.reportsSince(pool, ownerId, params.get("since"));
+      send(res, 200, { ok: true, days });
       return;
     }
 
-    if (req.method === "PUT" && urlPath === "/market-prices") {
+    if (req.method === "POST" && urlPath === "/actions") {
       const body = await readBody(req);
-      const result = await offerClock.saveMarketPrices(pool, body);
-      setImmediate(() => {
-        offerClock.tick(pool).catch((err) => console.error("reloj de ofertas:", err.message));
-      });
-      send(res, 200, result);
+      const requested = body && body.ownerId ? String(body.ownerId) : "";
+      if (req.authUid && requested && requested !== req.authUid) {
+        send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+        return;
+      }
+      const result = await actions.handle(pool, body, req.authUid || requested);
+      send(res, result.ok ? 200 : (result.status || 409), result);
+      return;
+    }
+
+    if (req.method === "POST" && urlPath === "/production-clock/run") {
+      const body = await readBody(req);
+      const requested = body && body.ownerId ? String(body.ownerId) : "";
+      if (req.authUid && requested && requested !== req.authUid) {
+        send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+        return;
+      }
+      const ownerId = req.authUid || requested;
+      const checkpointDay = body && Number(body.checkpointDayKey) > 0
+        ? Number(body.checkpointDayKey) : 0;
+      const result = await productionClock.tickOwner(
+        pool,
+        ownerId,
+        Date.now(),
+        body && body.timeZoneId ? String(body.timeZoneId) : "",
+        checkpointDay > 0 ? { throughDayKey: checkpointDay, hives: body.hives || [] } : null
+      );
+      send(res, result.ok ? 200 : 404, result);
+      return;
+    }
+
+    if (req.method === "POST" && urlPath === "/trip-clock/run") {
+      await tripClock.tick(pool);
+      send(res, 200, { ok: true });
       return;
     }
 
@@ -256,7 +301,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && urlPath === "/offer-actions") {
       const body = await readBody(req);
-      const result = await offerClock.action(pool, body);
+      const result = await offerClock.action(pool, body, req.authUid || null);
       if (result.ok) {
         // La reposición puede recorrer el mapa completo; no bloquea la
         // confirmación de claim/oferta que está esperando la app.
@@ -269,7 +314,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && urlPath === "/trip-effects") {
-      const ownerId = new URL(req.url, "http://localhost").searchParams.get("ownerId");
+      const requestedOwner = new URL(req.url, "http://localhost").searchParams.get("ownerId");
+      if (req.authUid && requestedOwner && !ownerAllowed(req, requestedOwner)) {
+        send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+        return;
+      }
+      const ownerId = req.authUid || requestedOwner;
       const result = ownerId
         ? await pool.query(
           "SELECT id, owner_id, payload, created_at FROM trip_effects WHERE owner_id = $1 ORDER BY created_at",
@@ -290,6 +340,17 @@ const server = http.createServer(async (req, res) => {
     const effectId = /^\/trip-effects\/([^/]+)$/.exec(urlPath);
     if (effectId && req.method === "DELETE") {
       const id = decodeURIComponent(effectId[1]);
+      if (req.authUid) {
+        const owner = await pool.query("SELECT owner_id FROM trip_effects WHERE id = $1", [id]);
+        if (owner.rowCount === 0) {
+          send(res, 404, { ok: false });
+          return;
+        }
+        if (!ownerAllowed(req, owner.rows[0].owner_id)) {
+          send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+          return;
+        }
+      }
       await pool.query("DELETE FROM trip_effects WHERE id = $1", [id]);
       send(res, 200, { ok: true });
       return;
@@ -304,6 +365,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     const playerId = playerIdFromPath(urlPath);
+    if (playerId && req.authUid && !ownerAllowed(req, playerId)) {
+      send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+      return;
+    }
     if (playerId && req.method === "GET") {
       const row = await getPlayer(playerId);
       if (!row) {
@@ -344,6 +409,7 @@ migrate()
   .then(() => {
     tripClock.start(pool);
     offerClock.start(pool);
+    productionClock.start(pool);
     server.listen(port, host, () => {
       console.log("API escuchando en http://" + host + ":" + port);
     });

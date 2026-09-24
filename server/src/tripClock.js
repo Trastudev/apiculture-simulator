@@ -5,6 +5,7 @@ const { encode, decode } = require("./polyline");
 
 const MIN_DURATION_MS = 60_000;
 const CRUISE_KMH = 70;
+const CARGO_KINDS = new Set(["collect", "wholesale", "order", "transfer", "delivery"]);
 
 function num(value) {
   const n = Number(value);
@@ -62,6 +63,14 @@ function sameNumber(a, b, tolerance = 0.001) {
   return Math.abs(num(a) - num(b)) <= tolerance;
 }
 
+function hasFiniteNumber(value) {
+  return value != null && value !== "" && Number.isFinite(Number(value));
+}
+
+function sameRequiredNumber(a, b, tolerance = 0.001) {
+  return hasFiniteNumber(a) && hasFiniteNumber(b) && sameNumber(a, b, tolerance);
+}
+
 async function authoritativeOrder(client, trip, when) {
   if (trip.kind !== "order" || !trip.order_id || !trip.owner_id) {
     return { valid: false, row: null };
@@ -77,16 +86,19 @@ async function authoritativeOrder(client, trip, when) {
   const cargo = cargoMap(trip.cargo_json);
   const valid = Boolean(row.taken)
     && String(row.claimed_by || "") === String(trip.owner_id)
+    && hasFiniteNumber(row.expire_epoch_ms)
     && num(row.expire_epoch_ms) > when
     && cargo.lines.length === 1
     && cargo.lines[0].flora === row.flora_key
-    && sameNumber(cargo.lines[0].kg, row.kg)
-    && sameNumber(trip.kg, row.kg)
-    && (trip.flora_key == null || trip.flora_key === row.flora_key)
-    && (trip.dest_hex_id == null || trip.dest_hex_id === row.dest_hex_id)
-    && sameNumber(trip.dest_lat, row.dest_lat, 0.00001)
-    && sameNumber(trip.dest_lng, row.dest_lng, 0.00001)
-    && sameNumber(trip.unit_price, row.unit_price, 0.01);
+    && sameRequiredNumber(cargo.lines[0].kg, row.kg)
+    && sameRequiredNumber(trip.kg, row.kg)
+    && trip.flora_key != null
+    && trip.flora_key === row.flora_key
+    && trip.dest_hex_id != null
+    && trip.dest_hex_id === row.dest_hex_id
+    && sameRequiredNumber(trip.dest_lat, row.dest_lat, 0.00001)
+    && sameRequiredNumber(trip.dest_lng, row.dest_lng, 0.00001)
+    && sameRequiredNumber(trip.unit_price, row.unit_price, 0.01);
   return { valid, row };
 }
 
@@ -95,16 +107,19 @@ function publishedOrderMatches(body, row, now) {
   const cargo = cargoMap(body.cargoJson);
   return row.taken === true
     && String(row.claimed_by || "") === String(body.ownerId || "")
+    && hasFiniteNumber(row.expire_epoch_ms)
     && num(row.expire_epoch_ms) > now
     && cargo.lines.length === 1
     && cargo.lines[0].flora === row.flora_key
-    && sameNumber(cargo.lines[0].kg, row.kg)
-    && sameNumber(body.kg, row.kg)
-    && (body.floraKey == null || body.floraKey === row.flora_key)
-    && (body.destHexId == null || body.destHexId === row.dest_hex_id)
-    && sameNumber(body.destLat, row.dest_lat, 0.00001)
-    && sameNumber(body.destLng, row.dest_lng, 0.00001)
-    && sameNumber(body.unitPrice, row.unit_price, 0.01);
+    && sameRequiredNumber(cargo.lines[0].kg, row.kg)
+    && sameRequiredNumber(body.kg, row.kg)
+    && body.floraKey != null
+    && body.floraKey === row.flora_key
+    && body.destHexId != null
+    && body.destHexId === row.dest_hex_id
+    && sameRequiredNumber(body.destLat, row.dest_lat, 0.00001)
+    && sameRequiredNumber(body.destLng, row.dest_lng, 0.00001)
+    && sameRequiredNumber(body.unitPrice, row.unit_price, 0.01);
 }
 
 async function insertEffect(client, ownerId, payload) {
@@ -380,17 +395,6 @@ async function startReturn(client, trip, when) {
   await saveCargo(client, trip);
 }
 
-async function orderMissed(client, trip, when) {
-  if (!trip.order_id) return true;
-  const result = await client.query(
-    "SELECT expire_epoch_ms FROM honey_orders WHERE id = $1",
-    [trip.order_id]
-  );
-  if (result.rowCount === 0) return true;
-  const expire = num(result.rows[0].expire_epoch_ms);
-  return expire > 0 && when >= expire;
-}
-
 async function settle(client, trip, when) {
   const authority = trip.kind === "order"
     ? await authoritativeOrder(client, trip, when)
@@ -414,6 +418,25 @@ async function settle(client, trip, when) {
   };
   if (payload.type === "sale" && trip.kind === "order") {
     payload.missed = !authority.valid;
+  }
+  if (payload.type === "sale" && !payload.missed) {
+    let euros = 0;
+    for (const line of lines) euros += num(line.kg) * num(payload.unitPrice);
+    euros = Math.round(euros * 100) / 100;
+    if (euros > 0 && trip.owner_id) {
+      const credited = await client.query(
+        `UPDATE players
+            SET economy_balance_eur = economy_balance_eur + $2, updated_at = now()
+          WHERE id = $1
+          RETURNING economy_balance_eur`,
+        [trip.owner_id, euros]
+      );
+      if (credited.rowCount > 0) {
+        payload.balanceCredited = true;
+        payload.creditedEur = euros;
+        payload.balanceEur = num(credited.rows[0].economy_balance_eur);
+      }
+    }
   }
   await insertEffect(client, trip.owner_id, payload);
   // Solo una comanda válida y vinculada al owner puede cerrar la fila.
@@ -507,6 +530,10 @@ async function tick(pool) {
 
 async function clientMayOverwrite(pool, table, id, body) {
   if (table !== "truck_trips" && table !== "cargo_trips") return true;
+  if (table === "cargo_trips") {
+    const kind = String(body && body.kind || "");
+    if (!CARGO_KINDS.has(kind) || !body.ownerId) return false;
+  }
   const start = num(body && body.startEpochMs);
   const completed = await pool.query(
     `SELECT 1 FROM trip_completions

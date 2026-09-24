@@ -2,6 +2,7 @@
 
 const { clientMayOverwrite } = require("./tripClock");
 const { decode } = require("./polyline");
+const auth = require("./auth");
 
 function field(jsonKey, column, type) {
   return { jsonKey, column, type };
@@ -13,6 +14,25 @@ function isTripTable(table) {
 
 function isAuthoritativeOfferTable(def) {
   return def && (def.table === "honey_orders" || def.table === "pollination_offers");
+}
+
+function ownerField(def) {
+  return def && Array.isArray(def.fields)
+    ? def.fields.find((field) => field.column === def.ownerColumn)
+    : null;
+}
+
+function ownerFromBody(def, body) {
+  const field = ownerField(def);
+  return field && body ? body[field.jsonKey] : null;
+}
+
+function enforceOwner(req, res, ownerId, send) {
+  if (auth.isConfigured() && req.authUid && !auth.sameUid(req.authUid, ownerId)) {
+    send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+    return false;
+  }
+  return true;
 }
 
 const TABLES = [
@@ -488,7 +508,18 @@ async function handleTable(req, res, pool, send, readBody) {
   }
 
   if (req.method === "GET" && !id) {
-    const ownerId = new URL(req.url, "http://localhost").searchParams.get("ownerId");
+    let ownerId = new URL(req.url, "http://localhost").searchParams.get("ownerId");
+    if (auth.isConfigured() && req.authUid) {
+      if (ownerId && !auth.sameUid(req.authUid, ownerId)) {
+        send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+        return true;
+      }
+      ownerId = req.authUid;
+    }
+    if (def.ownerColumn && auth.isConfigured() && req.authUid && !ownerId) {
+      send(res, 400, { ok: false, error: "OWNER_REQUIRED" });
+      return true;
+    }
     if (ownerId && def.ownerColumn) {
       const result = await pool.query(
         "SELECT * FROM " + def.table + " WHERE " + def.ownerColumn + " = $1 ORDER BY updated_at DESC",
@@ -512,6 +543,10 @@ async function handleTable(req, res, pool, send, readBody) {
       send(res, 404, { ok: false });
       return true;
     }
+    if (def.ownerColumn && auth.isConfigured() && req.authUid
+        && !enforceOwner(req, res, row[def.ownerColumn], send)) {
+      return true;
+    }
     send(res, 200, toJson(def, row));
     return true;
   }
@@ -521,6 +556,16 @@ async function handleTable(req, res, pool, send, readBody) {
     if (body == null || typeof body !== "object" || Array.isArray(body)) {
       send(res, 400, { ok: false });
       return true;
+    }
+    if (auth.isConfigured() && req.authUid && def.ownerColumn) {
+      const ownerId = ownerFromBody(def, body);
+      if (!enforceOwner(req, res, ownerId, send)) {
+        return true;
+      }
+      const existing = await readRow(pool, def, id, false);
+      if (existing && !enforceOwner(req, res, existing[def.ownerColumn], send)) {
+        return true;
+      }
     }
     if (isTripTable(def.table)) {
       const client = await pool.connect();

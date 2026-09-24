@@ -15,6 +15,9 @@ function fakePool(responses) {
       if (/UPDATE honey_orders SET taken=true/i.test(sql)) {
         return { rowCount: 1, rows: [{ id: params[0], taken: true, claimed_by: params[1] }] };
       }
+      if (/SELECT id,taken,claimed_by FROM pollination_offers/i.test(sql)) {
+        return { rowCount: 1, rows: [{ id: "p1", taken: false, claimed_by: null }] };
+      }
       if (/UPDATE pollination_offers SET taken=true/i.test(sql)) {
         return { rowCount: 1, rows: [{ id: params[0], taken: true }] };
       }
@@ -44,9 +47,28 @@ test("offer actions are atomic and map a successful claim", async () => {
   assert.ok(pool.state.queries.some((q) => /COMMIT/i.test(q.sql)));
 });
 
+test("pollination claims bind the exact hex, band, flora and start slot", async () => {
+  const pool = fakePool({});
+  const result = await clock.action(pool, {
+    type: "claim-pollination-offer",
+    hexId: "hex-1",
+    band: 2,
+    flora: "Campo de naranjos",
+    startDoy: 120,
+    ownerId: "p1",
+  });
+  assert.equal(result.ok, true);
+  const select = pool.state.queries.find((q) =>
+    /SELECT id,taken,claimed_by FROM pollination_offers/i.test(q.sql));
+  assert.deepEqual(select.params.slice(0, 4), ["hex-1", 2, "Campo de naranjos", 120]);
+  assert.equal(select.params[5], "p1");
+});
+
 test("an offer can be claimed by hex even if the local cache is stale", async () => {
   const pool = fakePool({});
-  const result = await clock.action(pool, { type: "take-offer-by-hex", hexId: "hex-1", band: 2 });
+  const result = await clock.action(pool, {
+    type: "take-offer-by-hex", hexId: "hex-1", band: 2, ownerId: "p1",
+  });
   assert.equal(result.ok, true);
   assert.equal(result.offerId, "p1");
   const select = pool.state.queries.find((q) => /SELECT id FROM pollination_offers/i.test(q.sql));

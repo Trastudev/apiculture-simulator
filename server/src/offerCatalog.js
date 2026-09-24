@@ -424,7 +424,7 @@ function offerForParcel(parcel, band, nowMs, dayKey) {
     return value;
   };
   if (!offerEligible(parcel, band)) return save(null);
-  const baseKey = `${parcel.id}:${dayKey}:${doy}`;
+  const baseKey = `${parcel.id}:${band}:${dayKey}:${doy}`;
   let best = BASE_OFFER_CACHE.get(baseKey);
   if (best === undefined) {
     let bestWait = Number.MAX_SAFE_INTEGER;

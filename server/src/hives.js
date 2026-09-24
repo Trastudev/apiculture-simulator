@@ -1,5 +1,7 @@
 "use strict";
 
+const auth = require("./auth");
+
 const FIELDS = [
   ["ownerId", "owner_id"],
   ["name", "name"],
@@ -161,7 +163,14 @@ async function saveHive(pool, id, body) {
 async function handleHive(req, res, pool, send, readBody) {
   const urlPath = (req.url || "/").split("?")[0];
   if (req.method === "GET" && urlPath === "/hives") {
-    const ownerId = new URL(req.url, "http://localhost").searchParams.get("ownerId");
+    let ownerId = new URL(req.url, "http://localhost").searchParams.get("ownerId");
+    if (auth.isConfigured() && req.authUid) {
+      if (ownerId && !auth.sameUid(req.authUid, ownerId)) {
+        send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+        return true;
+      }
+      ownerId = req.authUid;
+    }
     if (!ownerId) {
       send(res, 400, { ok: false });
       return true;
@@ -183,6 +192,10 @@ async function handleHive(req, res, pool, send, readBody) {
       send(res, 404, { ok: false });
       return true;
     }
+    if (auth.isConfigured() && req.authUid && !auth.sameUid(req.authUid, row.owner_id)) {
+      send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+      return true;
+    }
     send(res, 200, rowToHive(row));
     return true;
   }
@@ -193,6 +206,17 @@ async function handleHive(req, res, pool, send, readBody) {
       send(res, 400, { ok: false });
       return true;
     }
+    if (auth.isConfigured() && req.authUid) {
+      if (!auth.sameUid(req.authUid, body.ownerId)) {
+        send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+        return true;
+      }
+      const existing = await getHive(pool, id);
+      if (existing && !auth.sameUid(req.authUid, existing.owner_id)) {
+        send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+        return true;
+      }
+    }
     const row = await saveHive(pool, id, body);
     send(res, 200, rowToHive(row));
     return true;
@@ -201,4 +225,4 @@ async function handleHive(req, res, pool, send, readBody) {
   return false;
 }
 
-module.exports = { handleHive };
+module.exports = { handleHive, rowToHive };

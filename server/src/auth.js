@@ -3,6 +3,7 @@
 let initialized = false;
 let firebaseAuth = null;
 let configured = false;
+let requested = false;
 
 function initialize() {
   if (initialized) return;
@@ -13,6 +14,7 @@ function initialize() {
       || process.env.FIREBASE_PROJECT_ID
   );
   if (!hasCredentials) return;
+  requested = true;
   try {
     const admin = require("firebase-admin");
     if (admin.apps.length === 0) {
@@ -52,7 +54,11 @@ async function verify(req) {
 
 function isConfigured() {
   initialize();
-  return configured;
+  return requested;
 }
 
-module.exports = { verify, isConfigured };
+function sameUid(authUid, ownerId) {
+  return String(authUid || "") === String(ownerId || "");
+}
+
+module.exports = { verify, isConfigured, sameUid };

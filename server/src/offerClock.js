@@ -70,11 +70,12 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   return 2 * r * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-// El precio se toma del snapshot de mercado almacenado por la API. El mínimo
-// de 12 €/kg es el fallback económico cuando todavía no hay snapshot del día.
+// El precio se toma del snapshot de mercado almacenado por la API. Cuando no
+// hay snapshot del día se conserva el fallback histórico de 4,5 €/kg; el
+// bonus de comanda es 1,12 y produce 5,04 €/kg.
 function basePrice(flora, prices) {
   const value = prices && prices.get(catalog.canonicalFlora(flora));
-  return Number.isFinite(value) && value > 0 ? value : 12.0;
+  return Number.isFinite(value) && value > 0 ? value : 4.5;
 }
 
 function cropForParcel(parcel, band, nowMs, dayKey) {
@@ -246,34 +247,56 @@ function offerRow(region, band, parcel, dayKey, nowMs, seed) {
   };
 }
 
-async function insertOrder(client, row) {
-  await client.query(
-    `INSERT INTO honey_orders
-      (id,npc_name,portrait_index,flora_key,kg,unit_price,dest_hex_id,dest_lat,dest_lng,
-       dest_label,region,created_day_key,expire_epoch_ms,taken,claimed_by,band)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-     ON CONFLICT (id) DO NOTHING`,
-    [row.id,row.npc_name,row.portrait_index,row.flora_key,row.kg,row.unit_price,
-      row.dest_hex_id,row.dest_lat,row.dest_lng,row.dest_label,row.region,
-      row.created_day_key,row.expire_epoch_ms,row.taken,row.claimed_by,row.band]
-  );
+async function insertOrders(client, rows) {
+  for (let start = 0; start < rows.length; start += 100) {
+    const chunk = rows.slice(start, start + 100);
+    const values = [];
+    const params = [];
+    chunk.forEach((row, index) => {
+      const base = index * 16;
+      values.push(`($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7},$${base + 8},$${base + 9},$${base + 10},$${base + 11},$${base + 12},$${base + 13},$${base + 14},$${base + 15},$${base + 16})`);
+      params.push(row.id,row.npc_name,row.portrait_index,row.flora_key,row.kg,row.unit_price,
+        row.dest_hex_id,row.dest_lat,row.dest_lng,row.dest_label,row.region,
+        row.created_day_key,row.expire_epoch_ms,row.taken,row.claimed_by,row.band);
+    });
+    await client.query(
+      `INSERT INTO honey_orders
+        (id,npc_name,portrait_index,flora_key,kg,unit_price,dest_hex_id,dest_lat,dest_lng,
+         dest_label,region,created_day_key,expire_epoch_ms,taken,claimed_by,band)
+       VALUES ${values.join(",")}
+       ON CONFLICT (id) DO NOTHING`,
+      params
+    );
+  }
 }
 
-async function insertOffer(client, row) {
-  await client.query(
-    `INSERT INTO pollination_offers
-      (id,hex_id,flora,start_doy,end_doy,band,region,created_day_key,expire_epoch_ms,
-       dest_lat,dest_lng,npc_name,portrait_index,taken,claimed_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-     ON CONFLICT (id) DO NOTHING`,
-    [row.id,row.hex_id,row.flora,row.start_doy,row.end_doy,row.band,row.region,
-      row.created_day_key,row.expire_epoch_ms,row.dest_lat,row.dest_lng,
-      row.npc_name,row.portrait_index,row.taken,row.claimed_by || null]
-  );
+async function insertOffers(client, rows) {
+  for (let start = 0; start < rows.length; start += 100) {
+    const chunk = rows.slice(start, start + 100);
+    const values = [];
+    const params = [];
+    chunk.forEach((row, index) => {
+      const base = index * 15;
+      values.push(`($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7},$${base + 8},$${base + 9},$${base + 10},$${base + 11},$${base + 12},$${base + 13},$${base + 14},$${base + 15})`);
+      params.push(row.id,row.hex_id,row.flora,row.start_doy,row.end_doy,row.band,row.region,
+        row.created_day_key,row.expire_epoch_ms,row.dest_lat,row.dest_lng,row.npc_name,
+        row.portrait_index,row.taken,row.claimed_by || null);
+    });
+    await client.query(
+      `INSERT INTO pollination_offers
+        (id,hex_id,flora,start_doy,end_doy,band,region,created_day_key,expire_epoch_ms,
+         dest_lat,dest_lng,npc_name,portrait_index,taken,claimed_by)
+       VALUES ${values.join(",")}
+       ON CONFLICT (id) DO NOTHING`,
+      params
+    );
+  }
 }
 
 async function maintainRegion(client, region, nowMs, dayKey, prices) {
   const all = catalog.getParcels(region);
+  const pendingOrders = [];
+  const pendingOffers = [];
   // La primera pasada tras desplegar el reloj descarta el pool legado de
   // Firestore, pero conserva las comandas reclamadas para que un viaje en curso
   // pueda liquidarse. Las nuevas filas siempre llevan el prefijo srv-.
@@ -336,7 +359,7 @@ async function maintainRegion(client, region, nowMs, dayKey, prices) {
         `${dayKey}:${dead.id}`);
     await client.query("DELETE FROM honey_orders WHERE id=$1", [dead.id]);
     if (replacement) {
-      await insertOrder(client, orderRow(region, band, replacement, dayKey, nowMs,
+      pendingOrders.push(orderRow(region, band, replacement, dayKey, nowMs,
           `${dayKey}:${dead.id}`, dead, prices));
     }
   }
@@ -349,9 +372,11 @@ async function maintainRegion(client, region, nowMs, dayKey, prices) {
     await client.query("DELETE FROM pollination_offers WHERE id=$1", [dead.id]);
     if (replacement) {
       const row = offerRow(region, band, replacement, dayKey, nowMs, `${dayKey}:${dead.id}`);
-      if (row) await insertOffer(client, row);
+      if (row) pendingOffers.push(row);
     }
   }
+  await insertOrders(client, pendingOrders);
+  await insertOffers(client, pendingOffers);
 
   // Las sustituciones anteriores también cuentan para el cupo del día. Volvemos
   // a leer dentro de la misma transacción para no generar una segunda tanda.
@@ -385,7 +410,7 @@ async function maintainRegion(client, region, nowMs, dayKey, prices) {
           `${dayKey}:orders:${region}:${band}`);
       for (const parcel of picks) {
         globalUsedOrders.add(parcel.id);
-        await insertOrder(client, orderRow(region, band, parcel, dayKey, nowMs,
+        pendingOrders.push(orderRow(region, band, parcel, dayKey, nowMs,
             `${dayKey}:orders:${region}:${band}:${parcel.id}`, null, prices));
       }
     }
@@ -407,10 +432,12 @@ async function maintainRegion(client, region, nowMs, dayKey, prices) {
         globalUsedOffers.add(parcel.id);
         const row = offerRow(region, band, parcel, dayKey, nowMs,
             `${dayKey}:offers:${region}:${band}:${parcel.id}`);
-        if (row) await insertOffer(client, row);
+        if (row) pendingOffers.push(row);
       }
     }
   }
+  await insertOrders(client, pendingOrders);
+  await insertOffers(client, pendingOffers);
 }
 
 async function runWithLock(pool, work) {
@@ -443,35 +470,6 @@ async function loadMarketPrices(client, dayKey) {
   return prices;
 }
 
-async function saveMarketPrices(pool, body) {
-  const dayKey = int(body && body.dayKey);
-  const prices = body && body.prices;
-  if (dayKey <= 0 || !prices || typeof prices !== "object") {
-    throw Object.assign(new Error("market prices required"), { status: 400 });
-  }
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    for (const [flora, raw] of Object.entries(prices)) {
-      const price = num(raw);
-      if (!flora || price <= 0) continue;
-      await client.query(
-        `INSERT INTO server_market_prices(day_key,flora_key,price_eur)
-         VALUES ($1,$2,$3)
-         ON CONFLICT(day_key,flora_key) DO UPDATE SET price_eur=EXCLUDED.price_eur,updated_at=now()`,
-        [dayKey, flora, price]
-      );
-    }
-    await client.query("COMMIT");
-    return { ok: true, dayKey };
-  } catch (err) {
-    try { await client.query("ROLLBACK"); } catch (_) { /* connection closed */ }
-    throw err;
-  } finally {
-    client.release();
-  }
-}
-
 async function tick(pool) {
   const nowMs = Date.now();
   const dayKey = utcDayKey(nowMs);
@@ -484,10 +482,17 @@ async function tick(pool) {
   return result;
 }
 
-async function action(pool, body) {
+async function action(pool, body, authUid) {
   const nowMs = Date.now();
   return runWithLock(pool, async (client) => {
     const type = String(body && body.type || "");
+    if (authUid) {
+      const requestedOwner = String(body && body.ownerId || "");
+      if (requestedOwner && requestedOwner !== authUid) {
+        throw Object.assign(new Error("owner mismatch"), { status: 403 });
+      }
+      body = Object.assign({}, body || {}, { ownerId: authUid });
+    }
     const id = String(body && body.id || "");
     if (type === "claim-pollination-offer") {
       const hexId = String(body && body.hexId || "");
@@ -495,7 +500,9 @@ async function action(pool, body) {
       const flora = String(body && body.flora || "");
       const startDoy = int(body && body.startDoy);
       const owner = String(body && body.ownerId || "");
-      if (!hexId || flora.isEmpty() || owner.isEmpty()) {
+      if (!hexId || flora.length === 0 || owner.length === 0
+          || band < 0 || band >= catalog.BAND_MIN_LEVEL.length
+          || startDoy < 1 || startDoy > 365) {
         throw Object.assign(new Error("offer claim data required"), { status: 400 });
       }
       const found = await client.query(
@@ -523,6 +530,11 @@ async function action(pool, body) {
       const flora = String(body && body.flora || "");
       const startDoy = int(body && body.startDoy);
       const owner = String(body && body.ownerId || "");
+      if (!owner || !hexId || flora.length === 0
+          || band < 0 || band >= catalog.BAND_MIN_LEVEL.length
+          || startDoy < 1 || startDoy > 365) {
+        return { ok: false, reason: "invalid data" };
+      }
       const result = await client.query(
         `UPDATE pollination_offers
             SET taken=false, claimed_by=NULL, updated_at=now()
@@ -535,7 +547,10 @@ async function action(pool, body) {
     if (type === "take-offer-by-hex") {
       const hexId = String(body && body.hexId || "");
       const band = body && body.band != null ? int(body.band) : -1;
-      if (!hexId) throw Object.assign(new Error("hexId required"), { status: 400 });
+      const owner = String(body && body.ownerId || "");
+      if (!hexId || !owner) {
+        throw Object.assign(new Error("hexId and ownerId required"), { status: 400 });
+      }
       const found = await client.query(
         `SELECT id FROM pollination_offers
           WHERE hex_id=$1 AND taken=false AND expire_epoch_ms>$2
@@ -545,8 +560,8 @@ async function action(pool, body) {
       );
       if (found.rowCount === 0) return { ok: false, reason: "unavailable" };
       await client.query(
-        `UPDATE pollination_offers SET taken=true, updated_at=now() WHERE id=$1`,
-        [found.rows[0].id]
+        `UPDATE pollination_offers SET taken=true, claimed_by=$2, updated_at=now() WHERE id=$1`,
+        [found.rows[0].id, owner]
       );
       return { ok: true, offerId: found.rows[0].id };
     }
@@ -595,12 +610,27 @@ async function action(pool, body) {
       return { ok: result.rowCount > 0 };
     }
     if (type === "take-offer") {
-      const result = await client.query(
-        `UPDATE pollination_offers SET taken=true, updated_at=now()
-         WHERE id=$1 AND taken=false AND expire_epoch_ms>$2 RETURNING *`,
-        [id, nowMs]
+      const owner = String(body.ownerId || "");
+      if (!owner) throw Object.assign(new Error("ownerId required"), { status: 400 });
+      const found = await client.query(
+        `SELECT id,taken,claimed_by FROM pollination_offers
+          WHERE id=$1 FOR UPDATE`,
+        [id]
       );
-      if (result.rowCount === 0) return { ok: false, reason: "unavailable" };
+      if (found.rowCount === 0) return { ok: false, reason: "unavailable" };
+      if (found.rows[0].taken) {
+        return found.rows[0].claimed_by === owner
+          ? { ok: true, alreadyOwned: true, offer: found.rows[0] }
+          : { ok: false, reason: "unavailable" };
+      }
+      if (num(found.rows[0].expire_epoch_ms) <= nowMs) {
+        return { ok: false, reason: "unavailable" };
+      }
+      const result = await client.query(
+        `UPDATE pollination_offers SET taken=true, claimed_by=$2, updated_at=now()
+          WHERE id=$1 RETURNING *`,
+        [id, owner]
+      );
       return { ok: true, offer: result.rows[0] };
     }
     throw Object.assign(new Error("unknown action"), { status: 400 });
@@ -694,7 +724,6 @@ module.exports = {
   start,
   tick,
   action,
-  saveMarketPrices,
   snapshot,
   pickScattered,
   orderCount,
