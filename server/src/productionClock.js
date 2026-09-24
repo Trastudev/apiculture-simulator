@@ -67,7 +67,7 @@ function lerpKnots(doy, knots, values) {
   return values[values.length - 1];
 }
 
-function dueDayKey(timeZone, nowMs) {
+function clockParts(timeZone, nowMs) {
   let parts;
   try {
     parts = new Intl.DateTimeFormat("en-US", {
@@ -89,9 +89,18 @@ function dueDayKey(timeZone, nowMs) {
     }).formatToParts(new Date(nowMs));
   }
   const pick = (type) => Number(parts.find((part) => part.type === type).value);
-  let key = pick("year") * 10000 + pick("month") * 100 + pick("day");
-  if (pick("hour") < PRODUCTION_HOUR) key = addDays(key, -1);
+  return { year: pick("year"), month: pick("month"), day: pick("day"), hour: pick("hour") };
+}
+
+function dueDayKey(timeZone, nowMs) {
+  const clock = clockParts(timeZone, nowMs);
+  let key = clock.year * 10000 + clock.month * 100 + clock.day;
+  if (clock.hour < PRODUCTION_HOUR) key = addDays(key, -1);
   return key;
+}
+
+function productionOpen(timeZone, nowMs) {
+  return clockParts(timeZone, nowMs).hour >= PRODUCTION_HOUR;
 }
 
 function adultsOf(hive) {
@@ -303,11 +312,11 @@ async function tickOwner(pool, ownerId, nowMs = Date.now(), timeZoneId, checkpoi
         [ownerId, due]
       );
       await client.query("COMMIT");
-      return { ok: true, adopted: true, throughDayKey: due, days: [] };
+      return { ok: true, adopted: true, settledDayKey: due, throughDayKey: due, days: [] };
     }
     if (last >= due) {
       await client.query("COMMIT");
-      return { ok: true, adopted: false, throughDayKey: last, days: [] };
+      return { ok: true, adopted: false, settled: true, settledDayKey: last, throughDayKey: last, days: [] };
     }
     const hives = await client.query(
       "SELECT * FROM hives WHERE owner_id = $1 FOR UPDATE",
@@ -365,7 +374,7 @@ async function tickOwner(pool, ownerId, nowMs = Date.now(), timeZoneId, checkpoi
       [ownerId, last]
     );
     await client.query("COMMIT");
-    return { ok: true, adopted: false, throughDayKey: last, days };
+    return { ok: true, adopted: false, settledDayKey: last, throughDayKey: last, days };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -387,12 +396,46 @@ async function reportsSince(pool, ownerId, sinceDayKey) {
   }));
 }
 
+// A partir de las 8:00 locales de cada jugador, cada minuto. Antes de esa hora no
+// se cierra el día. Como mucho dos cálculos a la vez y una tanda por minuto.
+const MAX_PARALLEL = 2;
+const MAX_PER_PASS = 20;
+let ticking = false;
+
 async function tickAll(pool, nowMs = Date.now()) {
-  const players = await pool.query("SELECT id, time_zone_id, last_production_day_key FROM players");
-  for (const player of players.rows) {
-    const due = dueDayKey(player.time_zone_id, nowMs);
-    if (num(player.last_production_day_key) >= due) continue;
-    await tickOwner(pool, player.id, nowMs, player.time_zone_id);
+  if (ticking) return { ok: true, skipped: true, updated: 0 };
+  ticking = true;
+  try {
+    const players = await pool.query(
+      "SELECT id, time_zone_id, last_production_day_key FROM players ORDER BY last_production_day_key ASC, id ASC"
+    );
+    const pending = [];
+    for (const player of players.rows) {
+      if (!productionOpen(player.time_zone_id, nowMs)) continue;
+      const due = dueDayKey(player.time_zone_id, nowMs);
+      if (num(player.last_production_day_key) >= due) continue;
+      pending.push(player);
+    }
+    const batch = pending.slice(0, MAX_PER_PASS);
+    let index = 0;
+    const worker = async () => {
+      while (index < batch.length) {
+        const player = batch[index++];
+        try {
+          await tickOwner(pool, player.id, nowMs, player.time_zone_id);
+        } catch (err) {
+          console.error("producción de", player.id, err.message);
+        }
+      }
+    };
+    const workers = [];
+    for (let i = 0; i < Math.min(MAX_PARALLEL, batch.length); i++) {
+      workers.push(worker());
+    }
+    await Promise.all(workers);
+    return { ok: true, updated: batch.length, waiting: pending.length - batch.length };
+  } finally {
+    ticking = false;
   }
 }
 
