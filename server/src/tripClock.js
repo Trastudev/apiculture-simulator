@@ -220,6 +220,22 @@ function tourLegNear(parsed, fromLat, fromLng, lat, lng) {
   return candidate;
 }
 
+function collectArrivesHome(row) {
+  let parsed;
+  try {
+    parsed = JSON.parse(row.cargo_json || "{}");
+  } catch (err) {
+    return false;
+  }
+  const tour = parsed && parsed._tour;
+  const later = parsed && parsed._stops;
+  if (!Array.isArray(tour) || tour.length < 2) return false;
+  if (Array.isArray(later) && later.length > 0) return false;
+  const back = tour[tour.length - 1];
+  if (!back || back.whTo !== true) return false;
+  return haversineKm(num(row.dest_lat), num(row.dest_lng), num(row.return_lat), num(row.return_lng)) < 0.4;
+}
+
 function applyStored(trip, leg, fromLat, fromLng, toLat, toLng, when) {
   if (!leg || !leg.poly) {
     setGeodesic(trip, fromLat, fromLng, toLat, toLng, when);
@@ -480,6 +496,11 @@ async function advanceCargo(client, row) {
     if (row.kind === "collect" && (await advanceCollectStops(client, row, when))) {
       return;
     }
+    if (row.kind === "collect" && collectArrivesHome(row)) {
+      await settle(client, row, when);
+      await finishCargo(client, row);
+      return;
+    }
     if (row.kind !== "collect") {
       await settle(client, row, when);
     }
@@ -543,7 +564,7 @@ async function clientMayOverwrite(pool, table, id, body) {
   );
   if (completed.rowCount > 0) return false;
   const found = await pool.query(
-    "SELECT start_epoch_ms, origin_lat, origin_lng, dest_lat, dest_lng FROM "
+    "SELECT start_epoch_ms, duration_ms, origin_lat, origin_lng, dest_lat, dest_lng FROM "
       + table + " WHERE id = $1 FOR UPDATE",
     [id]
   );
@@ -552,9 +573,15 @@ async function clientMayOverwrite(pool, table, id, body) {
     // servidor. Un camión activo solo admite correcciones de ruta con el mismo
     // inicio; un giro a U explícito puede actualizar su reloj.
     if (table === "cargo_trips") {
-      return body && body.geometryOnly === true
-        && start === num(found.rows[0].start_epoch_ms)
-        && sameEndpoints(body, found.rows[0]);
+      const row = found.rows[0];
+      const sameStart = start === num(row.start_epoch_ms);
+      if (body && body.geometryOnly === true && sameStart && sameEndpoints(body, row)) {
+        return true;
+      }
+      return body && body.kind === "collect" && sameStart
+        && sameCoordinate(body.originLat, row.origin_lat)
+        && sameCoordinate(body.originLng, row.origin_lng)
+        && num(body.durationMs) >= num(row.duration_ms);
     }
     if (body && body.allowTimingReset === true) {
       return start >= num(found.rows[0].start_epoch_ms);

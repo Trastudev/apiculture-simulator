@@ -90,8 +90,10 @@ function floraForParcel(parcel, band, seed) {
   return pool[floorMod(hash32(`${parcel.id}:flora:${seed}`), pool.length)];
 }
 
-function orderCount(eligible) {
-  return eligible < HEXES_PER_BATCH ? 0 : Math.floor((eligible * ORDERS_PER_BATCH) / HEXES_PER_BATCH);
+function orderCount(eligible, region) {
+  if (eligible < HEXES_PER_BATCH) return 0;
+  const perBatch = region === "za" ? ORDERS_PER_BATCH * 3 : ORDERS_PER_BATCH * 2;
+  return Math.floor((eligible * perBatch) / HEXES_PER_BATCH);
 }
 
 function offerCount(parcelCount, band) {
@@ -397,7 +399,7 @@ async function maintainRegion(client, region, nowMs, dayKey, prices) {
 
   for (let band = 0; band < catalog.BAND_MAX_LEVEL.length; band++) {
     const orderParcels = all.filter((p) => catalog.orderEligible(p, band));
-    const wantOrders = orderCount(orderParcels.length);
+    const wantOrders = orderCount(orderParcels.length, region);
     const openOrders = currentOrders.rows.filter((r) => int(r.band) === band
         && num(r.expire_epoch_ms) > nowMs);
     if (openOrders.length > wantOrders) {

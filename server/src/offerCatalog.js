@@ -99,9 +99,7 @@ function normalizeParcel(region, p) {
   const lng = Number(p.clon);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   const rawElevation = p.elev == null ? NaN : Number(p.elev);
-  const elevation = Number.isFinite(rawElevation)
-    ? rawElevation
-    : (region === "za" ? 800 : region === "mdg" ? 400 : -1);
+  const elevation = Number.isFinite(rawElevation) ? rawElevation : -1;
   const climate = climateFor(region, lat, lng, elevation);
   const nativePool = (NATIVE_POOLS[region] && NATIVE_POOLS[region][climate]) || ["Mil flores"];
   const contractCrops = (CONTRACT_CROPS[region] && CONTRACT_CROPS[region][climate]) || [];
@@ -156,11 +154,13 @@ function highSierra(lat, lon) {
 }
 
 function zaClimate(lat, lon, elev) {
-  const e = Math.max(0, elev < 0 ? 800 : elev);
-  if (e >= 1600) return "HIGHVELD";
+  const known = Number.isFinite(elev) && elev >= 0;
+  const e = known ? elev : 0;
+  if (known && e >= 1600) return "HIGHVELD";
   if (lat <= -32.15 && lon <= 22.2) return "FYNBOS";
-  if (lat <= -30.4 && lon >= 19.0 && lon <= 26.2 && e < 1300) return "KAROO";
-  if (lon >= 29.7 && e < 750) return "SUBTROPICAL";
+  if (lat <= -30.4 && lon >= 19.0 && lon <= 26.2 && (!known || e < 1300)) return "KAROO";
+  // Costa este. Sin cota, 800 m de relleno dejaba esta franja en highveld.
+  if (lon >= 29.7 && (!known || e < 750)) return "SUBTROPICAL";
   if (lat >= -25.6) return "BUSHVELD";
   return "HIGHVELD";
 }
