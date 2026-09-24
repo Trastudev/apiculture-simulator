@@ -1,0 +1,15 @@
+{
+  "name": "apiculture-api",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test",
+    "sync:catalog": "node tools/sync_catalog.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "pg": "^8.13.1"
+  }
+}

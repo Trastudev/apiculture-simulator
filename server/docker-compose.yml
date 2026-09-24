@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: apiculture
+      POSTGRES_USER: apiculture
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apiculture -d apiculture"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  api:
+    build: .
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: apiculture
+      PGUSER: apiculture
+      PGPASSWORD: ${PGPASSWORD}
+      API_TOKEN: ${API_TOKEN}
+      ALLOW_OFFER_IMPORT: ${ALLOW_OFFER_IMPORT:-0}
+      HOST: 0.0.0.0
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
