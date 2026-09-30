@@ -1,64 +1,77 @@
 "use strict";
 
-let initialized = false;
-let firebaseAuth = null;
-let configured = false;
-let requested = false;
+const { OAuth2Client } = require("google-auth-library");
 
-function initialize() {
-  if (initialized) return;
-  initialized = true;
-  const hasCredentials = Boolean(
-    process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-      || process.env.GOOGLE_APPLICATION_CREDENTIALS
-      || process.env.FIREBASE_PROJECT_ID
-  );
-  if (!hasCredentials) return;
-  requested = true;
+const WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID
+  || "1072639985838-u22hlv9vi49qroutsse3aism2oer0el6.apps.googleusercontent.com";
+const ANDROID_CLIENT_ID = process.env.GOOGLE_ANDROID_CLIENT_ID
+  || "1072639985838-vmvj3dfubklvarve0hv0hnpbuuk07en6.apps.googleusercontent.com";
+const AUDIENCES = [WEB_CLIENT_ID, ANDROID_CLIENT_ID].filter((id, index, all) =>
+  id && all.indexOf(id) === index);
+
+let client = null;
+
+function google() {
+  if (!client) client = new OAuth2Client(WEB_CLIENT_ID);
+  return client;
+}
+
+function aliases() {
+  if (!process.env.GOOGLE_UID_ALIASES) return {};
   try {
-    const admin = require("firebase-admin");
-    if (admin.apps.length === 0) {
-      if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-        const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-          projectId: process.env.FIREBASE_PROJECT_ID || serviceAccount.project_id,
-        });
-      } else {
-        admin.initializeApp({
-          credential: admin.credential.applicationDefault(),
-          projectId: process.env.FIREBASE_PROJECT_ID || undefined,
-        });
-      }
-    }
-    firebaseAuth = admin.auth();
-    configured = true;
-    console.log("autenticación Firebase habilitada");
+    const parsed = JSON.parse(process.env.GOOGLE_UID_ALIASES);
+    return parsed && typeof parsed === "object" ? parsed : {};
   } catch (err) {
-    console.error("no se pudo inicializar Firebase Admin:", err.message);
+    return {};
   }
 }
 
-async function verify(req) {
-  initialize();
-  if (!configured || !firebaseAuth) return null;
-  const token = req && req.headers && req.headers["x-firebase-id-token"];
-  if (!token) return null;
+async function verifyToken(token) {
+  if (!token || typeof token !== "string" || token.length > 8192) return null;
   try {
-    const decoded = await firebaseAuth.verifyIdToken(token);
-    return decoded.uid || null;
+    const ticket = await google().verifyIdToken({
+      idToken: token,
+      audience: AUDIENCES,
+    });
+    const payload = ticket.getPayload() || {};
+    const sub = payload.sub || null;
+    if (!sub) return null;
+    return aliases()[sub] || sub;
   } catch (err) {
     return null;
   }
 }
 
+function bearer(req) {
+  const headers = req && req.headers;
+  const header = headers && headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) return "";
+  return header.slice("Bearer ".length).trim();
+}
+
+async function verify(req) {
+  const headers = req && req.headers;
+  const explicit = headers && (headers["x-google-id-token"] || headers["x-firebase-id-token"]);
+  const fromExplicit = await verifyToken(explicit);
+  if (fromExplicit) return fromExplicit;
+  const fromBearer = await verifyToken(bearer(req));
+  return fromBearer;
+}
+
+function webClientId() {
+  return WEB_CLIENT_ID;
+}
+
 function isConfigured() {
-  initialize();
-  return requested;
+  return Boolean(WEB_CLIENT_ID);
 }
 
 function sameUid(authUid, ownerId) {
   return String(authUid || "") === String(ownerId || "");
 }
 
-module.exports = { verify, isConfigured, sameUid };
+function firestore() {
+  return null;
+}
+
+module.exports = { verify, verifyToken, webClientId, isConfigured, sameUid, firestore };
