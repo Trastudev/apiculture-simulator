@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const netWorth = require("./netWorth");
 
 const PRODUCTION_HOUR = 8;
 const balance = JSON.parse(fs.readFileSync(
@@ -128,13 +129,60 @@ function writeAdults(hive, adults) {
   }
 }
 
-function superCapKg(superCount) {
+function superCapKg() {
   const caps = balance.honey.superCapKg;
-  const index = clamp(Math.round(num(superCount)), 0, caps.length - 1);
-  return caps[index];
+  if (!caps || !caps.length) return 60;
+  return caps[caps.length - 1];
 }
 
-function stepHive(hive, dayKey) {
+function dayKeyToIso(dayKey) {
+  const y = Math.floor(dayKey / 10000);
+  const m = Math.floor(dayKey / 100) % 100;
+  const d = dayKey % 100;
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${y}-${pad(m)}-${pad(d)}`;
+}
+
+const precipCache = new Map();
+
+async function precipitationOf(lat, lon, dayKey) {
+  const key = `${Number(lat).toFixed(2)},${Number(lon).toFixed(2)},${dayKey}`;
+  if (precipCache.has(key)) return precipCache.get(key);
+  const date = dayKeyToIso(dayKey);
+  const url = "https://api.open-meteo.com/v1/forecast?latitude=" + encodeURIComponent(lat)
+    + "&longitude=" + encodeURIComponent(lon)
+    + "&daily=precipitation_sum,weather_code,cloud_cover_mean&timezone=Europe%2FMadrid"
+    + "&start_date=" + date + "&end_date=" + date;
+  console.log("Open-Meteo envía GET", url);
+  let observed = { mm: 0, code: null, clouds: null };
+  try {
+    const response = await fetch(url);
+    const text = await response.text();
+    console.log("Open-Meteo responde HTTP", response.status, text.slice(0, 500));
+    if (response.ok) {
+      const body = JSON.parse(text);
+      const mm = body.daily && body.daily.precipitation_sum ? Number(body.daily.precipitation_sum[0]) : 0;
+      const code = body.daily && body.daily.weather_code ? Number(body.daily.weather_code[0]) : null;
+      const clouds = body.daily && body.daily.cloud_cover_mean ? Number(body.daily.cloud_cover_mean[0]) : null;
+      observed = {
+        mm: Number.isFinite(mm) ? mm : 0,
+        code: Number.isFinite(code) ? code : null,
+        clouds: Number.isFinite(clouds) ? clouds : null,
+      };
+      console.log("Open-Meteo día", date, "código", observed.code, "lluvia", observed.mm, "mm nubes", observed.clouds, "%");
+    }
+  } catch (err) {
+    console.error("clima", key, err.message);
+  }
+  precipCache.set(key, observed);
+  return observed;
+}
+
+function rainStopsForage(observed) {
+  return observed.mm >= 5;
+}
+
+function stepHive(hive, dayKey, rainFactor) {
   const pop = balance.population;
   const eggs = balance.eggs;
   const honey = balance.honey;
@@ -169,7 +217,7 @@ function stepHive(hive, dayKey) {
   const noise = honey.nectarNoiseMin
     + uniform01((hive.id || "_") + ":nectar", dayKey) * honey.nectarNoiseSpan;
   const forage = Math.max(0, before * honey.foragerFraction * honey.kgPerForagerFullFlow
-    * (0.55 + 0.45 * (health / 100)) * noise);
+    * (0.55 + 0.45 * (health / 100)) * noise) * (rainFactor == null ? 1 : rainFactor);
   const brood = laid * 21;
   const consumption = honey.consumptionBaseKg
     + before * honey.consumptionPerAdultKg
@@ -179,6 +227,7 @@ function stepHive(hive, dayKey) {
   const stock = clamp(num(hive.honey_production) + net, 0, cap);
   writeAdults(hive, next);
   hive.honey_production = Math.round(stock * 1000) / 1000;
+  alignHoneyStocks(hive);
   hive.last_summary_day_key = dayKey;
   hive.last_summary_honey_kg = Math.round(net * 1000) / 1000;
   hive.last_summary_delta_bees = next - before;
@@ -190,11 +239,51 @@ function stepHive(hive, dayKey) {
     hiveName: hive.name || "",
     floraType: hive.flora_type || "Mil flores",
     honeyKg: hive.last_summary_honey_kg,
+    forageKg: Math.round(forage * 1000) / 1000,
+    consumptionKg: Math.round(consumption * 1000) / 1000,
     workerNet: hive.last_summary_delta_bees,
     eggsLaid: laid,
     beeCount: next,
     honeyStockKg: hive.honey_production,
   };
+}
+
+/** El total de la colmena y el desglose por flora tienen que coincidir. */
+function alignHoneyStocks(hive) {
+  const target = Math.round(num(hive.honey_production) * 1000) / 1000;
+  let stocks = {};
+  if (hive.honey_stocks_json) {
+    try {
+      const parsed = typeof hive.honey_stocks_json === "string"
+        ? JSON.parse(hive.honey_stocks_json)
+        : hive.honey_stocks_json;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        stocks = parsed;
+      }
+    } catch (err) {
+      stocks = {};
+    }
+  }
+  let sum = 0;
+  for (const key of Object.keys(stocks)) {
+    const value = num(stocks[key]);
+    if (value <= 1e-9) delete stocks[key];
+    else sum += value;
+  }
+  if (sum <= 1e-9) {
+    stocks = {};
+    if (target > 1e-9) {
+      stocks[hive.flora_type || "Mil flores"] = target;
+    }
+  } else if (target > 1e-9 && Math.abs(sum - target) > 0.001) {
+    const factor = target / sum;
+    for (const key of Object.keys(stocks)) {
+      const value = Math.round(num(stocks[key]) * factor * 1000) / 1000;
+      if (value <= 1e-9) delete stocks[key];
+      else stocks[key] = value;
+    }
+  }
+  hive.honey_stocks_json = JSON.stringify(stocks);
 }
 
 async function loadPlayer(client, ownerId) {
@@ -206,16 +295,21 @@ async function applyCheckpoint(client, ownerId, throughDayKey, hives) {
   if (Array.isArray(hives)) {
     for (const hive of hives) {
       if (!hive || !hive.id) continue;
+      if (hive.ownerId && String(hive.ownerId) !== String(ownerId)) continue;
+      const existingOwner = await client.query("SELECT owner_id FROM hives WHERE id = $1", [hive.id]);
+      if (existingOwner.rows[0] && String(existingOwner.rows[0].owner_id) !== String(ownerId)) {
+        continue;
+      }
       await client.query(
         `INSERT INTO hives (
             id, owner_id, name, bee_count, health, honey_production, queen_genetic_quality,
-            lat, lng, hex_id, site_id, flora_type, super_count, population_state_json,
+            lat, lng, hex_id, site_id, flora_type, honey_stocks_json, super_count, population_state_json,
             varroa_pct, first_production_day_key, transhumance_arrives_day_key, in_warehouse,
             feed_honey_bonus_multiplier, feed_honey_bonus_end_day_key_exclusive,
             feed_brood_bonus_multiplier, feed_brood_bonus_end_day_key_exclusive,
             varroa_treatment_days_remaining, varroa_rebound_days_remaining, updated_at
           ) VALUES (
-            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,now()
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,now()
           )
           ON CONFLICT (id) DO UPDATE SET
             owner_id = EXCLUDED.owner_id,
@@ -229,6 +323,7 @@ async function applyCheckpoint(client, ownerId, throughDayKey, hives) {
             hex_id = EXCLUDED.hex_id,
             site_id = EXCLUDED.site_id,
             flora_type = EXCLUDED.flora_type,
+            honey_stocks_json = EXCLUDED.honey_stocks_json,
             super_count = EXCLUDED.super_count,
             population_state_json = EXCLUDED.population_state_json,
             varroa_pct = EXCLUDED.varroa_pct,
@@ -244,7 +339,7 @@ async function applyCheckpoint(client, ownerId, throughDayKey, hives) {
             updated_at = now()`,
         [
           hive.id,
-          hive.ownerId || ownerId,
+          ownerId,
           hive.name || null,
           num(hive.beeCount),
           num(hive.health, 100),
@@ -255,6 +350,7 @@ async function applyCheckpoint(client, ownerId, throughDayKey, hives) {
           hive.hexId || null,
           hive.siteId || null,
           hive.floraType || null,
+          hive.honeyStocksJson || null,
           num(hive.superCount),
           hive.populationStateJson || null,
           num(hive.varroaPct),
@@ -307,12 +403,20 @@ async function tickOwner(pool, ownerId, nowMs = Date.now(), timeZoneId, checkpoi
     }
     let last = checkpointDay > 0 ? checkpointDay : num(player.last_production_day_key);
     if (last <= 0) {
-      await client.query(
-        "UPDATE players SET last_production_day_key = $2, updated_at = now() WHERE id = $1",
-        [ownerId, due]
+      const existing = await client.query(
+        "SELECT COUNT(*)::int AS n FROM hives WHERE owner_id = $1",
+        [ownerId]
       );
-      await client.query("COMMIT");
-      return { ok: true, adopted: true, settledDayKey: due, throughDayKey: due, days: [] };
+      const hiveCount = existing.rows[0] ? num(existing.rows[0].n) : 0;
+      if (hiveCount === 0) {
+        await client.query(
+          "UPDATE players SET last_production_day_key = $2, updated_at = now() WHERE id = $1",
+          [ownerId, due]
+        );
+        await client.query("COMMIT");
+        return { ok: true, adopted: true, settledDayKey: due, throughDayKey: due, days: [] };
+      }
+      last = addDays(due, -1);
     }
     if (last >= due) {
       await client.query("COMMIT");
@@ -331,7 +435,9 @@ async function tickOwner(pool, ownerId, nowMs = Date.now(), timeZoneId, checkpoi
         const first = num(hive.first_production_day_key);
         if (first > 0 && last < first) continue;
         if (num(hive.transhumance_arrives_day_key) > last) continue;
-        summaries.push(stepHive(hive, last));
+        const weather = await precipitationOf(hive.lat, hive.lng, last);
+        const rainFactor = rainStopsForage(weather) ? 0 : 1;
+        summaries.push(stepHive(hive, last, rainFactor));
       }
       days.push({ dayKey: last, summaries });
       await client.query(
@@ -346,19 +452,21 @@ async function tickOwner(pool, ownerId, nowMs = Date.now(), timeZoneId, checkpoi
         `UPDATE hives SET
             bee_count = $2,
             honey_production = $3,
-            population_state_json = $4,
-            last_summary_day_key = $5,
-            last_summary_honey_kg = $6,
-            last_summary_delta_bees = $7,
-            last_summary_worker_deaths = $8,
-            last_summary_eggs_laid = $9,
-            last_summary_swarmed = $10,
+            honey_stocks_json = $4,
+            population_state_json = $5,
+            last_summary_day_key = $6,
+            last_summary_honey_kg = $7,
+            last_summary_delta_bees = $8,
+            last_summary_worker_deaths = $9,
+            last_summary_eggs_laid = $10,
+            last_summary_swarmed = $11,
             updated_at = now()
           WHERE id = $1`,
         [
           hive.id,
           hive.bee_count,
           hive.honey_production,
+          hive.honey_stocks_json,
           hive.population_state_json,
           hive.last_summary_day_key,
           hive.last_summary_honey_kg,
@@ -374,6 +482,11 @@ async function tickOwner(pool, ownerId, nowMs = Date.now(), timeZoneId, checkpoi
       [ownerId, last]
     );
     await client.query("COMMIT");
+    try {
+      await netWorth.saveDaily(pool, ownerId, last);
+    } catch (err) {
+      console.error("patrimonio de", ownerId, err.message);
+    }
     return { ok: true, adopted: false, settledDayKey: last, throughDayKey: last, days };
   } catch (err) {
     await client.query("ROLLBACK");
@@ -397,9 +510,8 @@ async function reportsSince(pool, ownerId, sinceDayKey) {
 }
 
 // A partir de las 8:00 locales de cada jugador, cada minuto. Antes de esa hora no
-// se cierra el día. Como mucho dos cálculos a la vez y una tanda por minuto.
-const MAX_PARALLEL = 2;
-const MAX_PER_PASS = 20;
+// se cierra el día. Una pasada cierra a todos los que estén pendientes.
+const MAX_PARALLEL = 4;
 let ticking = false;
 
 async function tickAll(pool, nowMs = Date.now()) {
@@ -416,7 +528,7 @@ async function tickAll(pool, nowMs = Date.now()) {
       if (num(player.last_production_day_key) >= due) continue;
       pending.push(player);
     }
-    const batch = pending.slice(0, MAX_PER_PASS);
+    const batch = pending;
     let index = 0;
     const worker = async () => {
       while (index < batch.length) {
@@ -433,7 +545,7 @@ async function tickAll(pool, nowMs = Date.now()) {
       workers.push(worker());
     }
     await Promise.all(workers);
-    return { ok: true, updated: batch.length, waiting: pending.length - batch.length };
+    return { ok: true, updated: batch.length, waiting: 0 };
   } finally {
     ticking = false;
   }
