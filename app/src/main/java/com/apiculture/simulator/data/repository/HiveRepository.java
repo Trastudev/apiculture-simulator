@@ -12,13 +12,18 @@ import android.os.Looper;
 
 import android.util.Log;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 
 
-
+import com.apiculture.simulator.ApicultureApp;
+import com.apiculture.simulator.data.local.AppDatabase;
 import com.apiculture.simulator.data.local.dao.GameProductionStateDao;
 
 import com.apiculture.simulator.data.local.dao.HiveDailyYieldDao;
@@ -30,12 +35,15 @@ import com.apiculture.simulator.data.local.entity.GameProductionStateEntity;
 import com.apiculture.simulator.data.local.entity.HiveDailyYieldEntity;
 
 import com.apiculture.simulator.data.local.entity.HiveEntity;
+import com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity;
 import com.apiculture.simulator.data.local.entity.HexParcelFloraEntity;
 
 import com.apiculture.simulator.data.remote.OpenMeteoElevation;
 
 import com.apiculture.simulator.domain.market.HoneyMarketEngine;
+import com.apiculture.simulator.domain.parcel.CropTickResult;
 import com.apiculture.simulator.domain.parcel.FloraPlantingProgressRow;
+import com.apiculture.simulator.domain.parcel.HexApiary;
 import com.apiculture.simulator.domain.parcel.HexFlora;
 import com.apiculture.simulator.domain.parcel.HexGeometry;
 import com.apiculture.simulator.domain.parcel.HexParcel;
@@ -44,19 +52,26 @@ import com.apiculture.simulator.domain.parcel.HexParcelPointInPolygon;
 import com.apiculture.simulator.domain.parcel.HexParcelRandomPoint;
 import com.apiculture.simulator.domain.parcel.HexParcelResolve;
 import com.apiculture.simulator.domain.parcel.LocalTangentPlane;
+import com.apiculture.simulator.domain.game.HiveProductionEligibility;
 import com.apiculture.simulator.domain.game.XpAwards;
 import com.apiculture.simulator.domain.game.TranshumanceRules;
 import com.apiculture.simulator.domain.game.GameClock;
 import com.apiculture.simulator.domain.game.DailySkyCondition;
 import com.apiculture.simulator.domain.game.DailyWeather;
+import com.apiculture.simulator.domain.game.GameBalanceConfig;
 import com.apiculture.simulator.domain.game.GameCalendar;
 import com.apiculture.simulator.domain.game.ColonyGameRules;
 import com.apiculture.simulator.domain.game.HiveCareRules;
 import com.apiculture.simulator.domain.game.HiveDailyBiology;
 import com.apiculture.simulator.domain.game.HiveFeedType;
 import com.apiculture.simulator.domain.game.HiveHoneyRules;
+import com.apiculture.simulator.domain.game.HiveHoneyStocks;
 import com.apiculture.simulator.domain.game.Season;
 import com.apiculture.simulator.domain.game.Hemispheres;
+import com.apiculture.simulator.domain.game.HexNectarPool;
+import com.apiculture.simulator.domain.game.NpcContractCatalog;
+import com.apiculture.simulator.domain.game.HexForageSnapshot;
+import com.apiculture.simulator.domain.game.HexFloraSaturation;
 import com.apiculture.simulator.domain.game.HexNectarRules;
 import com.apiculture.simulator.domain.game.GlobalEventEffects;
 import com.apiculture.simulator.domain.market.HoneyMarketEngine;
@@ -94,7 +109,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
+    import java.util.LinkedHashMap;
+    import java.util.LinkedHashSet;
+    import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -174,6 +191,9 @@ public class HiveRepository {
     @Nullable
     private PlayerProgressRepository playerProgressRepository;
 
+    @Nullable
+    private PollinationContractRepository pollinationContractRepository;
+
     private final FirebaseFirestore firestore;
 
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
@@ -181,6 +201,8 @@ public class HiveRepository {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private ListenerRegistration cloudListener;
+    @Nullable
+    private String cloudSyncOwnerId;
 
     private final Context appContext;
 
@@ -284,29 +306,34 @@ public class HiveRepository {
         this.marketRepository = marketRepository;
 
         this.appContext = appContext.getApplicationContext();
+        firestore = null;
+    }
 
-        FirebaseFirestore instance;
+    private void upsertCloud(@NonNull HiveEntity hive) {
+        hiveDao.upsert(hive);
+        publishHiveToServer(hive);
+    }
 
-        try {
-
-            instance = FirebaseFirestore.getInstance();
-
-        } catch (Exception e) {
-
-            instance = null;
-
+    public void publishHiveToServer(@Nullable HiveEntity hive) {
+        if (hive == null || hive.id == null || hive.id.isEmpty() || !GameServer.enabled()) {
+            return;
         }
-
-        firestore = instance;
-
+        try {
+            GameServer.pushHive(hiveJson(hive));
+        } catch (Exception ignored) {
+        }
     }
 
     public void setPlayerProgressRepository(@Nullable PlayerProgressRepository playerProgressRepository) {
         this.playerProgressRepository = playerProgressRepository;
     }
 
-    public void grantXp(@Nullable String uid, int amount) {
-        if (playerProgressRepository == null || uid == null || uid.isEmpty() || amount <= 0) {
+    public void setPollinationContractRepository(@Nullable PollinationContractRepository repo) {
+        this.pollinationContractRepository = repo;
+    }
+
+    public void grantXp(@Nullable String uid, double amount) {
+        if (playerProgressRepository == null || uid == null || uid.isEmpty() || amount <= 1e-12) {
             return;
         }
         playerProgressRepository.addXp(uid, amount);
@@ -350,7 +377,7 @@ public class HiveRepository {
 
                     if (!Objects.equals(jsonBefore, h.populationStateJson) || beesBefore != h.beeCount) {
 
-                        hiveDao.upsert(h);
+                        upsertCloud(h);
 
                         if (firestore != null) {
 
@@ -383,10 +410,10 @@ public class HiveRepository {
     /** Lista local actual (mismo criterio que {@link #getLocalHives}) para refrescar UI sin esperar otra emisión de Room. */
     public List<HiveEntity> getLocalHivesSync(@Nullable String ownerId) {
         if (ownerId == null || ownerId.isEmpty()) {
-            return new java.util.ArrayList<>();
+            return new ArrayList<>();
         }
         List<HiveEntity> list = hiveDao.getHivesByOwnerSync(ownerId);
-        return list != null ? list : new java.util.ArrayList<>();
+        return list != null ? list : new ArrayList<>();
     }
 
 
@@ -458,11 +485,11 @@ public class HiveRepository {
         if (!st.velutinaActive || st.velutinaLossPercent <= 0 || h == null || h.id == null) {
             return false;
         }
-        if (!(appContext instanceof com.apiculture.simulator.ApicultureApp)) {
+        if (!(appContext instanceof ApicultureApp)) {
             return false;
         }
         GlobalEventRepository repo =
-                ((com.apiculture.simulator.ApicultureApp) appContext).getGlobalEventRepository();
+                ((ApicultureApp) appContext).getGlobalEventRepository();
         if (repo == null || repo.alreadyHitByVelutina(h.id, st.velutinaInstanceId)) {
             return false;
         }
@@ -522,7 +549,9 @@ public class HiveRepository {
 
             }
 
-            hiveDao.upsert(hive);
+            ensureHiveSiteId(hive);
+
+            upsertCloud(hive);
 
             if (firestore != null) {
 
@@ -600,6 +629,7 @@ public class HiveRepository {
                 hive.superCount = 0;
 
                 hive.honeyProduction = HiveHoneyRules.STARTER_HIVE_STOCK_KG;
+                HiveHoneyStocks.seedStarter(hive);
 
                 hive.varroaPct = 2.0;
 
@@ -608,6 +638,8 @@ public class HiveRepository {
                 hive.varroaReboundDaysRemaining = 0;
 
                 hive.lastHealthSimDayKey = 0;
+
+                stampFirstProductionDay(hive);
 
                 saveHiveBlocking(hive);
 
@@ -662,7 +694,7 @@ public class HiveRepository {
 
             normalizeBeeCount(h);
 
-            hiveDao.upsert(h);
+            upsertCloud(h);
 
             if (firestore != null) {
 
@@ -759,6 +791,7 @@ public class HiveRepository {
                     throw e;
                 }
                 EventInventoryStore.persistCloud(firestore, ownerId, appContext);
+                grantXp(ownerId, XpAwards.REPLACE_QUEEN);
                 mainHandler.post(() -> onMain.accept(null));
             } catch (Exception e) {
                 Log.e(TAG, "replaceQueenFromInventory", e);
@@ -787,24 +820,52 @@ public class HiveRepository {
                     mainHandler.post(() -> onMain.accept("Esta colmena no es tuya."));
                     return;
                 }
-                if (!EventInventoryStore.tryConsumeFeed(appContext, type.durationDays)) {
+                int feedDays = HiveCareRules.FEED_DAYS;
+                if (!EventInventoryStore.tryConsumeFeed(appContext, 1)) {
                     mainHandler.post(() -> onMain.accept("SHOP_FEED"));
                     return;
+                }
+                if (GameServer.enabled()) {
+                    org.json.JSONObject request = new org.json.JSONObject();
+                    request.put("hiveId", hiveId);
+                    request.put("durationDays", feedDays);
+                    String raw = GameServer.performAction(ownerId, "feed-hive", request);
+                    if (raw == null) {
+                        EventInventoryStore.restoreFeed(appContext, 1);
+                        mainHandler.post(() -> onMain.accept(
+                                "No hay conexión con el servidor. No se puede realizar esta acción."));
+                        return;
+                    }
+                    org.json.JSONObject response = new org.json.JSONObject(raw);
+                    org.json.JSONObject remote = response.optJSONObject("hive");
+                    if (remote != null) {
+                        h.feedHoneyBonusMultiplier = remote.optDouble(
+                                "feedHoneyBonusMultiplier", h.feedHoneyBonusMultiplier);
+                        h.feedHoneyBonusEndDayKeyExclusive = remote.optInt(
+                                "feedHoneyBonusEndDayKeyExclusive", h.feedHoneyBonusEndDayKeyExclusive);
+                        h.feedBroodBonusMultiplier = remote.optDouble(
+                                "feedBroodBonusMultiplier", 1.0);
+                        h.feedBroodBonusEndDayKeyExclusive = remote.optInt(
+                                "feedBroodBonusEndDayKeyExclusive", 0);
+                        saveHiveBlocking(h);
+                        EventInventoryStore.persistCloud(firestore, ownerId, appContext);
+                        mainHandler.post(() -> onMain.accept(null));
+                        return;
+                    }
                 }
                 int today = GameCalendar.toDayKey(LocalDate.now(GameCalendar.userTimeZone()));
                 int start = Math.max(today, h.feedHoneyBonusEndDayKeyExclusive);
                 h.feedHoneyBonusMultiplier = HiveCareRules.FEED_CONSUMPTION_MULTIPLIER;
-                h.feedHoneyBonusEndDayKeyExclusive = start + type.durationDays;
+                h.feedHoneyBonusEndDayKeyExclusive = start + feedDays;
                 h.feedBroodBonusMultiplier = 1.0;
                 h.feedBroodBonusEndDayKeyExclusive = 0;
                 try {
                     saveHiveBlocking(h);
                 } catch (Exception e) {
-                    EventInventoryStore.restoreFeed(appContext, type.durationDays);
+                    EventInventoryStore.restoreFeed(appContext, 1);
                     throw e;
                 }
                 EventInventoryStore.persistCloud(firestore, ownerId, appContext);
-                grantXp(ownerId, XpAwards.FEED);
                 mainHandler.post(() -> onMain.accept(null));
             } catch (Exception e) {
                 Log.e(TAG, "applyHiveFeeding", e);
@@ -816,6 +877,10 @@ public class HiveRepository {
     /** Tratamiento antivarroa de pago: 7 días sin crecimiento y con bajada diaria. */
     public void treatVarroa(String hiveId, String ownerId, Consumer<String> onMain) {
         if (onMain == null) {
+            return;
+        }
+        if (GameServer.enabled() && !GameServer.isAvailable()) {
+            onMain.accept("No hay conexión con el servidor. No se puede realizar esta acción.");
             return;
         }
         ioExecutor.execute(() -> {
@@ -833,7 +898,31 @@ public class HiveRepository {
                     mainHandler.post(() -> onMain.accept("SHOP_TREAT"));
                     return;
                 }
-                h.varroaTreatmentDaysRemaining = HiveCareRules.TREAT_DAYS;
+                if (GameServer.enabled()) {
+                    org.json.JSONObject request = new org.json.JSONObject();
+                    request.put("hiveId", hiveId);
+                    String raw = GameServer.performAction(ownerId, "treat-varroa", request);
+                    if (raw == null) {
+                        EventInventoryStore.restoreTreatment(appContext);
+                        mainHandler.post(() -> onMain.accept(
+                                "No hay conexión con el servidor. No se puede realizar esta acción."));
+                        return;
+                    }
+                    org.json.JSONObject response = new org.json.JSONObject(raw);
+                    org.json.JSONObject remote = response.optJSONObject("hive");
+                    if (remote != null) {
+                        h.varroaTreatmentDaysRemaining = remote.optInt(
+                                "varroaTreatmentDaysRemaining", HiveCareRules.TREAT_DAYS);
+                        h.varroaReboundDaysRemaining = remote.optInt(
+                                "varroaReboundDaysRemaining", 0);
+                        saveHiveBlocking(h);
+                        EventInventoryStore.persistCloud(firestore, ownerId, appContext);
+                        mainHandler.post(() -> onMain.accept(null));
+                        return;
+                    }
+                }
+                h.varroaTreatmentDaysRemaining = Math.max(0, h.varroaTreatmentDaysRemaining)
+                        + HiveCareRules.TREAT_DAYS;
                 h.varroaReboundDaysRemaining = 0;
                 try {
                     saveHiveBlocking(h);
@@ -885,7 +974,7 @@ public class HiveRepository {
 
             h.beeCount = s.totalBees();
 
-            hiveDao.upsert(h);
+            upsertCloud(h);
 
             if (firestore != null) {
 
@@ -963,15 +1052,40 @@ public class HiveRepository {
 
 
 
+    public void sellHive(@NonNull HiveEntity hive, @NonNull Consumer<String> onMainMessage) {
+        if (GameServer.enabled() && !GameServer.isAvailable()) {
+            onMainMessage.accept("No hay conexión con el servidor. No se puede realizar esta acción.");
+            return;
+        }
+        ioExecutor.execute(() -> {
+            try {
+                if (GameServer.enabled() && !GameServer.deleteHive(hive.id)) {
+                    mainHandler.post(() -> onMainMessage.accept(
+                            "No se ha podido vender la colmena. Sigue en el apiario."));
+                    return;
+                }
+                hiveDailyYieldDao.deleteAllForHive(hive.id);
+                hiveDao.deleteById(hive.id);
+                double val = purchasePriceEurosForSuperCount(hive.superCount);
+                double sellPrice = 0.5 * val;
+                String hiveLabel = hive.name == null || hive.name.trim().isEmpty()
+                        ? "colmena" : hive.name.trim();
+                economyRepository.addToBalance(sellPrice, "Venta de la colmena " + hiveLabel);
+                mainHandler.post(() -> onMainMessage.accept(null));
+            } catch (Exception e) {
+                mainHandler.post(() -> onMainMessage.accept(formatThrowableForUser(e)));
+            }
+        });
+    }
+
     public void deleteHive(String hiveId) {
 
-        ioExecutor.execute(() -> hiveDao.deleteById(hiveId));
-
-        if (firestore != null) {
-
-            firestore.collection("hives").document(hiveId).delete();
-
-        }
+        ioExecutor.execute(() -> {
+            if (GameServer.enabled() && !GameServer.deleteHive(hiveId)) {
+                return;
+            }
+            hiveDao.deleteById(hiveId);
+        });
 
     }
 
@@ -979,11 +1093,11 @@ public class HiveRepository {
 
     /**
 
-     * Elimina todas las colmenas del dueño (local + Firestore + {@code dailyYields}), reinicia producción
+     * Partida en blanco: borra colmenas, terrenos, contratos, viajes y comandas del dueño
 
-     * y crea 3 colmenas iniciales (≈25.000 abejas cada una). Detiene la escucha en tiempo real hasta que
+     * (local + nube). Deja 20.000 beecoins y sin terrenos ni colmenas. Detiene la escucha
 
-     * la UI vuelva a llamar a {@link #startRealtimeCloudSync(String)} con el {@code uid} del jugador.
+     * en tiempo real hasta que la UI vuelva a llamar a {@link #startRealtimeCloudSync(String)}.
 
      *
 
@@ -1009,7 +1123,17 @@ public class HiveRepository {
 
                 hexParcelRepository.stopRealtimeCloudSync();
 
+                if (GameServer.enabled()) {
+                    String wipeError = GameServer.wipeOwner(ownerId);
+                    if (wipeError != null) {
+                        throw new IllegalStateException(wipeError);
+                    }
+                }
+
                 economyRepository.applyNewGameEconomyDefaults();
+                FleetStore.clear(appContext, ownerId);
+                RankingCounters.clear(appContext, ownerId);
+                WarehouseHoneyStore.clear(appContext, ownerId);
 
                 List<HiveEntity> old = hiveDao.getHivesByOwnerSync(ownerId);
 
@@ -1025,23 +1149,21 @@ public class HiveRepository {
 
                     deleteFirestoreDailyYieldsBlocking(h.id);
 
-                    if (firestore != null) {
-
-                        try {
-
-                            Tasks.await(firestore.collection("hives").document(h.id).delete());
-
-                        } catch (Exception e) {
-
-                            Log.w(TAG, "No se pudo borrar colmena en la nube: " + h.id, e);
-
-                        }
-
-                    }
+                    GameServer.deleteHive(h.id);
 
                     hiveDao.deleteById(h.id);
 
                 }
+
+                deleteRemainingOwnerHivesFromCloud(ownerId);
+
+                if (pollinationContractRepository != null) {
+                    pollinationContractRepository.removeAllForOwnerBlocking(ownerId);
+                }
+
+                TruckLiveTrips.removeAllForOwnerBlocking(appContext, ownerId);
+                HoneyLogistics.removeAllForOwnerBlocking(appContext, ownerId);
+                HoneyOrderStore.releaseAllClaimedBy(appContext, ownerId);
 
                 int todayKey = GameCalendar.toDayKey(LocalDate.now(GameCalendar.userTimeZone()));
 
@@ -1057,56 +1179,31 @@ public class HiveRepository {
 
                 state.gameStartDayKey = todayKey;
 
-                state.lastProcessedProductionDayKey = 0;
+                state.lastProcessedProductionDayKey = todayKey;
 
                 gameProductionStateDao.insert(state);
 
                 pushProductionStateToFirestore(ownerId, state);
 
                 hexParcelRepository.removeAllOwnershipForOwnerBlocking(ownerId);
-
-                List<HexParcel> parcels = IberiaHexOverlayStore.getParcels(appContext);
-
-                HexParcel starter = HexParcelResolve.findContaining(parcels, 41.3874, 2.1686);
-
-                if (starter == null && parcels != null && !parcels.isEmpty()) {
-                    starter = parcels.get(0);
-                }
-
-                if (starter == null) {
-
-                    throw new IllegalStateException("Aún no hay terrenos cargados. Espera un momento e inténtalo de nuevo.");
-
-                }
-
-                hexParcelRepository.seedOwnershipLocalPreferCloud(starter.id, ownerId,
-                        HexParcelRepository.newDefaultTerrenoName());
-
-                hexFloraRepository.clearAllFlorasForHexBlocking(starter.id);
-                hexFloraRepository.addReadyFloraNowBlocking(starter.id, "Mil flores");
-                hexParcelRepository.syncHexParcelFlorasToCloudBlocking(starter.id);
-                String flora = "Mil flores";
-
-                double[][] coords = new double[3][2];
-
-                starterHiveLatLngOffsets(starter, coords);
-
-                String[] names = new String[]{"Colmena 1", "Colmena 2", "Colmena 3"};
-
-                int[] starterBeeTotals = new int[]{
-                        STARTER_GAME_FIRST_HIVE_TOTAL_BEES,
-                        STARTER_GAME_TOTAL_BEES,
-                        STARTER_GAME_TOTAL_BEES,
-                };
-
-                for (int i = 0; i < 3; i++) {
-
-                    persistHiveForReset(buildStarterHiveEntity(
-
-                            ownerId, names[i], flora, starter.id, coords[i][0], coords[i][1],
-                            starterBeeTotals[i]),
-                            i == 0 ? Integer.valueOf(starterFirstHiveAdultWorkers()) : null);
-
+                HeadquartersStore.clear(appContext, ownerId);
+                MapRegionPrefs.set(appContext, com.apiculture.simulator.domain.map.PlayableMapRegion.IBERIA);
+                appContext.getSharedPreferences("event_claims_v1", android.content.Context.MODE_PRIVATE)
+                        .edit().clear().commit();
+                appContext.getSharedPreferences("event_dismiss_v1", android.content.Context.MODE_PRIVATE)
+                        .edit().clear().commit();
+                appContext.getSharedPreferences("velutina_hits_v1", android.content.Context.MODE_PRIVATE)
+                        .edit().clear().commit();
+                if (firestore != null) {
+                    new AdminGameResetRepository(appContext, firestore).forgetPlayerEventBlocking(ownerId);
+                    Map<String, Object> hq = new HashMap<>();
+                    hq.put("hqIberiaLat", com.google.firebase.firestore.FieldValue.delete());
+                    hq.put("hqIberiaLng", com.google.firebase.firestore.FieldValue.delete());
+                    hq.put("hqZaLat", com.google.firebase.firestore.FieldValue.delete());
+                    hq.put("hqZaLng", com.google.firebase.firestore.FieldValue.delete());
+                    hq.put("hqMdgLat", com.google.firebase.firestore.FieldValue.delete());
+                    hq.put("hqMdgLng", com.google.firebase.firestore.FieldValue.delete());
+                    Tasks.await(firestore.collection("users").document(ownerId).set(hq, SetOptions.merge()));
                 }
 
                 mainHandler.post(() -> onMainMessage.accept(null));
@@ -1127,40 +1224,45 @@ public class HiveRepository {
 
 
 
-    private void deleteFirestoreDailyYieldsBlocking(String hiveId) {
-
-        if (firestore == null || hiveId == null) {
-
+    private void deleteRemainingOwnerHivesFromCloud(String ownerId) {
+        if (firestore == null || ownerId == null || ownerId.isEmpty()) {
             return;
-
         }
+        firestore.collection("hives")
+                .whereEqualTo("ownerId", ownerId)
+                .get()
+                .addOnSuccessListener(qs -> {
+                    if (qs == null) {
+                        return;
+                    }
+                    for (QueryDocumentSnapshot doc : qs) {
+                        deleteFirestoreDailyYieldsBlocking(doc.getId());
+                        doc.getReference().delete()
+                                .addOnFailureListener(e ->
+                                        Log.w(TAG, "No se pudo borrar colmena residual: " + doc.getId(), e));
+                        hiveDao.deleteById(doc.getId());
+                    }
+                })
+                .addOnFailureListener(e -> Log.w(TAG, "Consulta de limpieza hives omitida", e));
+    }
 
-        try {
-
-            QuerySnapshot qs = Tasks.await(firestore.collection("hives").document(hiveId)
-
-                    .collection("dailyYields").get());
-
-            for (QueryDocumentSnapshot doc : qs) {
-
-                try {
-
-                    Tasks.await(doc.getReference().delete());
-
-                } catch (Exception e) {
-
-                    Log.w(TAG, "No se pudo borrar dailyYields/" + doc.getId(), e);
-
-                }
-
-            }
-
-        } catch (Exception e) {
-
-            Log.w(TAG, "Listado/borrado dailyYields omitido para " + hiveId, e);
-
+    private void deleteFirestoreDailyYieldsBlocking(String hiveId) {
+        if (firestore == null || hiveId == null) {
+            return;
         }
-
+        firestore.collection("hives").document(hiveId)
+                .collection("dailyYields").get()
+                .addOnSuccessListener(qs -> {
+                    if (qs == null) {
+                        return;
+                    }
+                    for (QueryDocumentSnapshot doc : qs) {
+                        doc.getReference().delete()
+                                .addOnFailureListener(e ->
+                                        Log.w(TAG, "No se pudo borrar dailyYields/" + doc.getId(), e));
+                    }
+                })
+                .addOnFailureListener(e -> Log.w(TAG, "Listado/borrado dailyYields omitido para " + hiveId, e));
     }
 
 
@@ -1193,7 +1295,7 @@ public class HiveRepository {
 
         hive.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(hive.lat, hive.lng);
 
-        hiveDao.upsert(hive);
+        upsertCloud(hive);
 
         if (firestore != null) {
 
@@ -1282,6 +1384,7 @@ public class HiveRepository {
         hive.superCount = 0;
 
         hive.honeyProduction = HiveHoneyRules.STARTER_HIVE_STOCK_KG;
+        HiveHoneyStocks.seedStarter(hive);
 
         hive.varroaPct = 2.0;
 
@@ -1311,6 +1414,8 @@ public class HiveRepository {
 
         HiveHoneyRules.clampHoneyStockToCap(hive);
 
+        stampFirstProductionDay(hive);
+
         return hive;
 
     }
@@ -1337,6 +1442,16 @@ public class HiveRepository {
      */
     public void tickDailyProductionForOwner(String ownerId,
             Consumer<TickAppliedDayResult> onMainThread) {
+        tickDailyProductionForOwner(ownerId, null, onMainThread);
+    }
+
+    /**
+     * @param onWorkStartedOnMain si hay días pendientes, se publica en el hilo principal
+     *                            justo antes de aplicarlos (p. ej. diálogo de cálculo).
+     */
+    public void tickDailyProductionForOwner(String ownerId,
+            Runnable onWorkStartedOnMain,
+            Consumer<TickAppliedDayResult> onMainThread) {
 
         if (ownerId == null || ownerId.isEmpty()) {
 
@@ -1356,7 +1471,7 @@ public class HiveRepository {
 
                 List<DailyTickSummary> appliedDays = new ArrayList<>();
 
-                tickDailyProductionForOwnerSync(ownerId, appliedDays);
+                tickDailyProductionForOwnerSync(ownerId, appliedDays, onWorkStartedOnMain);
 
                 if (onMainThread == null) {
 
@@ -1377,6 +1492,7 @@ public class HiveRepository {
                 mainHandler.post(() -> onMainThread.accept(result));
 
             } catch (RuntimeException e) {
+                Log.w(TAG, "No se pudo completar el tick diario de producción", e);
 
                 if (onMainThread != null) {
 
@@ -1434,11 +1550,7 @@ public class HiveRepository {
 
                     LocalDate gameStart = GameCalendar.fromDayKey(state.gameStartDayKey);
 
-                    LocalDate lastProcessed = state.lastProcessedProductionDayKey == 0
-
-                            ? gameStart.minusDays(1)
-
-                            : GameCalendar.fromDayKey(state.lastProcessedProductionDayKey);
+                    LocalDate lastProcessed = lastClosedProductionDay(state);
 
                     LocalDate next = lastProcessed.plusDays(1);
 
@@ -1456,7 +1568,7 @@ public class HiveRepository {
 
                     } else {
 
-                        applyProductionForCalendarDay(ownerId, next, state);
+                        applyProductionForCalendarDay(ownerId, next, state, new double[2]);
 
                         msg = "Producción simulada · " + next.format(df);
 
@@ -1549,6 +1661,40 @@ public class HiveRepository {
         });
     }
 
+    /** Miel diaria de todas las colmenas, 7 días hasta el último día simulado. Índice 0 = el más antiguo. */
+    public void loadWeeklyHoney(String ownerId, java.util.function.Consumer<double[]> onMain) {
+        if (onMain == null) {
+            return;
+        }
+        ioExecutor.execute(() -> {
+            double[] days = new double[7];
+            java.time.ZoneId z = GameCalendar.userTimeZone();
+            java.time.LocalDate end = java.time.LocalDate.now(z);
+            if (ownerId != null && !ownerId.isEmpty()) {
+                GameProductionStateEntity state = gameProductionStateDao.getByOwner(ownerId);
+                int last = state != null ? state.lastProcessedProductionDayKey : 0;
+                end = closedChartEnd(last);
+                int from = GameCalendar.toDayKey(end.minusDays(6));
+                int to = GameCalendar.toDayKey(end);
+                java.util.List<com.apiculture.simulator.data.local.dao.DayHoneyTotal> rows =
+                        hiveDailyYieldDao.sumHoneyByDay(ownerId, from, to);
+                if (rows != null) {
+                    for (com.apiculture.simulator.data.local.dao.DayHoneyTotal row : rows) {
+                        if (row == null) {
+                            continue;
+                        }
+                        long index = java.time.temporal.ChronoUnit.DAYS.between(
+                                end.minusDays(6), GameCalendar.fromDayKey(row.dayKey));
+                        if (index >= 0 && index < 7) {
+                            days[(int) index] = Math.max(0, row.kg);
+                        }
+                    }
+                }
+            }
+            mainHandler.post(() -> onMain.accept(days));
+        });
+    }
+
     /**
      * Últimos 7 días de calendario incluyendo hoy (índice 0 = el más antiguo).
      */
@@ -1576,7 +1722,8 @@ public class HiveRepository {
 
         int lastProcessedKey = state != null ? state.lastProcessedProductionDayKey : 0;
 
-        LocalDate chartEnd = GameCalendar.uiDateForLastProcessed(lastProcessedKey);
+        LocalDate chartEnd = closedChartEnd(lastProcessedKey);
+        fillMissingYieldsFromServer(ownerId, GameCalendar.toDayKey(chartEnd.minusDays(7)));
 
         HiveEntity hive = hiveDao.getHiveByIdSync(hiveId);
         HivePopulationState popEst = null;
@@ -1606,6 +1753,28 @@ public class HiveRepository {
             int dayKey = GameCalendar.toDayKey(d);
 
             HiveDailyYieldEntity row = hiveDailyYieldDao.getYield(hiveId, dayKey);
+            if (row == null || (Math.abs(row.kg) <= 1e-9 && row.forageKg <= 1e-9 && row.eggsLaid == 0)) {
+                HiveDailyYieldEntity cloud = readFirestoreDailyYieldBlocking(hiveId, dayKey);
+                if (cloud != null && (Math.abs(cloud.kg) > 1e-9 || cloud.forageKg > 1e-9
+                        || cloud.eggsLaid > 0 || cloud.workerNetDelta != 0)) {
+                    hiveDailyYieldDao.insert(cloud);
+                    row = cloud;
+                }
+            }
+            if ((row == null || (Math.abs(row.kg) <= 1e-9 && row.forageKg <= 1e-9))
+                    && hive != null && hive.lastSummaryDayKey == dayKey
+                    && Math.abs(hive.lastSummaryHoneyKg) > 1e-9) {
+                HiveDailyYieldEntity fromHive = new HiveDailyYieldEntity();
+                fromHive.hiveId = hiveId;
+                fromHive.dayKey = dayKey;
+                fromHive.kg = hive.lastSummaryHoneyKg;
+                fromHive.workerNetDelta = hive.lastSummaryDeltaBees;
+                fromHive.eggsLaid = hive.lastSummaryEggsLaid;
+                fromHive.consumptionKg = row != null ? row.consumptionKg : 0.0;
+                fromHive.forageKg = 0.0;
+                hiveDailyYieldDao.insert(fromHive);
+                row = fromHive;
+            }
 
             honey[i] = row != null ? row.kg : 0.0;
 
@@ -1645,7 +1814,7 @@ public class HiveRepository {
 
             s.gameStartDayKey = GameCalendar.toDayKey(LocalDate.now(GameCalendar.userTimeZone()));
 
-            s.lastProcessedProductionDayKey = 0;
+            s.lastProcessedProductionDayKey = s.gameStartDayKey;
 
             gameProductionStateDao.insert(s);
 
@@ -1655,6 +1824,39 @@ public class HiveRepository {
 
         return s;
 
+    }
+
+    private static void stampFirstProductionDay(HiveEntity hive) {
+        if (hive == null) {
+            return;
+        }
+        hive.firstProductionDayKey = HiveProductionEligibility.firstDayAtNextProduction(
+                java.time.ZonedDateTime.now(GameCalendar.userTimeZone()));
+    }
+
+    /**
+     * Último día que ya se puede pintar: el día cerrado a las 8:00, que es el anterior.
+     * El día civil en curso no entra hasta el corte de las 8:00 del día siguiente.
+     */
+    private static LocalDate closedChartEnd(int lastProcessedKey) {
+        LocalDate closed = GameCalendar.fromDayKey(GameCalendar.dueProductionDayKey()).minusDays(1);
+        if (lastProcessedKey > 0) {
+            LocalDate last = GameCalendar.fromDayKey(lastProcessedKey);
+            if (last.isBefore(closed)) {
+                return last;
+            }
+        }
+        return closed;
+    }
+
+    /**
+     * El día de inicio de partida no produce: {@code lastProcessed == 0} cuenta como ya cerrado.
+     */
+    private static LocalDate lastClosedProductionDay(GameProductionStateEntity state) {
+        if (state.lastProcessedProductionDayKey == 0) {
+            return GameCalendar.fromDayKey(state.gameStartDayKey);
+        }
+        return GameCalendar.fromDayKey(state.lastProcessedProductionDayKey);
     }
 
     /**
@@ -1714,9 +1916,9 @@ public class HiveRepository {
             m.put("lastProcessedProductionDayKey", state.lastProcessedProductionDayKey);
             m.put("gameRealTimeAnchorEpochMs", state.gameRealTimeAnchorEpochMs);
             m.put("lastProductionAt", FieldValue.serverTimestamp());
-            Tasks.await(firestore.collection("users").document(ownerId)
+            firestore.collection("users").document(ownerId)
                     .collection("meta").document("productionState")
-                    .set(m, SetOptions.merge()));
+                    .set(m, SetOptions.merge());
         } catch (Exception ignored) {
         }
     }
@@ -1773,19 +1975,302 @@ public class HiveRepository {
         return byHive;
     }
 
-    private static Map<String, Integer> countHivesOnHexFlora(List<HiveEntity> hives) {
-        Map<String, Integer> n = new HashMap<>();
-        if (hives == null) {
-            return n;
+    /**
+     * Sube las colmenas y deja que el servidor avance los días de producción y el saldo.
+     * @return false si el servidor no respondió y hay que calcular en el teléfono.
+     */
+    private boolean applyAuthoritativeProduction(String ownerId, GameProductionStateEntity state,
+            List<DailyTickSummary> appliedDaysOut, Runnable onWorkStartedOnMain) {
+        try {
+            List<HiveEntity> local = hiveDao.getHivesByOwnerSync(ownerId);
+            JSONArray payload = new JSONArray();
+            if (local != null) {
+                for (HiveEntity hive : local) {
+                    if (hive == null || hive.id == null || hive.id.isEmpty()) continue;
+                    payload.put(hiveJson(hive));
+                }
+            }
+            int due = GameCalendar.dueProductionDayKey();
+            int shown = productionShownDay(ownerId);
+            int since = shown > 0 && shown < due
+                    ? shown
+                    : GameCalendar.toDayKey(GameCalendar.fromDayKey(due).minusDays(1));
+            Log.i(TAG, "production post since=" + since
+                    + " shown=" + shown
+                    + " due=" + due
+                    + " upload=" + productionUploadPending(ownerId));
+            String reportText = GameServer.runProductionClock(ownerId, payload.toString(),
+                    java.time.ZoneId.systemDefault().getId(),
+                    since,
+                    productionUploadPending(ownerId));
+            if (reportText == null) {
+                Log.w(TAG, "production post sin respuesta");
+                return false;
+            }
+            markProductionUploadPending(ownerId, false);
+            JSONObject report = new JSONObject(reportText);
+            JSONArray hives = report.optJSONArray("hives");
+            if (hives != null && local != null) {
+                for (int i = 0; i < hives.length(); i++) {
+                    JSONObject row = hives.optJSONObject(i);
+                    if (row == null) continue;
+                    HiveEntity hive = findHive(local, row.optString("id", ""));
+                    if (hive == null) continue;
+                    hive.beeCount = row.optInt("beeCount", hive.beeCount);
+                    hive.honeyProduction = row.optDouble("honeyProduction", hive.honeyProduction);
+                    if (row.has("honeyStocksJson") && !row.isNull("honeyStocksJson")) {
+                        String stocks = row.optString("honeyStocksJson", "");
+                        if (!stocks.isEmpty()) {
+                            hive.honeyStocksJson = stocks;
+                        }
+                    }
+                    HiveHoneyStocks.ensureSeeded(hive);
+                    hive.populationStateJson = row.optString("populationStateJson", hive.populationStateJson);
+                    hive.lastSummaryDayKey = row.optInt("lastSummaryDayKey", hive.lastSummaryDayKey);
+                    hive.lastSummaryHoneyKg = row.optDouble("lastSummaryHoneyKg", hive.lastSummaryHoneyKg);
+                    hive.lastSummaryDeltaBees = row.optInt("lastSummaryDeltaBees", hive.lastSummaryDeltaBees);
+                    hive.lastSummaryWorkerDeaths = row.optInt("lastSummaryWorkerDeaths", hive.lastSummaryWorkerDeaths);
+                    hive.lastSummaryEggsLaid = row.optInt("lastSummaryEggsLaid", hive.lastSummaryEggsLaid);
+                    hive.lastSummarySwarmed = row.optBoolean("lastSummarySwarmed", hive.lastSummarySwarmed);
+                    upsertCloud(hive);
+                }
+            }
+            int through = report.optInt("settledDayKey",
+                    report.optInt("throughDayKey", state.lastProcessedProductionDayKey));
+            if (through > 0) {
+                state.lastProcessedProductionDayKey = Math.max(state.lastProcessedProductionDayKey, through);
+                gameProductionStateDao.update(state);
+                pushProductionStateToFirestore(ownerId, state);
+                markProductionSettledDay(ownerId, through);
+            }
+            JSONArray days = report.optJSONArray("days");
+            Log.i(TAG, "production reply through=" + through
+                    + " hives=" + (hives == null ? 0 : hives.length())
+                    + " days=" + (days == null ? 0 : days.length()));
+            if (days == null || days.length() == 0) {
+                if (!hivesCaughtUp(ownerId, due)) {
+                    Log.w(TAG, "production reply sin días y colmenas por detrás de " + due);
+                    return false;
+                }
+                return true;
+            }
+            int seenThrough = productionShownDay(ownerId);
+            boolean unseen = false;
+            for (int i = 0; i < days.length(); i++) {
+                JSONObject day = days.optJSONObject(i);
+                if (day == null) {
+                    continue;
+                }
+                int dayKey = day.optInt("dayKey", 0);
+                JSONArray rows = day.optJSONArray("summaries");
+                if (dayKey > seenThrough && rows != null && rows.length() > 0) {
+                    unseen = true;
+                    break;
+                }
+            }
+            if (unseen && onWorkStartedOnMain != null) {
+                mainHandler.post(onWorkStartedOnMain);
+            }
+            for (int i = 0; i < days.length(); i++) {
+                JSONObject day = days.optJSONObject(i);
+                if (day == null) continue;
+                int dayKey = day.optInt("dayKey", through);
+                List<HiveDayStartupSummary> summaries = new ArrayList<>();
+                int swarms = 0;
+                JSONArray rows = day.optJSONArray("summaries");
+                if (rows != null) {
+                    for (int j = 0; j < rows.length(); j++) {
+                        JSONObject row = rows.optJSONObject(j);
+                        if (row == null) continue;
+                        rememberServerYield(row, dayKey);
+                        if (dayKey <= seenThrough) {
+                            continue;
+                        }
+                        boolean swarmed = row.optBoolean("swarmed", false);
+                        if (swarmed) swarms++;
+                        summaries.add(new HiveDayStartupSummary(
+                                row.optString("hiveName", ""),
+                                row.optDouble("honeyKg", 0),
+                                row.optString("floraType", ""),
+                                row.optInt("workerNet", 0),
+                                row.optInt("eggsLaid", 0),
+                                0,
+                                0,
+                                swarmed,
+                                false,
+                                false));
+                    }
+                }
+                if (dayKey > seenThrough && !summaries.isEmpty()) {
+                    appliedDaysOut.add(new DailyTickSummary(
+                            dayKey, summaries, 0, 0, swarms));
+                    markProductionShownDay(ownerId, dayKey);
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            Log.w(TAG, "No se pudo aplicar la producción del servidor", e);
+            return false;
         }
-        for (HiveEntity h : hives) {
-            String hex = h.hexId != null ? h.hexId : "_";
-            String flora = HoneyMarketEngine.canonicalFloraKey(h.floraType);
-            String k = hex + "|" + flora;
-            Integer cur = n.get(k);
-            n.put(k, cur == null ? 1 : cur + 1);
+    }
+
+    @NonNull
+    private static JSONObject hiveJson(@NonNull HiveEntity hive) throws org.json.JSONException {
+        JSONObject o = new JSONObject();
+        o.put("id", hive.id);
+        o.put("ownerId", hive.ownerId);
+        o.put("name", hive.name);
+        o.put("beeCount", hive.beeCount);
+        o.put("health", hive.health);
+        o.put("honeyProduction", hive.honeyProduction);
+        o.put("queenGeneticQuality", hive.queenGeneticQuality);
+        o.put("lat", hive.lat);
+        o.put("lng", hive.lng);
+        o.put("hexId", hive.hexId);
+        o.put("siteId", hive.siteId);
+        o.put("floraType", hive.floraType);
+        o.put("honeyStocksJson", hive.honeyStocksJson);
+        o.put("superCount", hive.superCount);
+        o.put("populationStateJson", hive.populationStateJson);
+        o.put("varroaPct", hive.varroaPct);
+        o.put("firstProductionDayKey", hive.firstProductionDayKey);
+        o.put("transhumanceArrivesDayKey", hive.transhumanceArrivesDayKey);
+        o.put("inWarehouse", hive.inWarehouse);
+        o.put("feedHoneyBonusMultiplier", hive.feedHoneyBonusMultiplier);
+        o.put("feedHoneyBonusEndDayKeyExclusive", hive.feedHoneyBonusEndDayKeyExclusive);
+        o.put("feedBroodBonusMultiplier", hive.feedBroodBonusMultiplier);
+        o.put("feedBroodBonusEndDayKeyExclusive", hive.feedBroodBonusEndDayKeyExclusive);
+        o.put("varroaTreatmentDaysRemaining", hive.varroaTreatmentDaysRemaining);
+        o.put("varroaReboundDaysRemaining", hive.varroaReboundDaysRemaining);
+        o.put("reserves", hive.reserves);
+        o.put("queenAgeDays", hive.queenAgeDays);
+        o.put("elevationMeters", hive.elevationMeters);
+        o.put("lastHealthSimDayKey", hive.lastHealthSimDayKey);
+        o.put("lastSummaryDayKey", hive.lastSummaryDayKey);
+        o.put("lastSummaryHoneyKg", hive.lastSummaryHoneyKg);
+        o.put("lastSummaryDeltaBees", hive.lastSummaryDeltaBees);
+        o.put("lastSummaryDeltaHealth", hive.lastSummaryDeltaHealth);
+        o.put("lastSummaryDeltaVarroa", hive.lastSummaryDeltaVarroa);
+        o.put("lastSummaryWorkerDeaths", hive.lastSummaryWorkerDeaths);
+        o.put("lastSummaryWorkerEmergences", hive.lastSummaryWorkerEmergences);
+        o.put("lastSummaryEggsLaid", hive.lastSummaryEggsLaid);
+        o.put("lastSummarySwarmed", hive.lastSummarySwarmed);
+        o.put("pendingContractHexId", hive.pendingContractHexId);
+        o.put("pendingContractDayKey", hive.pendingContractDayKey);
+        o.put("contractId", hive.contractId);
+        o.put("contractOriginHexId", hive.contractOriginHexId);
+        o.put("contractOriginFlora", hive.contractOriginFlora);
+        o.put("contractOriginLat", hive.contractOriginLat);
+        o.put("contractOriginLng", hive.contractOriginLng);
+        o.put("returnToWarehouse", hive.returnToWarehouse);
+        return o;
+    }
+
+    @Nullable
+    private static HiveEntity hiveFromServer(@Nullable org.json.JSONObject row) {
+        if (row == null) {
+            return null;
         }
-        return n;
+        String id = row.optString("id", "");
+        if (id.isEmpty()) {
+            return null;
+        }
+        HiveEntity hive = new HiveEntity();
+        hive.id = id;
+        hive.ownerId = row.optString("ownerId", "");
+        hive.name = row.optString("name", "");
+        hive.beeCount = row.optInt("beeCount", 0);
+        hive.health = row.optInt("health", 100);
+        hive.honeyProduction = row.optDouble("honeyProduction", 0);
+        hive.reserves = row.optInt("reserves", 0);
+        hive.queenAgeDays = row.optInt("queenAgeDays", 0);
+        hive.queenGeneticQuality = row.optInt("queenGeneticQuality", 0);
+        hive.lat = row.optDouble("lat", 0);
+        hive.lng = row.optDouble("lng", 0);
+        hive.hexId = row.optString("hexId", "");
+        hive.siteId = row.optString("siteId", "");
+        hive.elevationMeters = row.optInt("elevationMeters", -1);
+        hive.floraType = row.optString("floraType", "");
+        hive.honeyStocksJson = row.optString("honeyStocksJson", "");
+        hive.superCount = row.optInt("superCount", 0);
+        hive.populationStateJson = row.optString("populationStateJson", "");
+        hive.varroaPct = row.optDouble("varroaPct", 0);
+        hive.varroaTreatmentDaysRemaining = row.optInt("varroaTreatmentDaysRemaining", 0);
+        hive.varroaReboundDaysRemaining = row.optInt("varroaReboundDaysRemaining", 0);
+        hive.lastHealthSimDayKey = row.optInt("lastHealthSimDayKey", 0);
+        hive.firstProductionDayKey = row.optInt("firstProductionDayKey", 0);
+        hive.lastSummaryDayKey = row.optInt("lastSummaryDayKey", 0);
+        hive.lastSummaryHoneyKg = row.optDouble("lastSummaryHoneyKg", 0);
+        hive.lastSummaryDeltaBees = row.optInt("lastSummaryDeltaBees", 0);
+        hive.lastSummaryDeltaHealth = row.optInt("lastSummaryDeltaHealth", 0);
+        hive.lastSummaryDeltaVarroa = row.optDouble("lastSummaryDeltaVarroa", 0);
+        hive.lastSummaryWorkerDeaths = row.optInt("lastSummaryWorkerDeaths", 0);
+        hive.lastSummaryWorkerEmergences = row.optInt("lastSummaryWorkerEmergences", 0);
+        hive.lastSummaryEggsLaid = row.optInt("lastSummaryEggsLaid", 0);
+        hive.lastSummarySwarmed = row.optBoolean("lastSummarySwarmed", false);
+        hive.feedHoneyBonusEndDayKeyExclusive = row.optInt("feedHoneyBonusEndDayKeyExclusive", 0);
+        hive.feedHoneyBonusMultiplier = row.optDouble("feedHoneyBonusMultiplier", 1);
+        hive.feedBroodBonusEndDayKeyExclusive = row.optInt("feedBroodBonusEndDayKeyExclusive", 0);
+        hive.feedBroodBonusMultiplier = row.optDouble("feedBroodBonusMultiplier", 1);
+        hive.transhumanceArrivesDayKey = row.optInt("transhumanceArrivesDayKey", 0);
+        hive.pendingContractHexId = blankJson(row, "pendingContractHexId");
+        hive.pendingContractDayKey = row.optInt("pendingContractDayKey", 0);
+        hive.contractId = blankJson(row, "contractId");
+        hive.contractOriginHexId = blankJson(row, "contractOriginHexId");
+        hive.contractOriginFlora = blankJson(row, "contractOriginFlora");
+        hive.contractOriginLat = row.optDouble("contractOriginLat", 0);
+        hive.contractOriginLng = row.optDouble("contractOriginLng", 0);
+        hive.inWarehouse = row.optBoolean("inWarehouse", false);
+        hive.returnToWarehouse = row.optBoolean("returnToWarehouse", false);
+        return hive;
+    }
+
+    /** org.json convierte un JSON null en el texto "null". Eso no es un contrato. */
+    @NonNull
+    private static String blankJson(@Nullable org.json.JSONObject row, @NonNull String key) {
+        if (row == null || row.isNull(key)) {
+            return "";
+        }
+        String value = row.optString(key, "");
+        if (value == null || value.equals("null")) {
+            return "";
+        }
+        return value;
+    }
+
+    private void pullHivesFromServer(@NonNull String ownerId) {
+        org.json.JSONArray rows = GameServer.hives(ownerId);
+        if (rows == null) {
+            return;
+        }
+        for (int i = 0; i < rows.length(); i++) {
+            HiveEntity hive = hiveFromServer(rows.optJSONObject(i));
+            if (hive == null || hive.id == null || !ownerId.equals(hive.ownerId)) {
+                continue;
+            }
+            hiveDao.upsert(hive);
+        }
+        Set<String> cloudIds = new HashSet<>();
+        for (int i = 0; i < rows.length(); i++) {
+            org.json.JSONObject row = rows.optJSONObject(i);
+            if (row == null) {
+                continue;
+            }
+            String id = row.optString("id", "");
+            if (!id.isEmpty()) {
+                cloudIds.add(id);
+            }
+        }
+        pruneLocalHivesNotInCloud(ownerId, cloudIds);
+        pruneForeignHives(ownerId);
+    }
+
+    @Nullable
+    private static HiveEntity findHive(@NonNull List<HiveEntity> hives, @NonNull String id) {
+        for (HiveEntity hive : hives) {
+            if (hive != null && id.equals(hive.id)) return hive;
+        }
+        return null;
     }
 
     /**
@@ -1797,9 +2282,12 @@ public class HiveRepository {
      * @param appliedDaysOut se vacía al inicio; recibe un {@link DailyTickSummary} por cada día con colmenas
      *                       y datos de resumen (orden cronológico).
      */
-    private void tickDailyProductionForOwnerSync(String ownerId, List<DailyTickSummary> appliedDaysOut) {
+    private void tickDailyProductionForOwnerSync(String ownerId, List<DailyTickSummary> appliedDaysOut,
+            Runnable onWorkStartedOnMain) {
 
         appliedDaysOut.clear();
+
+        GameBalanceConfig.load(appContext);
 
         ZoneId z = GameCalendar.userTimeZone();
 
@@ -1819,15 +2307,69 @@ public class HiveRepository {
 
         }
 
+        if (GameServer.enabled()) {
+            int due = GameCalendar.dueProductionDayKey();
+            if (state.lastProcessedProductionDayKey >= due) {
+                markProductionSettledDay(ownerId, state.lastProcessedProductionDayKey);
+            }
+            if (!productionUploadPending(ownerId) && productionShownDay(ownerId) >= due
+                    && hivesCaughtUp(ownerId, due)) {
+                Log.i(TAG, "production skip: día " + due + " ya aplicado en el teléfono");
+                return;
+            }
+            Log.i(TAG, "production ask due=" + due
+                    + " local=" + state.lastProcessedProductionDayKey
+                    + " settled=" + productionSettledDay(ownerId)
+                    + " caughtUp=" + hivesCaughtUp(ownerId, due));
+            if (applyAuthoritativeProduction(ownerId, state, appliedDaysOut, onWorkStartedOnMain)) {
+                return;
+            }
+        }
+
         LocalDate gameStart = GameCalendar.fromDayKey(state.gameStartDayKey);
 
-        LocalDate lastProcessed = state.lastProcessedProductionDayKey == 0
-
-                ? gameStart.minusDays(1)
-
-                : GameCalendar.fromDayKey(state.lastProcessedProductionDayKey);
+        LocalDate lastProcessed = lastClosedProductionDay(state);
 
         LocalDate cursor = lastProcessed.plusDays(1);
+
+        if (onWorkStartedOnMain != null) {
+            LocalDate peek = cursor;
+            boolean pendingCalendarWork = false;
+            while (!peek.isAfter(today)) {
+                LocalDateTime deadline = peek.atTime(GameCalendar.PRODUCTION_HOUR, GameCalendar.PRODUCTION_MINUTE);
+                if (now.isBefore(deadline)) {
+                    break;
+                }
+                // También se avisa cuando solo hay que avanzar el estado, cortar
+                // cultivos o resolver contratos, aunque no haya colmenas activas.
+                pendingCalendarWork = true;
+                break;
+            }
+            if (pendingCalendarWork) {
+                mainHandler.post(onWorkStartedOnMain);
+            }
+        }
+
+        // La sincronización de viajes puede tardar o estar temporalmente caída.
+        // Se hace después de publicar el indicador de cálculo para que el usuario
+        // vea que la actualización diaria ha empezado; si falla, el resumen de
+        // producción se calcula igualmente.
+        try {
+            TruckLiveTrips.completeDue(appContext);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "No se pudieron cerrar los viajes de colmena antes del tick diario", e);
+        }
+        try {
+            HoneyLogistics.completeDue(appContext, economyRepository, marketRepository);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "No se pudieron cerrar los viajes de carga antes del tick diario", e);
+        }
+        try {
+            HoneyOrderStore.maintainNow(appContext, marketRepository);
+            PollinationOfferStore.maintainNow(appContext);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "No se pudieron mantener las ofertas antes del tick diario", e);
+        }
 
         while (!cursor.isAfter(today)) {
 
@@ -1855,9 +2397,26 @@ public class HiveRepository {
 
             int dayKeyJustApplied = GameCalendar.toDayKey(cursor);
 
-            java.util.Set<String> velutinaHits = applyProductionForCalendarDay(ownerId, cursor, state);
+            CropTickResult cropTick =
+                    hexFloraRepository.tickCropsForOwnerBlocking(
+                            ownerId, cursor, economyRepository, hexParcelRepository);
+            reassignForageAfterRemovedCrops(ownerId, cropTick);
+            for (String hexId : cropTick.touchedHexIds) {
+                hexParcelRepository.syncHexParcelFlorasToCloudBlocking(hexId);
+            }
+
+            double[] forageMelee = new double[2];
+            List<String> contractNotes = new ArrayList<>();
+            Set<String> velutinaHits = applyProductionForCalendarDay(
+                    ownerId, cursor, state, forageMelee, contractNotes);
 
             List<HiveDayStartupSummary> summaries = collectStartupSummariesForDay(ownerId, dayKeyJustApplied, velutinaHits);
+
+            List<String> dayNotes = new ArrayList<>();
+            if (cropTick.notes != null) {
+                dayNotes.addAll(cropTick.notes);
+            }
+            dayNotes.addAll(contractNotes);
 
             if (!summaries.isEmpty()) {
 
@@ -1875,7 +2434,12 @@ public class HiveRepository {
                         swarmCount++;
                     }
                 }
-                appliedDaysOut.add(new DailyTickSummary(dayKeyJustApplied, summaries, velCount, queenGone, swarmCount));
+                appliedDaysOut.add(new DailyTickSummary(dayKeyJustApplied, summaries, velCount, queenGone, swarmCount,
+                        dayNotes, forageMelee[0], forageMelee[1]));
+
+            } else if (!dayNotes.isEmpty()) {
+                appliedDaysOut.add(new DailyTickSummary(dayKeyJustApplied, Collections.emptyList(), 0, 0, 0,
+                        dayNotes, 0, 0));
 
             }
 
@@ -1883,10 +2447,156 @@ public class HiveRepository {
 
         }
 
+        if (GameServer.enabled()) {
+            markProductionUploadPending(ownerId, true);
+        }
+
+    }
+
+    private boolean productionUploadPending(@Nullable String ownerId) {
+        if (ownerId == null || ownerId.isEmpty()) {
+            return false;
+        }
+        return appContext.getSharedPreferences("production_sync", Context.MODE_PRIVATE)
+                .getBoolean("pending_" + ownerId, false);
+    }
+
+    private int productionShownDay(@Nullable String ownerId) {
+        if (ownerId == null || ownerId.isEmpty()) {
+            return 0;
+        }
+        return appContext.getSharedPreferences("production_sync", Context.MODE_PRIVATE)
+                .getInt("shown_day_" + ownerId, 0);
+    }
+
+    /** Copia al gráfico local un día que calculó el servidor, si el teléfono no lo tiene. */
+    private void rememberServerYield(@Nullable JSONObject row, int dayKey) {
+        if (row == null || dayKey <= 0) {
+            return;
+        }
+        String hiveId = row.optString("hiveId", "");
+        if (hiveId.isEmpty()) {
+            return;
+        }
+        HiveDailyYieldEntity existing = hiveDailyYieldDao.getYield(hiveId, dayKey);
+        if (existing != null && (existing.forageKg > 1e-9 || Math.abs(existing.kg) > 1e-9)) {
+            return;
+        }
+        HiveDailyYieldEntity saved = new HiveDailyYieldEntity();
+        saved.hiveId = hiveId;
+        saved.dayKey = dayKey;
+        saved.kg = row.optDouble("honeyKg", 0);
+        saved.workerNetDelta = row.optInt("workerNet", 0);
+        saved.eggsLaid = row.optInt("eggsLaid", 0);
+        saved.consumptionKg = row.optDouble("consumptionKg", 0);
+        saved.forageKg = row.optDouble("forageKg", 0);
+        hiveDailyYieldDao.insert(saved);
+    }
+
+    private void fillMissingYieldsFromServer(@Nullable String ownerId, int sinceDayKey) {
+        if (!GameServer.enabled() || ownerId == null || ownerId.isEmpty() || sinceDayKey <= 0) {
+            return;
+        }
+        JSONArray days = GameServer.productionReports(ownerId, sinceDayKey);
+        if (days == null) {
+            return;
+        }
+        for (int i = 0; i < days.length(); i++) {
+            JSONObject day = days.optJSONObject(i);
+            if (day == null) continue;
+            int dayKey = day.optInt("dayKey", 0);
+            JSONArray rows = day.optJSONArray("summaries");
+            if (rows == null) continue;
+            for (int j = 0; j < rows.length(); j++) {
+                rememberServerYield(rows.optJSONObject(j), dayKey);
+            }
+        }
+    }
+
+    private void markProductionShownDay(@Nullable String ownerId, int dayKey) {
+        if (ownerId == null || ownerId.isEmpty() || dayKey <= 0) {
+            return;
+        }
+        if (dayKey <= productionShownDay(ownerId)) {
+            return;
+        }
+        appContext.getSharedPreferences("production_sync", Context.MODE_PRIVATE)
+                .edit()
+                .putInt("shown_day_" + ownerId, dayKey)
+                .commit();
+    }
+
+    private void markProductionUploadPending(@Nullable String ownerId, boolean pending) {
+        if (ownerId == null || ownerId.isEmpty()) {
+            return;
+        }
+        appContext.getSharedPreferences("production_sync", Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("pending_" + ownerId, pending)
+                .apply();
+    }
+
+    private static int oldestHiveSummaryDay(@Nullable List<HiveEntity> hives) {
+        int oldest = 0;
+        if (hives == null) {
+            return 0;
+        }
+        for (HiveEntity hive : hives) {
+            if (hive == null || hive.inWarehouse || hive.lastSummaryDayKey <= 0) {
+                continue;
+            }
+            if (oldest == 0 || hive.lastSummaryDayKey < oldest) {
+                oldest = hive.lastSummaryDayKey;
+            }
+        }
+        return oldest;
+    }
+
+    /** El día local está cerrado y las colmenas ya tienen el resumen de ese día. */
+    private boolean hivesCaughtUp(@Nullable String ownerId, int dueDayKey) {
+        if (ownerId == null || dueDayKey <= 0) {
+            return true;
+        }
+        List<HiveEntity> hives = hiveDao.getHivesByOwnerSync(ownerId);
+        if (hives == null || hives.isEmpty()) {
+            return true;
+        }
+        for (HiveEntity hive : hives) {
+            if (hive == null || hive.inWarehouse) {
+                continue;
+            }
+            if (hive.lastSummaryDayKey < dueDayKey) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Día que el servidor ya cerró para este jugador. Hasta el siguiente no se vuelve a calcular. */
+    private int productionSettledDay(@Nullable String ownerId) {
+        if (ownerId == null || ownerId.isEmpty()) {
+            return 0;
+        }
+        return appContext.getSharedPreferences("production_sync", Context.MODE_PRIVATE)
+                .getInt("settled_day_" + ownerId, 0);
+    }
+
+    private void markProductionSettledDay(@Nullable String ownerId, int dayKey) {
+        if (ownerId == null || ownerId.isEmpty() || dayKey <= 0) {
+            return;
+        }
+        int current = productionSettledDay(ownerId);
+        if (dayKey <= current) {
+            return;
+        }
+        appContext.getSharedPreferences("production_sync", Context.MODE_PRIVATE)
+                .edit()
+                .putInt("settled_day_" + ownerId, dayKey)
+                .commit();
     }
 
     private List<HiveDayStartupSummary> collectStartupSummariesForDay(
-            String ownerId, int dayKey, java.util.Set<String> velutinaHits) {
+            String ownerId, int dayKey, Set<String> velutinaHits) {
 
         List<HiveEntity> hives = hiveDao.getHivesByOwnerSync(ownerId);
 
@@ -1937,10 +2647,16 @@ public class HiveRepository {
 
     }
 
-    private java.util.Set<String> applyProductionForCalendarDay(String ownerId, LocalDate day, GameProductionStateEntity state) {
+    private Set<String> applyProductionForCalendarDay(String ownerId, LocalDate day, GameProductionStateEntity state,
+            double[] forageMeleeOut) {
+        return applyProductionForCalendarDay(ownerId, day, state, forageMeleeOut, null);
+    }
+
+    private Set<String> applyProductionForCalendarDay(String ownerId, LocalDate day, GameProductionStateEntity state,
+            double[] forageMeleeOut, @Nullable List<String> contractNotesOut) {
 
         int dayKey = GameCalendar.toDayKey(day);
-        java.util.Set<String> velutinaHits = new java.util.HashSet<>();
+        Set<String> velutinaHits = new HashSet<>();
 
         List<HiveEntity> hives = hiveDao.getHivesByOwnerSync(ownerId);
 
@@ -1962,13 +2678,54 @@ public class HiveRepository {
 
         }
 
-        Map<String, DailyWeather> weatherByHiveId = buildPreviousDayWeatherByHive(hives, day);
-        Map<String, Integer> hivesOnFlora = countHivesOnHexFlora(hives);
-        Map<String, List<String>> readyByHex = new HashMap<>();
-        long nowMs = System.currentTimeMillis();
+        if (forageMeleeOut != null && forageMeleeOut.length >= 2) {
+            forageMeleeOut[0] = 0;
+            forageMeleeOut[1] = 0;
+        }
 
+        if (pollinationContractRepository != null) {
+            List<String> moveNotes = pollinationContractRepository
+                    .applyScheduledContractMovesBlocking(ownerId, dayKey);
+            if (contractNotesOut != null && moveNotes != null) {
+                contractNotesOut.addAll(moveNotes);
+            }
+            hives = hiveDao.getHivesByOwnerSync(ownerId);
+            if (hives == null) {
+                hives = Collections.emptyList();
+            }
+        }
+
+        List<HiveEntity> toSim = new ArrayList<>();
+        boolean startDay = state != null && dayKey == state.gameStartDayKey;
         for (HiveEntity h : hives) {
+            if (h == null || h.inWarehouse) {
+                continue;
+            }
+            TruckLiveTrips.applyDue(appContext, h, dayKey);
+            if (startDay) {
+                continue;
+            }
+            if (!HiveProductionEligibility.participatesOnDay(h.firstProductionDayKey, dayKey)) {
+                continue;
+            }
+            toSim.add(h);
+        }
 
+        if (toSim.isEmpty()) {
+            tickPollinationContracts(ownerId, day, dayKey, Collections.emptyMap(), contractNotesOut);
+            state.lastProcessedProductionDayKey = dayKey;
+            gameProductionStateDao.update(state);
+            pushProductionStateToFirestore(ownerId, state);
+            if (marketRepository != null) {
+                marketRepository.refreshGlobalMarketForDay(dayKey, day.getDayOfYear());
+            }
+            return velutinaHits;
+        }
+
+        Map<String, DailyWeather> weatherByHiveId = buildPreviousDayWeatherByHive(toSim, day);
+        List<PendingHiveForage> pendingForage = new ArrayList<>();
+
+        for (HiveEntity h : toSim) {
             if (applyVelutinaIfNeeded(h) && h.id != null) {
                 velutinaHits.add(h.id);
             }
@@ -1983,7 +2740,7 @@ public class HiveRepository {
 
                 h.elevationMeters = elevM;
 
-                hiveDao.upsert(h);
+                upsertCloud(h);
 
             }
 
@@ -2108,53 +2865,21 @@ public class HiveRepository {
             }
 
             if (!honeyDone) {
-
-                String floraKey = HoneyMarketEngine.canonicalFloraKey(h.floraType);
-                String hexFloraKey = (h.hexId != null ? h.hexId : "_") + "|" + floraKey;
-                Integer nSameObj = hivesOnFlora.get(hexFloraKey);
-                int nSame = nSameObj != null ? nSameObj : 1;
-                List<String> ready = null;
-                if (h.hexId != null && hexFloraRepository != null) {
-                    ready = readyByHex.get(h.hexId);
-                    if (ready == null) {
-                        ready = hexFloraRepository.listReadyFloraKeysBlocking(h.hexId, nowMs);
-                        readyByHex.put(h.hexId, ready);
-                    }
+                if (TranshumanceRules.isInTransit(h, dayKey)) {
+                    HiveDailyYieldEntity travel = new HiveDailyYieldEntity();
+                    travel.hiveId = h.id;
+                    travel.dayKey = dayKey;
+                    travel.kg = 0;
+                    travel.consumptionKg = 0;
+                    travel.forageKg = 0;
+                    hiveDailyYieldDao.insert(travel);
+                } else {
+                    int eggsCons = ranPopulationSim
+                            ? h.lastSummaryEggsLaid
+                            : HiveDailyBiology.eggsLaidToday(pop, h, day, dayKey, tempC);
+                    pendingForage.add(new PendingHiveForage(h, pop, day, dayKey, tempC, skyMult, sky,
+                            ranPopulationSim, eggsCons));
                 }
-                int eggsCons = ranPopulationSim
-                        ? h.lastSummaryEggsLaid
-                        : HiveDailyBiology.eggsLaidToday(pop, h, day, dayKey, tempC);
-                double forage = HiveDailyBiology.grossForageKg(
-                        pop, h, day, dayKey, tempC, skyMult, nSame, ready);
-                double cons = HiveDailyBiology.consumptionKg(pop, h, eggsCons, dayKey);
-                double kg = forage - cons;
-
-                HiveDailyYieldEntity row = new HiveDailyYieldEntity();
-
-                row.hiveId = h.id;
-
-                row.dayKey = dayKey;
-
-                row.kg = kg;
-                row.consumptionKg = cons;
-                row.forageKg = forage;
-
-                int netWorkers = ranPopulationSim
-
-                        ? (h.lastSummaryWorkerEmergences - h.lastSummaryWorkerDeaths)
-
-                        : 0;
-
-                row.workerNetDelta = netWorkers;
-
-                row.eggsLaid = ranPopulationSim ? h.lastSummaryEggsLaid : 0;
-
-                hiveDailyYieldDao.insert(row);
-
-                h.honeyProduction = Math.max(0.0, Math.max(0.0, h.honeyProduction) + kg);
-
-                HiveHoneyRules.clampHoneyStockToCap(h);
-
             }
 
             h.lastSummaryDayKey = dayKey;
@@ -2173,7 +2898,7 @@ public class HiveRepository {
 
             normalizeBeeCount(h);
 
-            hiveDao.upsert(h);
+            upsertCloud(h);
 
             if (firestore != null) {
 
@@ -2217,6 +2942,8 @@ public class HiveRepository {
 
         }
 
+        applyHexNectarForage(ownerId, day, dayKey, pendingForage, forageMeleeOut, contractNotesOut);
+
         state.lastProcessedProductionDayKey = dayKey;
 
         gameProductionStateDao.update(state);
@@ -2233,7 +2960,204 @@ public class HiveRepository {
 
     }
 
+    private static final class PendingHiveForage {
+        final HiveEntity hive;
+        final HivePopulationState pop;
+        final LocalDate day;
+        final int dayKey;
+        final Double tempC;
+        final double skyMult;
+        final DailySkyCondition sky;
+        final boolean ranPopulationSim;
+        final int eggsCons;
 
+        PendingHiveForage(HiveEntity hive, HivePopulationState pop, LocalDate day, int dayKey,
+                Double tempC, double skyMult, DailySkyCondition sky,
+                boolean ranPopulationSim, int eggsCons) {
+            this.hive = hive;
+            this.pop = pop;
+            this.day = day;
+            this.dayKey = dayKey;
+            this.tempC = tempC;
+            this.skyMult = skyMult;
+            this.sky = sky;
+            this.ranPopulationSim = ranPopulationSim;
+            this.eggsCons = eggsCons;
+        }
+    }
+
+    private void applyHexNectarForage(
+            String ownerId,
+            LocalDate day,
+            int dayKey,
+            List<PendingHiveForage> pending,
+            double[] forageMeleeOut,
+            @Nullable List<String> contractNotesOut) {
+        if (pending == null || pending.isEmpty()) {
+            tickPollinationContracts(ownerId, day, dayKey, Collections.emptyMap(), contractNotesOut);
+            return;
+        }
+        Map<String, List<PendingHiveForage>> byPatch = new LinkedHashMap<>();
+        for (PendingHiveForage p : pending) {
+            if (p.hive == null || p.hive.id == null) {
+                continue;
+            }
+            String hex = p.hive.hexId != null && !p.hive.hexId.isEmpty() ? p.hive.hexId : "_";
+            String flora = HoneyMarketEngine.canonicalFloraKey(p.hive.floraType);
+            String k = hex + "|" + flora;
+            List<PendingHiveForage> list = byPatch.get(k);
+            if (list == null) {
+                list = new ArrayList<>();
+                byPatch.put(k, list);
+            }
+            list.add(p);
+        }
+        List<HexNectarPool.Patch> patches = new ArrayList<>();
+        for (Map.Entry<String, List<PendingHiveForage>> e : byPatch.entrySet()) {
+            List<PendingHiveForage> group = e.getValue();
+            PendingHiveForage sample = group.get(0);
+            List<HexNectarPool.HiveShare> shares = new ArrayList<>();
+            double site = 0.0;
+            int n = 0;
+            for (PendingHiveForage p : group) {
+                double demand = HexNectarPool.forageDemandKg(p.pop, p.hive, p.dayKey, p.tempC, p.skyMult);
+                shares.add(new HexNectarPool.HiveShare(p.hive.id, demand));
+                site += HexNectarPool.siteFactor(p.tempC, p.skyMult);
+                n++;
+            }
+            double pool = HexNectarPool.poolKg(sample.hive, day);
+            String hex = sample.hive.hexId != null ? sample.hive.hexId : "_";
+            HexNectarPool.Patch patch = new HexNectarPool.Patch(
+                    hex,
+                    HoneyMarketEngine.canonicalFloraKey(sample.hive.floraType),
+                    ownerId,
+                    pool,
+                    n > 0 ? site / n : 0.0,
+                    shares);
+            patches.add(patch);
+        }
+
+        HexNectarPool.Totals totals = HexNectarPool.resolve(patches, Collections.emptyMap());
+        if (forageMeleeOut != null && forageMeleeOut.length >= 2) {
+            forageMeleeOut[0] = totals.fromNeighborsKg;
+            forageMeleeOut[1] = totals.takenByNeighborsKg;
+        }
+
+        Map<String, List<HexNectarPool.Patch>> patchesByHex = new HashMap<>();
+        for (HexNectarPool.Patch patch : patches) {
+            List<HexNectarPool.Patch> list = patchesByHex.get(patch.hexId);
+            if (list == null) {
+                list = new ArrayList<>();
+                patchesByHex.put(patch.hexId, list);
+            }
+            list.add(patch);
+        }
+
+        Map<String, Double> collectedByHive = new HashMap<>();
+        for (HexNectarPool.Patch patch : patches) {
+            for (HexNectarPool.HiveShare share : patch.hives) {
+                collectedByHive.put(share.hiveId, share.collectedKg);
+            }
+        }
+
+        for (PendingHiveForage p : pending) {
+            if (p.hive == null || p.hive.id == null) {
+                continue;
+            }
+            String floraKey = HoneyMarketEngine.canonicalFloraKey(p.hive.floraType);
+            double forage = collectedByHive.containsKey(p.hive.id)
+                    ? collectedByHive.get(p.hive.id) : 0.0;
+            double cons = HiveDailyBiology.consumptionKg(p.pop, p.hive, p.eggsCons, p.dayKey);
+            double kg = forage - cons;
+
+            HiveDailyYieldEntity row = new HiveDailyYieldEntity();
+            row.hiveId = p.hive.id;
+            row.dayKey = dayKey;
+            row.kg = kg;
+            row.consumptionKg = cons;
+            row.forageKg = forage;
+            row.workerNetDelta = p.ranPopulationSim
+                    ? (p.hive.lastSummaryWorkerEmergences - p.hive.lastSummaryWorkerDeaths) : 0;
+            row.eggsLaid = p.ranPopulationSim ? p.hive.lastSummaryEggsLaid : 0;
+            hiveDailyYieldDao.insert(row);
+            HiveHoneyStocks.applyNet(p.hive, kg, floraKey);
+            p.hive.lastSummaryHoneyKg = kg;
+            upsertCloud(p.hive);
+
+            if (firestore != null) {
+                try {
+                    Tasks.await(firestore.collection("hives").document(p.hive.id).set(p.hive, SetOptions.merge()));
+                    Map<String, Object> y = new HashMap<>();
+                    y.put("kg", row.kg);
+                    y.put("workerNetDelta", row.workerNetDelta);
+                    y.put("eggsLaid", row.eggsLaid);
+                    y.put("consumptionKg", row.consumptionKg);
+                    y.put("forageKg", row.forageKg);
+                    y.put("dayKey", dayKey);
+                    y.put("hiveId", p.hive.id);
+                    y.put("ownerId", p.hive.ownerId);
+                    y.put("sky", p.sky != null ? p.sky.name() : "");
+                    Tasks.await(firestore.collection("hives").document(p.hive.id)
+                            .collection("dailyYields").document(String.valueOf(dayKey))
+                            .set(y, SetOptions.merge()));
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
+        tickPollinationContracts(ownerId, day, dayKey, collectedByHive, contractNotesOut);
+
+        if (hexParcelRepository == null) {
+            return;
+        }
+        for (Map.Entry<String, List<HexNectarPool.Patch>> e : patchesByHex.entrySet()) {
+            String hexId = e.getKey();
+            if (hexId == null || hexId.isEmpty() || "_".equals(hexId) || isNpcContractHex(hexId)) {
+                continue;
+            }
+            Map<String, Double> demand = new HashMap<>();
+            Map<String, Double> pool = new HashMap<>();
+            Map<String, Double> leftoverDemand = new HashMap<>();
+            Map<String, Double> leftoverPool = new HashMap<>();
+            double site = 0.0;
+            int n = 0;
+            for (HexNectarPool.Patch patch : e.getValue()) {
+                demand.put(patch.flora, patch.localDemand);
+                pool.put(patch.flora, patch.poolKg);
+                leftoverDemand.put(patch.flora, patch.leftoverDemand);
+                leftoverPool.put(patch.flora, patch.leftoverPool);
+                site += patch.siteFactor;
+                n++;
+            }
+            HexForageSnapshot snap = new HexForageSnapshot(
+                    dayKey, n > 0 ? site / n : 0.0, demand, pool, leftoverDemand, leftoverPool);
+            hexParcelRepository.publishForageSnapshotBlocking(hexId, ownerId, snap);
+        }
+    }
+
+    private void tickPollinationContracts(
+            String ownerId,
+            LocalDate day,
+            int dayKey,
+            Map<String, Double> collectedByHive,
+            @Nullable List<String> contractNotesOut) {
+        if (pollinationContractRepository == null) {
+            return;
+        }
+        List<String> notes = pollinationContractRepository.tickAfterForageBlocking(
+                ownerId, day, dayKey, collectedByHive);
+        if (notes != null && contractNotesOut != null) {
+            contractNotesOut.addAll(notes);
+        }
+    }
+
+    private boolean isNpcContractHex(@Nullable String hexId) {
+        if (hexId == null || hexId.isEmpty() || "_".equals(hexId)) {
+            return false;
+        }
+        HexParcel parcel = IberiaHexOverlayStore.findById(appContext, hexId);
+        return NpcContractCatalog.isNpcFarm(parcel);
+    }
 
     /**
      * Número de colmenas en el hex. Solo hilo de fondo.
@@ -2250,108 +3174,113 @@ public class HiveRepository {
 
     }
 
-    public void syncFromCloud() {
-
-        if (firestore == null) return;
-
-        firestore.collection("hives")
-
-                .get()
-
-                .addOnSuccessListener(querySnapshot -> ioExecutor.execute(() -> {
-
-                    for (var doc : querySnapshot.getDocuments()) {
-
-                        HiveEntity hive = doc.toObject(HiveEntity.class);
-
-                        if (hive != null && hive.id != null) {
-
-                            if (!doc.contains("elevationMeters")) {
-
-                                hive.elevationMeters = -1;
-
-                            }
-
-                            upsertHiveFromCloud(doc, hive);
-
+    /**
+     * Colmenas de otro jugador en un hex, solo para mirar el prado.
+     * No se escriben en Room: la escucha en vivo borra las ajenas.
+     */
+    public void loadVisitYardHives(@NonNull String ownerId, @NonNull String hexId,
+            @NonNull Consumer<List<HiveEntity>> onMain) {
+        ioExecutor.execute(() -> {
+            List<HiveEntity> found = new ArrayList<>();
+            if (GameServer.enabled()) {
+                org.json.JSONArray rows = GameServer.mapHives(ownerId, hexId);
+                if (rows != null) {
+                    for (int i = 0; i < rows.length(); i++) {
+                        org.json.JSONObject row = rows.optJSONObject(i);
+                        if (row == null || !ownerId.equals(row.optString("ownerId", ""))) {
+                            continue;
                         }
-
+                        HiveEntity hive = new HiveEntity();
+                        hive.id = row.optString("id", "");
+                        hive.ownerId = ownerId;
+                        hive.name = row.optString("name", "");
+                        hive.beeCount = row.optInt("beeCount", 0);
+                        hive.health = row.optInt("health", 0);
+                        hive.lat = row.optDouble("lat", 0);
+                        hive.lng = row.optDouble("lng", 0);
+                        hive.hexId = hexId;
+                        hive.siteId = row.optString("siteId", "");
+                        if (!hive.id.isEmpty()) {
+                            found.add(hive);
+                        }
                     }
-
-                }));
-
+                }
+            }
+            if (found.isEmpty()) {
+                List<HiveEntity> local = hiveDao.getByHexIdSync(hexId);
+                if (local != null) {
+                    for (HiveEntity hive : local) {
+                        if (hive != null && ownerId.equals(hive.ownerId) && !hive.inWarehouse) {
+                            found.add(hive);
+                        }
+                    }
+                }
+            }
+            List<HiveEntity> result = found;
+            mainHandler.post(() -> onMain.accept(result));
+        });
     }
 
-
+    public void syncFromCloud() {
+        if (GameServer.enabled() && cloudSyncOwnerId != null && !cloudSyncOwnerId.isEmpty()) {
+            String ownerId = cloudSyncOwnerId;
+            ioExecutor.execute(() -> pullHivesFromServer(ownerId));
+            return;
+        }
+        if (firestore == null || cloudSyncOwnerId == null || cloudSyncOwnerId.isEmpty()) {
+            return;
+        }
+        final String ownerId = cloudSyncOwnerId;
+        firestore.collection("hives")
+                .whereEqualTo("ownerId", ownerId)
+                .get()
+                .addOnSuccessListener(querySnapshot -> ioExecutor.execute(() ->
+                        applyCloudHiveDocuments(ownerId, querySnapshot.getDocuments())));
+    }
 
     public void startRealtimeCloudSync() {
-
-        startRealtimeCloudSync(null);
-
+        /* No sincronizar la colección entera: solo startRealtimeCloudSync(uid). */
     }
 
-
-
     /**
-     * Escucha cambios en colmenas del jugador. Si {@code ownerId} es no nulo y no vacío, solo se sincronizan
-     * documentos con ese {@code ownerId} (recomendado tras login o reinicio); si es null, se mantiene el
-     * comportamiento anterior (toda la colección).
+     * Escucha solo las colmenas de {@code ownerId}. Si el dueño cambia, reinicia la escucha
+     * y limpia de Room las colmenas ajenas.
      */
-
     public void startRealtimeCloudSync(String ownerId) {
-
-        if (firestore == null || cloudListener != null) return;
-
-        Query query = firestore.collection("hives");
-
-        final String syncOwnerId = (ownerId != null && !ownerId.isEmpty()) ? ownerId : null;
-
-        if (syncOwnerId != null) {
-
-            query = query.whereEqualTo("ownerId", syncOwnerId);
-
+        if (ownerId == null || ownerId.isEmpty()) {
+            return;
         }
-
+        if (GameServer.enabled()) {
+            cloudSyncOwnerId = ownerId;
+            ioExecutor.execute(() -> {
+                pruneForeignHives(ownerId);
+                releaseWarehouseHivesBlocking(ownerId);
+                pullHivesFromServer(ownerId);
+            });
+            return;
+        }
+        if (firestore == null) {
+            return;
+        }
+        final String syncOwnerId = ownerId;
+        if (cloudListener != null) {
+            if (Objects.equals(cloudSyncOwnerId, syncOwnerId)) {
+                return;
+            }
+            cloudListener.remove();
+            cloudListener = null;
+        }
+        cloudSyncOwnerId = syncOwnerId;
+        ioExecutor.execute(() -> {
+            pruneForeignHives(syncOwnerId);
+            releaseWarehouseHivesBlocking(syncOwnerId);
+        });
+        Query query = firestore.collection("hives").whereEqualTo("ownerId", syncOwnerId);
         cloudListener = query
-
                 .addSnapshotListener((snapshot, error) -> {
-
                     if (error != null || snapshot == null) return;
-
-                    ioExecutor.execute(() -> {
-
-                        Set<String> cloudIds = new HashSet<>();
-
-                        for (var doc : snapshot.getDocuments()) {
-
-                            HiveEntity hive = doc.toObject(HiveEntity.class);
-
-                            if (hive != null && hive.id != null) {
-
-                                cloudIds.add(hive.id);
-
-                                if (!doc.contains("elevationMeters")) {
-
-                                    hive.elevationMeters = -1;
-
-                                }
-
-                                upsertHiveFromCloud(doc, hive);
-
-                            }
-
-                        }
-
-                        if (syncOwnerId != null) {
-
-                            pruneLocalHivesNotInCloud(syncOwnerId, cloudIds);
-
-                        }
-
-                    });
-
+                    ioExecutor.execute(() -> applyCloudHiveDocuments(syncOwnerId, snapshot.getDocuments()));
                 });
-
     }
 
     /**
@@ -2382,7 +3311,32 @@ public class HiveRepository {
             cloudListener = null;
 
         }
+        cloudSyncOwnerId = null;
 
+    }
+
+    /** Quita de Room colmenas que no son del jugador (p. ej. una sync antigua de toda la colección). */
+    private void pruneForeignHives(String ownerId) {
+        if (ownerId == null || ownerId.isEmpty()) {
+            return;
+        }
+        try {
+            List<HiveEntity> local = hiveDao.getAllHivesSync();
+            if (local == null) {
+                return;
+            }
+            for (HiveEntity h : local) {
+                if (h == null || h.id == null) {
+                    continue;
+                }
+                if (h.ownerId == null || !ownerId.equals(h.ownerId)) {
+                    hiveDailyYieldDao.deleteAllForHive(h.id);
+                    hiveDao.deleteById(h.id);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "pruneForeignHives", e);
+        }
     }
 
 
@@ -2409,6 +3363,7 @@ public class HiveRepository {
     /** Copia el estado que debe avanzar solo con el tick local (no regresar por nube rezagada). */
     private static void copyAheadSimulationFieldsFromLocal(HiveEntity local, HiveEntity into) {
         into.honeyProduction = local.honeyProduction;
+        into.honeyStocksJson = local.honeyStocksJson;
         into.beeCount = local.beeCount;
         into.populationStateJson = local.populationStateJson;
         into.lastSummaryDayKey = local.lastSummaryDayKey;
@@ -2427,9 +3382,88 @@ public class HiveRepository {
         into.varroaReboundDaysRemaining = local.varroaReboundDaysRemaining;
         into.reserves = local.reserves;
         into.transhumanceArrivesDayKey = local.transhumanceArrivesDayKey;
+        into.pendingContractHexId = local.pendingContractHexId;
+        into.pendingContractDayKey = local.pendingContractDayKey;
+        into.contractId = local.contractId;
+        into.contractOriginHexId = local.contractOriginHexId;
+        into.contractOriginFlora = local.contractOriginFlora;
+        into.contractOriginLat = local.contractOriginLat;
+        into.contractOriginLng = local.contractOriginLng;
+        into.inWarehouse = local.inWarehouse;
+        into.returnToWarehouse = local.returnToWarehouse;
+    }
+
+    private void applyCloudHiveDocuments(@Nullable String ownerId,
+            @Nullable List<DocumentSnapshot> docs) {
+        if (ownerId == null || ownerId.isEmpty() || docs == null) {
+            return;
+        }
+        AppDatabase.getInstance(appContext).runInTransaction(() -> {
+            Set<String> cloudIds = new HashSet<>();
+            for (DocumentSnapshot doc : docs) {
+                HiveEntity hive = doc != null ? doc.toObject(HiveEntity.class) : null;
+                if (hive == null || hive.id == null) {
+                    continue;
+                }
+                cloudIds.add(hive.id);
+                if (!doc.contains("elevationMeters")) {
+                    hive.elevationMeters = -1;
+                }
+                upsertHiveFromCloud(doc, hive);
+            }
+            pruneLocalHivesNotInCloud(ownerId, cloudIds);
+            pruneForeignHives(ownerId);
+            backfillMissingHiveSiteIds(ownerId);
+        });
+    }
+
+    private void backfillMissingHiveSiteIds(@Nullable String ownerId) {
+        if (ownerId == null || ownerId.isEmpty()) {
+            return;
+        }
+        List<HiveEntity> hives = hiveDao.getHivesByOwnerSync(ownerId);
+        if (hives == null) {
+            return;
+        }
+        for (HiveEntity hive : hives) {
+            if (hive == null || hive.inWarehouse) {
+                continue;
+            }
+            String before = hive.siteId;
+            ensureHiveSiteId(hive);
+            if (!Objects.equals(before, hive.siteId)) {
+                upsertCloud(hive);
+            }
+        }
+    }
+
+    private static boolean samePersistedHive(@NonNull HiveEntity a, @NonNull HiveEntity b) {
+        return Objects.equals(a.name, b.name)
+                && Objects.equals(a.hexId, b.hexId)
+                && Objects.equals(a.siteId, b.siteId)
+                && Objects.equals(a.floraType, b.floraType)
+                && Objects.equals(a.honeyStocksJson, b.honeyStocksJson)
+                && Objects.equals(a.populationStateJson, b.populationStateJson)
+                && Objects.equals(a.pendingContractHexId, b.pendingContractHexId)
+                && Objects.equals(a.contractId, b.contractId)
+                && a.beeCount == b.beeCount
+                && a.health == b.health
+                && a.superCount == b.superCount
+                && a.elevationMeters == b.elevationMeters
+                && a.lastSummaryDayKey == b.lastSummaryDayKey
+                && a.pendingContractDayKey == b.pendingContractDayKey
+                && a.transhumanceArrivesDayKey == b.transhumanceArrivesDayKey
+                && a.inWarehouse == b.inWarehouse
+                && Double.compare(a.lat, b.lat) == 0
+                && Double.compare(a.lng, b.lng) == 0
+                && Double.compare(a.honeyProduction, b.honeyProduction) == 0;
     }
 
     private void upsertHiveFromCloud(DocumentSnapshot doc, HiveEntity hive) {
+        if (cloudSyncOwnerId != null && (hive == null || hive.ownerId == null
+                || !cloudSyncOwnerId.equals(hive.ownerId))) {
+            return;
+        }
 
         HiveEntity existing = null;
         if (hive != null && hive.id != null) {
@@ -2437,21 +3471,32 @@ public class HiveRepository {
             if (existing != null && doc != null && !doc.contains("superCount")) {
                 hive.superCount = existing.superCount;
             }
-            /*
-             * La simulación diaria actualiza Room y luego Firestore. El snapshot puede llegar con un
-             * documento rezagado (caché u orden de escritura) y bajar honeyProduction / población.
-             * Colmena 1 (~80k abejas) llena el tope de miel muy rápido (8 kg sin alzas): el fallo se nota ahí.
-             */
+            if (existing != null && (hive.siteId == null || hive.siteId.isEmpty())
+                    && existing.siteId != null && !existing.siteId.isEmpty()) {
+                hive.siteId = existing.siteId;
+            }
             if (existing != null && localSimulationAheadOfCloudHive(existing, hive)) {
                 copyAheadSimulationFieldsFromLocal(existing, hive);
             } else if (existing != null && shouldRestoreHoneyWhenCloudStaleSameDay(existing, hive)) {
                 hive.honeyProduction = existing.honeyProduction;
+                hive.honeyStocksJson = existing.honeyStocksJson;
             }
+            hive.inWarehouse = false;
+            hive.returnToWarehouse = false;
         }
 
         boolean fixed = normalizeBeeCount(hive);
 
-        hiveDao.upsert(hive);
+        if (existing != null && !fixed && samePersistedHive(existing, hive)) {
+            return;
+        }
+
+        upsertCloud(hive);
+
+        if (firestore != null && hive.id != null && doc != null && doc.contains("onYard")) {
+            firestore.collection("hives").document(hive.id)
+                    .update("onYard", FieldValue.delete());
+        }
 
         if (fixed && firestore != null) {
 
@@ -2494,6 +3539,12 @@ public class HiveRepository {
 
         HiveHoneyRules.clampHoneyStockToCap(hive);
 
+        ensureHiveSiteId(hive);
+
+        if (GameServer.enabled() && !GameServer.pushHive(hiveJson(hive))) {
+            throw new java.io.IOException(
+                    "No hay conexión con el servidor. No se puede realizar esta acción.");
+        }
         hiveDao.upsert(hive);
 
         if (firestore != null) {
@@ -2501,12 +3552,39 @@ public class HiveRepository {
             Tasks.await(firestore.collection("hives").document(hive.id).set(hive));
 
         }
+    }
 
+    private void ensureHiveSiteId(@Nullable HiveEntity hive) {
+        if (hive == null || hive.inWarehouse) {
+            return;
+        }
+        if (hive.siteId != null && !hive.siteId.isEmpty()
+                && !HexApiary.DEFAULT_SITE.equals(hive.siteId)) {
+            return;
+        }
+        if (hive.hexId == null || hive.hexId.isEmpty() || hive.ownerId == null) {
+            return;
+        }
+        HexParcel hex = IberiaHexOverlayStore.findById(appContext, hive.hexId);
+        hive.siteId = HexApiary.resolveSiteIdAt(hex,
+                hexParcelRepository.listSitesOnHexBlocking(hive.ownerId, hive.hexId),
+                hive.hexId, hive.lat, hive.lng);
+    }
+
+    private void assignHiveSiteFromPoint(@Nullable HiveEntity hive, @Nullable HexParcel hex,
+            double lat, double lng) {
+        if (hive == null) {
+            return;
+        }
+        String hexId = hex != null ? hex.id : hive.hexId;
+        hive.siteId = HexApiary.resolveSiteIdAt(hex,
+                hexParcelRepository.listSitesOnHexBlocking(hive.ownerId, hexId),
+                hexId, lat, lng);
     }
 
     public void createHiveAtLocationValidated(
 
-            String ownerId, double lat, double lng, Consumer<String> onMainMessage) {
+            String ownerId, double lat, double lng, String floraType, Consumer<String> onMainMessage) {
 
         if (ownerId == null || ownerId.isEmpty()) {
 
@@ -2530,23 +3608,24 @@ public class HiveRepository {
 
                 }
 
-                String parcelOwner = hexParcelRepository.getOwnerSync(hex.id);
+                if (!hexParcelRepository.hasOwnerSync(hex.id, ownerId)) {
 
-                if (parcelOwner == null || !parcelOwner.equals(ownerId)) {
-
-                    mainHandler.post(() -> onMainMessage.accept("Compra este terreno para crear colmenas aquí."));
+                    mainHandler.post(() -> onMainMessage.accept("Instala un apiario aquí para crear colmenas."));
 
                     return;
 
                 }
 
-                int nHive = hiveDao.countByHexId(hex.id);
+                String site = HexApiary.resolveSiteIdAt(hex,
+                        hexParcelRepository.listSitesOnHexBlocking(ownerId, hex.id),
+                        hex.id, lat, lng);
+                int nHive = hexParcelRepository.countHivesAtSiteBlocking(ownerId, hex.id, site);
 
-                if (nHive >= HexParcelGameRules.MAX_HIVES_PER_HEX) {
+                if (nHive >= HexParcelGameRules.MAX_HIVES_PER_SITE) {
 
                     mainHandler.post(() -> onMainMessage.accept(
 
-                            "Este terreno ya tiene " + HexParcelGameRules.MAX_HIVES_PER_HEX + " colmenas."));
+                            "Este apiario ya tiene " + HexParcelGameRules.MAX_HIVES_PER_SITE + " colmenas."));
 
                     return;
 
@@ -2559,7 +3638,13 @@ public class HiveRepository {
                             "Este terreno aún no tiene flora lista. Espera a que termine la siembra."));
                     return;
                 }
-                String flora = readyFloras.get(0);
+                String flora = HoneyMarketEngine.canonicalFloraKey(
+                        floraType != null && !floraType.trim().isEmpty() ? floraType : readyFloras.get(0));
+                if (!readyFloras.contains(flora)) {
+                    mainHandler.post(() -> onMainMessage.accept(
+                            "Elige un tipo de flora de este terreno para la colmena."));
+                    return;
+                }
 
                 HiveEntity hive = new HiveEntity();
 
@@ -2584,12 +3669,14 @@ public class HiveRepository {
                 hive.lng = lng;
 
                 hive.hexId = hex.id;
+                hive.siteId = site;
 
                 hive.floraType = flora;
 
                 hive.superCount = 0;
 
                 hive.honeyProduction = HiveHoneyRules.STARTER_HIVE_STOCK_KG;
+                HiveHoneyStocks.seedStarter(hive);
 
                 hive.varroaPct = 2.0;
 
@@ -2602,6 +3689,8 @@ public class HiveRepository {
                 hive.populationStateJson = null;
 
                 hive.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(lat, lng);
+
+                stampFirstProductionDay(hive);
 
                 saveHiveBlocking(hive);
 
@@ -2631,8 +3720,11 @@ public class HiveRepository {
     }
 
     public static int purchasePriceEurosForSuperCount(int superCount) {
-        int s = Math.max(0, Math.min(2, superCount));
-        return 200 + 50 * s;
+        return 200;
+    }
+
+    public static int nucPurchasePriceEurosForSuperCount(int superCount) {
+        return HiveCareRules.emptyNucPriceEuros(superCount);
     }
 
     public void listOwnedHexOptionsForFloraAsync(String ownerId, String floraType,
@@ -2667,7 +3759,7 @@ public class HiveRepository {
 
     /**
      * Compra una colmena nueva en un hex propio: cobra según alzas (0 → 200 €, 1 → 250 €, 2 → 300 €),
-     * coloca la colmena en coordenadas aleatorias dentro del hex.
+     * coloca la colmena en el pin del apiario.
      */
     public void purchaseHiveValidated(
             String ownerId,
@@ -2676,6 +3768,23 @@ public class HiveRepository {
             String hiveName,
             int superCount,
             Consumer<String> onMainMessage) {
+        purchaseHiveValidated(ownerId, hexId, expectedFloraType, hiveName, superCount, null,
+                onMainMessage);
+    }
+
+    public void purchaseHiveValidated(
+            String ownerId,
+            String hexId,
+            String expectedFloraType,
+            String hiveName,
+            int superCount,
+            @Nullable String siteId,
+            Consumer<String> onMainMessage) {
+        if (GameServer.enabled() && !GameServer.isAvailable()) {
+            mainHandler.post(() -> onMainMessage.accept(
+                    "No hay conexión con el servidor. No se puede realizar esta acción."));
+            return;
+        }
         if (ownerId == null || ownerId.isEmpty()) {
             mainHandler.post(() -> onMainMessage.accept("Sesión no válida."));
             return;
@@ -2684,7 +3793,7 @@ public class HiveRepository {
             mainHandler.post(() -> onMainMessage.accept("Elige un terreno."));
             return;
         }
-        int supers = Math.max(0, Math.min(2, superCount));
+        int supers = 0;
         double price = purchasePriceEurosForSuperCount(supers);
         String trimmedName = hiveName == null ? "" : hiveName.trim();
         if (trimmedName.isEmpty()) {
@@ -2694,11 +3803,28 @@ public class HiveRepository {
         String nameToSave = trimmedName.length() > 120 ? trimmedName.substring(0, 120) : trimmedName;
         ioExecutor.execute(() -> {
             try {
-                String parcelOwner = hexParcelRepository.getOwnerSync(hexId);
-                if (parcelOwner == null || !parcelOwner.equals(ownerId)) {
+                if (!hexParcelRepository.hasOwnerSync(hexId, ownerId)) {
                     mainHandler.post(() -> onMainMessage.accept(
-                            "Compra este terreno para crear colmenas aquí."));
+                            "Instala un apiario aquí para crear colmenas."));
                     return;
+                }
+                HexParcel hex = IberiaHexOverlayStore.findById(appContext, hexId);
+                if (hex == null) {
+                    mainHandler.post(() -> onMainMessage.accept("Terreno no encontrado en el mapa."));
+                    return;
+                }
+                List<HexParcelOwnershipEntity> sites = hexParcelRepository.listSitesOnHexBlocking(
+                        ownerId, hexId);
+                String site;
+                if (siteId != null && !siteId.isEmpty()) {
+                    site = HexApiary.normalize(siteId);
+                    if (HexApiary.siteRow(site, sites) == null) {
+                        mainHandler.post(() -> onMainMessage.accept("Elige un apiario de este terreno."));
+                        return;
+                    }
+                } else {
+                    double[] pin = hexParcelRepository.apiaryPinForOwnerBlocking(ownerId, hex);
+                    site = HexApiary.resolveSiteIdAt(hex, sites, hexId, pin[0], pin[1]);
                 }
                 if (expectedFloraType == null || expectedFloraType.trim().isEmpty()) {
                     mainHandler.post(() -> onMainMessage.accept("Elige un tipo de flora."));
@@ -2712,24 +3838,21 @@ public class HiveRepository {
                     return;
                 }
                 String flora = want;
-                int nHive = hiveDao.countByHexId(hexId);
-                if (nHive >= HexParcelGameRules.MAX_HIVES_PER_HEX) {
+                int nHive = hexParcelRepository.countHivesAtSiteBlocking(ownerId, hexId, site);
+                if (nHive >= HexParcelGameRules.MAX_HIVES_PER_SITE) {
                     mainHandler.post(() -> onMainMessage.accept(
-                            "Este terreno ya tiene " + HexParcelGameRules.MAX_HIVES_PER_HEX
+                            "Este apiario ya tiene " + HexParcelGameRules.MAX_HIVES_PER_SITE
                                     + " colmenas."));
                     return;
                 }
-                HexParcel hex = IberiaHexOverlayStore.findById(appContext, hexId);
-                if (hex == null) {
-                    mainHandler.post(() -> onMainMessage.accept("Terreno no encontrado en el mapa."));
-                    return;
-                }
-                if (!economyRepository.trySpend(price)) {
-                    mainHandler.post(() -> onMainMessage.accept("Saldo insuficiente."));
+                if (!economyRepository.trySpend(price,
+                        "Compra de colmena " + nameToSave + " de " + flora)) {
+                    mainHandler.post(() -> onMainMessage.accept(
+                            economyRepository.blockedReason(price)));
                     return;
                 }
                 try {
-                    double[] ll = HexParcelRandomPoint.randomLatLonInside(hex, new Random());
+                    double[] ll = hexParcelRepository.apiaryPinForOwnerBlocking(ownerId, hex, site);
                     int health = 85 + (int) (Math.random() * 16);
                     HiveEntity hive = new HiveEntity();
                     hive.id = UUID.randomUUID().toString();
@@ -2743,9 +3866,11 @@ public class HiveRepository {
                     hive.lat = ll[0];
                     hive.lng = ll[1];
                     hive.hexId = hex.id;
+                    hive.siteId = site;
                     hive.floraType = flora;
                     hive.superCount = supers;
                     hive.honeyProduction = HiveHoneyRules.STARTER_HIVE_STOCK_KG;
+                    HiveHoneyStocks.seedStarter(hive);
                     hive.varroaPct = 2.0;
                     hive.varroaTreatmentDaysRemaining = 0;
                     hive.varroaReboundDaysRemaining = 0;
@@ -2762,11 +3887,13 @@ public class HiveRepository {
                     hive.lastSummarySwarmed = false;
                     hive.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(
                             hive.lat, hive.lng);
+                    stampFirstProductionDay(hive);
                     saveHiveBlocking(hive);
-                    grantXp(ownerId, XpAwards.buyHive(supers));
+                    grantXp(ownerId, XpAwards.BUY_HIVE);
                     mainHandler.post(() -> onMainMessage.accept(null));
                 } catch (Exception e) {
-                    economyRepository.addToBalance(price);
+                    economyRepository.addToBalance(price,
+                            "Devolución de la compra de colmena " + nameToSave);
                     Log.e(TAG, "purchaseHiveValidated", e);
                     mainHandler.post(() -> onMainMessage.accept(formatThrowableForUser(e)));
                 }
@@ -2778,66 +3905,204 @@ public class HiveRepository {
     }
 
     /**
-     * Compra 1 o 2 alzas (50 € cada una); máximo {@code 2} por colmena en total.
+     * Colmena ya cobrada para un contrato NPC: aparece en la finca y al liquidar va al almacén.
      */
-    public void purchaseSupersForHive(String hiveId, String ownerId, int toBuy,
-            Consumer<String> onMainMessage) {
-        if (hiveId == null || hiveId.isEmpty() || ownerId == null || ownerId.isEmpty()) {
-            mainHandler.post(() -> onMainMessage.accept("Sesión no válida."));
+    public HiveEntity spawnPaidContractHiveBlocking(
+            String ownerId,
+            HexParcel dest,
+            String flora,
+            String hiveName,
+            int superCount,
+            String contractId,
+            int todayKey) throws Exception {
+        if (ownerId == null || dest == null || dest.id == null) {
+            throw new IllegalArgumentException("Destino de contrato no válido.");
+        }
+        int supers = 0;
+        String nameToSave = hiveName == null ? "" : hiveName.trim();
+        if (nameToSave.isEmpty()) {
+            nameToSave = "Núcleo";
+        }
+        if (nameToSave.length() > 120) {
+            nameToSave = nameToSave.substring(0, 120);
+        }
+        String floraKey = HoneyMarketEngine.canonicalFloraKey(flora);
+        if (floraKey == null || floraKey.isEmpty()) {
+            floraKey = flora;
+        }
+        String primary = hexParcelRepository.ensurePrimaryHexSync(ownerId);
+        double[] ll = hexParcelRepository.apiaryPinForOwnerBlocking(ownerId, dest);
+        int health = 85 + (int) (Math.random() * 16);
+        HiveEntity hive = new HiveEntity();
+        hive.id = UUID.randomUUID().toString();
+        hive.ownerId = ownerId;
+        hive.name = nameToSave;
+        hive.beeCount = DEFAULT_BEE_COUNT_PER_HIVE;
+        hive.health = health;
+        hive.reserves = 55;
+        hive.queenAgeDays = 0;
+        hive.queenGeneticQuality = randomInitialQueenGeneticQuality();
+        hive.lat = ll[0];
+        hive.lng = ll[1];
+        hive.hexId = dest.id;
+        hive.floraType = floraKey;
+        hive.superCount = supers;
+        hive.honeyProduction = HiveHoneyRules.STARTER_HIVE_STOCK_KG;
+        HiveHoneyStocks.seedStarter(hive);
+        hive.varroaPct = 2.0;
+        hive.contractId = contractId;
+        hive.contractOriginHexId = primary != null ? primary : dest.id;
+        hive.contractOriginFlora = floraKey;
+        hive.contractOriginLat = ll[0];
+        hive.contractOriginLng = ll[1];
+        hive.returnToWarehouse = false;
+        hive.inWarehouse = false;
+        hive.transhumanceArrivesDayKey = 0;
+        hive.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(hive.lat, hive.lng);
+        stampFirstProductionDay(hive);
+        saveHiveBlocking(hive);
+        grantXp(ownerId, XpAwards.BUY_HIVE);
+        return hive;
+    }
+
+    public void storeHiveInWarehouseBlocking(HiveEntity hive) throws Exception {
+        if (hive == null || hive.ownerId == null) {
             return;
         }
-        if (toBuy < 1 || toBuy > 2) {
-            mainHandler.post(() -> onMainMessage.accept("Cantidad de alzas no válida."));
+        hive.inWarehouse = false;
+        hive.returnToWarehouse = false;
+        saveHiveBlocking(hive);
+    }
+
+    public void releaseWarehouseHivesBlocking(@Nullable String ownerId) {
+        if (ownerId == null || ownerId.isEmpty()) {
+            return;
+        }
+        List<HiveEntity> stock = hiveDao.getWarehouseHivesSync(ownerId);
+        if (stock == null || stock.isEmpty()) {
+            return;
+        }
+        for (HiveEntity hive : stock) {
+            if (hive == null) {
+                continue;
+            }
+            hive.inWarehouse = false;
+            hive.returnToWarehouse = false;
+            try {
+                saveHiveBlocking(hive);
+            } catch (Exception e) {
+                Log.e(TAG, "releaseWarehouseHivesBlocking", e);
+            }
+        }
+    }
+
+    public void listWarehouseHives(String ownerId, Consumer<List<HiveEntity>> onMain) {
+        if (onMain == null) {
+            return;
+        }
+        if (ownerId == null || ownerId.isEmpty()) {
+            mainHandler.post(() -> onMain.accept(Collections.emptyList()));
+            return;
+        }
+        ioExecutor.execute(() -> {
+            List<HiveEntity> rows = hiveDao.getWarehouseHivesSync(ownerId);
+            if (rows == null) {
+                rows = Collections.emptyList();
+            }
+            rows.sort(Comparator.comparing(h -> h.name != null ? h.name.toLowerCase(Locale.ROOT) : ""));
+            List<HiveEntity> out = rows;
+            mainHandler.post(() -> onMain.accept(out));
+        });
+    }
+
+    public void placeWarehouseHive(String ownerId, String hiveId, String destHexId,
+            Consumer<String> onMainMessage) {
+        if (onMainMessage == null) {
             return;
         }
         ioExecutor.execute(() -> {
             try {
-                HiveEntity h = hiveDao.getHiveByIdSync(hiveId);
-                if (h == null) {
-                    mainHandler.post(() -> onMainMessage.accept("Colmena no encontrada."));
-                    return;
-                }
-                if (!ownerId.equals(h.ownerId)) {
-                    mainHandler.post(() -> onMainMessage.accept("Esta colmena no es tuya."));
-                    return;
-                }
-                int current = Math.max(0, Math.min(2, h.superCount));
-                int room = 2 - current;
-                if (room <= 0) {
-                    mainHandler.post(() -> onMainMessage.accept(
-                            "Esta colmena ya tiene el máximo de alzas (2)."));
-                    return;
-                }
-                if (toBuy > room) {
-                    mainHandler.post(() -> onMainMessage.accept(
-                            "Solo puedes comprar " + room + " alza(s) más."));
-                    return;
-                }
-                double cost = toBuy * HiveHoneyRules.SUPER_PURCHASE_PRICE_EUR;
-                if (!economyRepository.trySpend(cost)) {
-                    mainHandler.post(() -> onMainMessage.accept("Saldo insuficiente."));
-                    return;
-                }
-                try {
-                    h.superCount = Math.min(2, current + toBuy);
-                    saveHiveBlocking(h);
-                    grantXp(ownerId, XpAwards.buySupers(toBuy));
-                    mainHandler.post(() -> onMainMessage.accept(null));
-                } catch (Exception e) {
-                    economyRepository.addToBalance(cost);
-                    throw e;
-                }
+                String err = placeWarehouseHiveBlocking(ownerId, hiveId, destHexId);
+                mainHandler.post(() -> onMainMessage.accept(err));
             } catch (Exception e) {
-                Log.e(TAG, "purchaseSupersForHive", e);
+                Log.e(TAG, "placeWarehouseHive", e);
                 mainHandler.post(() -> onMainMessage.accept(formatThrowableForUser(e)));
             }
         });
     }
 
+    @Nullable
+    public String placeWarehouseHiveBlocking(String ownerId, String hiveId, String destHexId)
+            throws Exception {
+        if (GameServer.enabled() && !GameServer.isAvailable()) {
+            return "No hay conexión con el servidor. No se puede realizar esta acción.";
+        }
+        if (ownerId == null || ownerId.isEmpty()) {
+            return "Sesión no válida.";
+        }
+        HiveEntity h = hiveDao.getHiveByIdSync(hiveId);
+        if (h == null || h.ownerId == null || !h.ownerId.equals(ownerId)) {
+            return "Colmena no válida.";
+        }
+        if (!h.inWarehouse) {
+            return "Esa colmena no está en el almacén.";
+        }
+        if (!hexParcelRepository.hasOwnerSync(destHexId, ownerId)) {
+            return "Solo puedes colocar stock en un apiario tuyo.";
+        }
+        HexParcel dest = IberiaHexOverlayStore.findById(appContext, destHexId);
+        if (dest == null) {
+            return "Terreno no encontrado.";
+        }
+        List<HexParcelOwnershipEntity> sites = hexParcelRepository.listSitesOnHexBlocking(ownerId, destHexId);
+        double[] ll = hexParcelRepository.apiaryPinForOwnerBlocking(ownerId, dest);
+        String site = HexApiary.resolveSiteIdAt(dest, sites, dest.id, ll[0], ll[1]);
+        ll = hexParcelRepository.apiaryPinForOwnerBlocking(ownerId, dest, site);
+        int nHive = hexParcelRepository.countHivesAtSiteBlocking(ownerId, destHexId, site);
+        if (nHive >= HexParcelGameRules.MAX_HIVES_PER_SITE) {
+            return "Este apiario ya tiene " + HexParcelGameRules.MAX_HIVES_PER_SITE + " colmenas.";
+        }
+        h.inWarehouse = false;
+        h.returnToWarehouse = false;
+        h.hexId = dest.id;
+        h.lat = ll[0];
+        h.lng = ll[1];
+        assignHiveSiteFromPoint(h, dest, ll[0], ll[1]);
+        h.transhumanceArrivesDayKey = 0;
+        if (h.floraType == null || h.floraType.isEmpty()) {
+            h.floraType = HexFlora.nativeFloraForParcel(dest);
+        }
+        h.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(h.lat, h.lng);
+        saveHiveBlocking(h);
+        return null;
+    }
+
+    /**
+     * Compra 1 o 2 alzas (50 € cada una); máximo {@code 2} por colmena en total.
+     */
+    public void purchaseSupersForHive(String hiveId, String ownerId, int toBuy,
+            Consumer<String> onMainMessage) {
+        if (onMainMessage != null) {
+            mainHandler.post(() -> onMainMessage.accept("Las alzas ya no forman parte del juego."));
+        }
+    }
+
+    private static void applyDestFlora(@NonNull HiveEntity hive, @Nullable String destFlora) {
+        if (destFlora == null || destFlora.trim().isEmpty()) {
+            return;
+        }
+        hive.floraType = HoneyMarketEngine.canonicalFloraKey(destFlora);
+    }
+
     public void transhumanceValidated(
 
-            HiveEntity hive, double lat, double lng, Consumer<String> onMainMessage) {
+            HiveEntity hive, double lat, double lng, @Nullable String destFlora, Consumer<String> onMainMessage) {
 
+        if (GameServer.enabled() && !GameServer.isAvailable()) {
+            mainHandler.post(() -> onMainMessage.accept(
+                    "No hay conexión con el servidor. No se puede realizar esta acción."));
+            return;
+        }
         if (hive == null || hive.id == null) {
 
             mainHandler.post(() -> onMainMessage.accept("Colmena no válida."));
@@ -2860,10 +4125,25 @@ public class HiveRepository {
 
                 }
 
-                int todayKey = GameCalendar.toDayKey(LocalDate.now(GameCalendar.userTimeZone()));
-                if (TranshumanceRules.isInTransit(h, todayKey)) {
+                if (h.inWarehouse) {
                     mainHandler.post(() -> onMainMessage.accept(
-                            "Esta colmena aún está de camino. Espera a que llegue (1 día)."));
+                            "Esa colmena está en el almacén. Colócala en un apiario primero."));
+                    return;
+                }
+
+                if (TranshumanceRules.hasPendingContractMove(h)) {
+                    mainHandler.post(() -> onMainMessage.accept(
+                            "Esta colmena ya tiene una transhumancia programada para el cálculo diario."));
+                    return;
+                }
+                if (TruckLiveTrips.hasActive(appContext, h.id)) {
+                    mainHandler.post(() -> onMainMessage.accept(
+                            "Esta colmena aún está de camino. Espera a que llegue."));
+                    return;
+                }
+                if (h.linkedToContract()) {
+                    mainHandler.post(() -> onMainMessage.accept(
+                            "Esta colmena está en un contrato de polinización. Espera a que vuelva sola."));
                     return;
                 }
 
@@ -2877,75 +4157,111 @@ public class HiveRepository {
 
                 }
 
-                String parcelOwner = hexParcelRepository.getOwnerSync(hex.id);
-
-                if (parcelOwner == null || !parcelOwner.equals(h.ownerId)) {
-
-                    mainHandler.post(() -> onMainMessage.accept("El destino no es un terreno tuyo."));
-
-                    return;
-
-                }
-
                 HexParcel hexAtOldPos = IberiaHexOverlayStore.findContaining(appContext, h.lat, h.lng);
-
                 boolean sameHex = (h.hexId != null && hex.id.equals(h.hexId))
-
                         || (h.hexId == null && hexAtOldPos != null && hex.id.equals(hexAtOldPos.id));
-
                 if (sameHex) {
-
-                    h.lat = lat;
-
-                    h.lng = lng;
-
-                    if (h.hexId == null) {
-
-                        h.hexId = hex.id;
-
+                    List<HexParcelOwnershipEntity> sites = hexParcelRepository.listSitesOnHexBlocking(
+                            h.ownerId, hex.id);
+                    String destinationSite = HexApiary.resolveSiteIdAt(hex, sites, hex.id, lat, lng);
+                    int nHive = hexParcelRepository.countHivesAtSiteBlocking(
+                            h.ownerId, hex.id, destinationSite);
+                    if (nHive >= HexParcelGameRules.MAX_HIVES_PER_SITE
+                            && !HexApiary.sameSite(destinationSite, h.siteId)) {
+                        mainHandler.post(() -> onMainMessage.accept(
+                                "Ese apiario ya tiene " + HexParcelGameRules.MAX_HIVES_PER_SITE + " colmenas."));
+                        return;
                     }
-
+                    h.lat = lat;
+                    h.lng = lng;
+                    if (h.hexId == null) {
+                        h.hexId = hex.id;
+                    }
+                    assignHiveSiteFromPoint(h, hex, lat, lng);
                     h.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(h.lat, h.lng);
-
+                    applyDestFlora(h, destFlora);
                     saveHiveBlocking(h);
-
                     mainHandler.post(() -> onMainMessage.accept(null));
-
                     return;
-
                 }
 
-                int nHive = hiveDao.countByHexId(hex.id);
+                if (hexParcelRepository.hasOwnerSync(hex.id, h.ownerId)) {
+                    // terreno propio
+                } else if (NpcContractCatalog.isNpcFarm(hex) && pollinationContractRepository != null) {
+                    String err = pollinationContractRepository.addHivesBlocking(
+                            h.ownerId, hex.id, Collections.singletonList(h.id));
+                    mainHandler.post(() -> onMainMessage.accept(err));
+                    return;
+                } else {
+                    mainHandler.post(() -> onMainMessage.accept("El destino no es un terreno tuyo."));
+                    return;
+                }
 
-                if (nHive >= HexParcelGameRules.MAX_HIVES_PER_HEX) {
+                List<HexParcelOwnershipEntity> destinationSites = hexParcelRepository.listSitesOnHexBlocking(
+                        h.ownerId, hex.id);
+                String destinationSite = HexApiary.resolveSiteIdAt(
+                        hex, destinationSites, hex.id, lat, lng);
+                int nHive = hexParcelRepository.countHivesAtSiteBlocking(
+                        h.ownerId, hex.id, destinationSite);
+
+                if (nHive >= HexParcelGameRules.MAX_HIVES_PER_SITE) {
 
                     mainHandler.post(() -> onMainMessage.accept(
 
-                            "Ese terreno ya tiene el máximo de colmenas."));
+                            "Ese apiario ya tiene " + HexParcelGameRules.MAX_HIVES_PER_SITE + " colmenas."));
 
                     return;
 
                 }
 
+                h.siteId = destinationSite;
                 int cost = TranshumanceRules.costEuros(h.lat, h.lng, lat, lng);
-                if (!economyRepository.trySpend(cost)) {
+                String hiveLabel = h.name == null || h.name.trim().isEmpty()
+                        ? "la colmena" : h.name.trim();
+                String moveConcept = "Transhumancia de " + hiveLabel;
+                if (!economyRepository.trySpend(cost, moveConcept)) {
                     mainHandler.post(() -> onMainMessage.accept(
-                            "Saldo insuficiente (" + cost + " B) para la transhumancia."));
+                            economyRepository.blockedReason(cost) + " para la transhumancia."));
                     return;
                 }
                 try {
-                    h.lat = lat;
-                    h.lng = lng;
-                    h.hexId = hex.id;
+                    TruckLiveTrips.StartResult trip = TruckLiveTrips.start(
+                            appContext, h, lat, lng, hex.id);
+                    if (trip == TruckLiveTrips.StartResult.TOO_LATE) {
+                        economyRepository.addToBalance(cost, "Devolución de la transhumancia");
+                        mainHandler.post(() -> onMainMessage.accept(TranshumanceRules.ERR_AFTER_DAILY_TICK));
+                        return;
+                    }
+                    if (trip == TruckLiveTrips.StartResult.ALREADY_TRAVELING) {
+                        economyRepository.addToBalance(cost, "Devolución de la transhumancia");
+                        mainHandler.post(() -> onMainMessage.accept(
+                                "Esta colmena aún está de camino. Espera a que llegue."));
+                        return;
+                    }
+                    if (trip == TruckLiveTrips.StartResult.NO_TRUCK) {
+                        economyRepository.addToBalance(cost, "Devolución de la transhumancia");
+                        mainHandler.post(() -> onMainMessage.accept(
+                                "No hay un camión libre con hueco de colmena. Cómpralo o espera a que vuelva."));
+                        return;
+                    }
+                    if (trip != TruckLiveTrips.StartResult.STARTED) {
+                        h.lat = lat;
+                        h.lng = lng;
+                        h.hexId = hex.id;
+                        assignHiveSiteFromPoint(h, hex, lat, lng);
+                        h.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(h.lat, h.lng);
+                        applyDestFlora(h, destFlora);
+                    } else {
+                        TruckLiveTrips.attachDestFlora(appContext, h.id, destFlora);
+                    }
                     h.reserves = Math.max(0, h.reserves - 15);
                     h.health = Math.max(0, h.health - 2);
-                    h.transhumanceArrivesDayKey = todayKey + TranshumanceRules.TRAVEL_DAYS;
-                    h.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(h.lat, h.lng);
+                    h.transhumanceArrivesDayKey = 0;
                     saveHiveBlocking(h);
-                    grantXp(h.ownerId, XpAwards.TRANSHUMANCE);
+                    grantXp(h.ownerId, XpAwards.transhumance(1));
                     mainHandler.post(() -> onMainMessage.accept(null));
                 } catch (Exception e) {
-                    economyRepository.addToBalance(cost);
+                    economyRepository.addToBalance(cost, "Devolución de la transhumancia");
                     throw e;
                 }
 
@@ -2969,8 +4285,18 @@ public class HiveRepository {
      * {@code dailyYields} en Firestore (historial de producción vacío). Los campos de último resumen diario
      * ({@code lastSummary*}) se ponen a cero; la madre conserva historial y último resumen.
      */
-    public void splitHiveHalf(String hiveId, Consumer<String> onMainMessage) {
-        if (hiveId == null || hiveId.isEmpty()) {
+    /**
+     * Compra un núcleo vacío en el terreno de la madre y pasa una fracción de obreras/miel.
+     */
+    public void splitHiveIntoEmptyNuc(
+            String parentHiveId,
+            String ownerId,
+            String hexId,
+            String floraType,
+            String hiveName,
+            int superCount,
+            Consumer<String> onMainMessage) {
+        if (parentHiveId == null || parentHiveId.isEmpty()) {
             if (onMainMessage != null) {
                 mainHandler.post(() -> onMainMessage.accept("Colmena no válida."));
             }
@@ -2978,17 +4304,25 @@ public class HiveRepository {
         }
         ioExecutor.execute(() -> {
             try {
-                String err = trySplitHiveHalfBlocking(hiveId);
+                String err = trySplitHiveIntoEmptyNucBlocking(
+                        parentHiveId, ownerId, hexId, floraType, hiveName, superCount);
                 if (onMainMessage != null) {
                     mainHandler.post(() -> onMainMessage.accept(err));
                 }
             } catch (Exception e) {
-                Log.e(TAG, "splitHiveHalf", e);
+                Log.e(TAG, "splitHiveIntoEmptyNuc", e);
                 if (onMainMessage != null) {
                     mainHandler.post(() -> onMainMessage.accept(formatThrowableForUser(e)));
                 }
             }
         });
+    }
+
+    public void splitHiveHalf(String hiveId, Consumer<String> onMainMessage) {
+        if (onMainMessage != null) {
+            mainHandler.post(() -> onMainMessage.accept(
+                    "Abre la ficha de la colmena y usa Dividir para comprar el núcleo."));
+        }
     }
 
     /**
@@ -3004,7 +4338,7 @@ public class HiveRepository {
         }
         ioExecutor.execute(() -> {
             try {
-                java.util.LinkedHashSet<String> unique = new java.util.LinkedHashSet<>();
+                LinkedHashSet<String> unique = new LinkedHashSet<>();
                 for (String id : hiveIds) {
                     if (id != null && !id.trim().isEmpty()) {
                         unique.add(id.trim());
@@ -3017,27 +4351,9 @@ public class HiveRepository {
                     }
                     return;
                 }
-                int ok = 0;
-                String firstError = null;
-                for (String id : unique) {
-                    String err = trySplitHiveHalfBlocking(id);
-                    if (err == null) {
-                        ok++;
-                    } else if (firstError == null) {
-                        firstError = err;
-                    }
-                }
                 if (onMainMessage != null) {
-                    final String out;
-                    if (ok == attempted) {
-                        out = null;
-                    } else if (ok > 0) {
-                        out = "Divididas " + ok + " de " + attempted + ". "
-                                + (firstError != null ? firstError : "");
-                    } else {
-                        out = firstError != null ? firstError : "No se pudo dividir ninguna colmena.";
-                    }
-                    mainHandler.post(() -> onMainMessage.accept(out));
+                    mainHandler.post(() -> onMainMessage.accept(
+                            "Abre la ficha de cada colmena y usa Dividir para comprar el núcleo."));
                 }
             } catch (Exception e) {
                 Log.e(TAG, "splitHivesSequentialBlockingOrder", e);
@@ -3051,14 +4367,25 @@ public class HiveRepository {
     /**
      * @return {@code null} si la división tuvo éxito; mensaje para el usuario si no.
      */
-    private String trySplitHiveHalfBlocking(String hiveId) {
-        if (hiveId == null || hiveId.isEmpty()) {
+    private String trySplitHiveIntoEmptyNucBlocking(
+            String parentHiveId,
+            String ownerId,
+            String hexId,
+            String floraType,
+            String hiveName,
+            int superCount) {
+        if (parentHiveId == null || parentHiveId.isEmpty()) {
             return "Colmena no válida.";
         }
+        double price = 0.0;
+        boolean spent = false;
         try {
-            HiveEntity h = hiveDao.getHiveByIdSync(hiveId);
+            HiveEntity h = hiveDao.getHiveByIdSync(parentHiveId);
             if (h == null) {
                 return "Colmena no encontrada.";
+            }
+            if (ownerId == null || ownerId.isEmpty() || !ownerId.equals(h.ownerId)) {
+                return "Esta colmena no es tuya.";
             }
             ensurePopulationJson(h);
             HivePopulationState s = HivePopulationState.fromJson(h.populationStateJson);
@@ -3066,28 +4393,61 @@ public class HiveRepository {
                 return "Estado de colonia no disponible.";
             }
             if (s.workersAdult < ColonyGameRules.MIN_BEES_TO_SPLIT) {
-                return "Necesitas al menos 50.000 obreras adultas para dividir la colmena.";
+                return "Necesitas al menos 35.000 obreras adultas para dividir la colmena.";
             }
-            if (h.hexId == null || h.hexId.isEmpty()) {
+            String destHex = hexId != null && !hexId.isEmpty() ? hexId : h.hexId;
+            if (destHex == null || destHex.isEmpty()) {
                 return "Asigna un terreno a la colmena antes de dividirla.";
             }
-            if (countHivesOnHexBlocking(h.hexId) >= HexParcelGameRules.MAX_HIVES_PER_HEX) {
-                return "Este terreno ya tiene el máximo de colmenas permitidas.";
+            if (h.hexId == null || !destHex.equals(h.hexId)) {
+                return "El núcleo se coloca en el mismo terreno que la colmena madre.";
             }
+            if (!hexParcelRepository.hasOwnerSync(destHex, h.ownerId)) {
+                return "Instala un apiario aquí para colocar colmenas.";
+            }
+            String trimmedName = hiveName == null ? "" : hiveName.trim();
+            if (trimmedName.isEmpty()) {
+                return "Escribe un nombre para la colmena.";
+            }
+            String nameToSave = trimmedName.length() > 120 ? trimmedName.substring(0, 120) : trimmedName;
+            if (floraType == null || floraType.trim().isEmpty()) {
+                return "Elige un tipo de flora.";
+            }
+            long nowMs = System.currentTimeMillis();
+            String flora = HoneyMarketEngine.canonicalFloraKey(floraType);
+            if (!hexFloraRepository.isFloraReadyOnHexBlocking(destHex, flora, nowMs)) {
+                return "Esa flora no está disponible aún en este terreno.";
+            }
+            if (hexParcelRepository.countHivesAtSiteBlocking(
+                    h.ownerId, destHex, h.siteId) >= HexParcelGameRules.MAX_HIVES_PER_SITE) {
+                return "Este apiario ya tiene el máximo de colmenas permitidas.";
+            }
+            HexParcel hex = IberiaHexOverlayStore.findById(appContext, destHex);
+            if (hex == null) {
+                return "Terreno no encontrado en el mapa.";
+            }
+            int supers = 0;
+            price = HiveCareRules.emptyNucPriceEuros(supers);
+            if (!economyRepository.trySpend(price, "Núcleo " + nameToSave)) {
+                return economyRepository.blockedReason(price);
+            }
+            spent = true;
             double spawnShare = HiveCareRules.randomSplitSpawnShare();
             HivePopulationState spawnPop = s.splitOffFraction(spawnShare);
             h.populationStateJson = s.toJson();
             h.beeCount = s.totalBees();
+            double[] ll = hexParcelRepository.apiaryPinForOwnerBlocking(h.ownerId, hex);
             HiveEntity nu = new HiveEntity();
             nu.id = UUID.randomUUID().toString();
             nu.ownerId = h.ownerId;
-            nu.name = h.name + " · II";
-            nu.lat = h.lat;
-            nu.lng = h.lng;
-            nu.hexId = h.hexId;
-            nu.floraType = h.floraType;
-            nu.superCount = h.superCount;
-            nu.elevationMeters = h.elevationMeters;
+            nu.name = nameToSave;
+            nu.lat = ll[0];
+            nu.lng = ll[1];
+            nu.hexId = destHex;
+            nu.siteId = h.siteId;
+            nu.floraType = flora;
+            nu.superCount = supers;
+            nu.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(nu.lat, nu.lng);
             nu.populationStateJson = spawnPop.toJson();
             nu.beeCount = spawnPop.totalBees();
             nu.queenAgeDays = h.queenAgeDays;
@@ -3106,9 +4466,8 @@ public class HiveRepository {
             nu.lastSummaryWorkerEmergences = 0;
             nu.lastSummaryEggsLaid = 0;
             nu.lastSummarySwarmed = false;
-            double spawnHoney = h.honeyProduction * spawnShare;
-            nu.honeyProduction = spawnHoney;
-            h.honeyProduction -= spawnHoney;
+            stampFirstProductionDay(nu);
+            HiveHoneyStocks.splitProportionally(h, nu, spawnShare);
             int rSpawn = (int) Math.round(h.reserves * spawnShare);
             rSpawn = Math.max(0, Math.min(h.reserves, rSpawn));
             nu.reserves = rSpawn;
@@ -3123,15 +4482,22 @@ public class HiveRepository {
             HiveHoneyRules.clampHoneyStockToCap(nu);
             normalizeBeeCount(h);
             normalizeBeeCount(nu);
-            hiveDao.upsert(h);
-            hiveDao.upsert(nu);
+            upsertCloud(h);
+            upsertCloud(nu);
             if (firestore != null) {
                 Tasks.await(firestore.collection("hives").document(h.id).set(h, SetOptions.merge()));
                 Tasks.await(firestore.collection("hives").document(nu.id).set(nu, SetOptions.merge()));
             }
+            grantXp(h.ownerId, XpAwards.BUY_HIVE);
             return null;
         } catch (Exception e) {
-            Log.e(TAG, "trySplitHiveHalfBlocking", e);
+            if (spent && price > 0.0) {
+                try {
+                    economyRepository.addToBalance(price, "Devolución del núcleo");
+                } catch (Exception ignored) {
+                }
+            }
+            Log.e(TAG, "trySplitHiveIntoEmptyNucBlocking", e);
             return formatThrowableForUser(e);
         }
     }
@@ -3161,6 +4527,68 @@ public class HiveRepository {
         });
     }
 
+    public void floraSaturationAsync(
+            @Nullable String hexId,
+            @Nullable String floraKey,
+            Consumer<HexFloraSaturation> onMain) {
+        if (onMain == null) {
+            return;
+        }
+        ioExecutor.execute(() -> {
+            HexFloraSaturation sat = floraSaturationBlocking(hexId, floraKey);
+            mainHandler.post(() -> onMain.accept(sat));
+        });
+    }
+
+    @NonNull
+    public HexFloraSaturation floraSaturationBlocking(@Nullable String hexId, @Nullable String floraKey) {
+        if (hexId == null || hexId.isEmpty()) {
+            return new HexFloraSaturation(0, 0, 0);
+        }
+        try {
+            HexParcel parcel = IberiaHexOverlayStore.findById(appContext, hexId);
+            List<HiveEntity> hives = hiveDao.getByHexIdSync(hexId);
+            LocalDate day = LocalDate.now(GameCalendar.userTimeZone());
+            return HexFloraSaturation.compute(parcel, floraKey, hives, day);
+        } catch (Exception e) {
+            Log.w(TAG, "floraSaturationBlocking", e);
+            return new HexFloraSaturation(0, 0, 0);
+        }
+    }
+
+    @NonNull
+    public List<HexFloraSaturation.Line> floraSaturationLinesBlocking(@Nullable String hexId) {
+        if (hexId == null || hexId.isEmpty()) {
+            return Collections.emptyList();
+        }
+        try {
+            HexParcel parcel = IberiaHexOverlayStore.findById(appContext, hexId);
+            List<HiveEntity> hives = hiveDao.getByHexIdSync(hexId);
+            LocalDate day = LocalDate.now(GameCalendar.userTimeZone());
+            LinkedHashSet<String> keys = new LinkedHashSet<>();
+            for (String k : HexFlora.nativeMixForParcel(parcel)) {
+                if (k != null && !k.trim().isEmpty()) {
+                    keys.add(HoneyMarketEngine.canonicalFloraKey(k));
+                }
+            }
+            for (HexParcelFloraEntity e : hexFloraRepository.listEntriesForHexBlocking(hexId)) {
+                if (e != null && e.floraKey != null && !e.floraKey.trim().isEmpty()) {
+                    keys.add(HoneyMarketEngine.canonicalFloraKey(e.floraKey));
+                }
+            }
+            if (keys.isEmpty()) {
+                String one = HexFlora.nativeFloraForParcel(parcel);
+                if (one != null && !one.trim().isEmpty()) {
+                    keys.add(HoneyMarketEngine.canonicalFloraKey(one));
+                }
+            }
+            return HexFloraSaturation.computeLines(parcel, new ArrayList<>(keys), hives, day);
+        } catch (Exception e) {
+            Log.w(TAG, "floraSaturationLinesBlocking", e);
+            return Collections.emptyList();
+        }
+    }
+
     public void listReadyFlorasForHexAsync(String hexId, Consumer<List<String>> onMain) {
         if (onMain == null) {
             return;
@@ -3169,10 +4597,68 @@ public class HiveRepository {
             try {
                 long nowMs = System.currentTimeMillis();
                 List<String> keys = hexFloraRepository.listReadyFloraKeysBlocking(hexId, nowMs);
+                if (hexParcelRepository != null && !keys.isEmpty()) {
+                    hexParcelRepository.syncHexParcelFlorasToCloudBlocking(hexId);
+                }
                 mainHandler.post(() -> onMain.accept(keys));
             } catch (Exception e) {
                 Log.e(TAG, "listReadyFlorasForHexAsync", e);
                 mainHandler.post(() -> onMain.accept(Collections.emptyList()));
+            }
+        });
+    }
+
+    private void reassignForageAfterRemovedCrops(String ownerId,
+            CropTickResult cropTick) {
+        if (cropTick == null || cropTick.removed.isEmpty()) {
+            return;
+        }
+        long nowMs = System.currentTimeMillis();
+        List<HiveEntity> hives = hiveDao.getHivesByOwnerSync(ownerId);
+        for (HiveEntity h : hives) {
+            if (h == null || h.hexId == null) {
+                continue;
+            }
+            String current = HoneyMarketEngine.canonicalFloraKey(h.floraType);
+            for (CropTickResult.Removed r : cropTick.removed) {
+                if (h.hexId.equals(r.hexId) && current.equals(r.floraKey)) {
+                    List<String> ready = hexFloraRepository.listReadyFloraKeysBlocking(h.hexId, nowMs);
+                    h.floraType = ready.isEmpty() ? HexFlora.MIL_FLORES : ready.get(0);
+                    try {
+                        saveHiveBlocking(h);
+                    } catch (Exception e) {
+                        Log.e(TAG, "reassignForageAfterRemovedCrops", e);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    public void changeHiveForageFloraAsync(String hiveId, String floraKey, Consumer<String> onMainMessage) {
+        if (onMainMessage == null) {
+            return;
+        }
+        ioExecutor.execute(() -> {
+            try {
+                HiveEntity h = hiveDao.getHiveByIdSync(hiveId);
+                if (h == null) {
+                    mainHandler.post(() -> onMainMessage.accept("Colmena no encontrada."));
+                    return;
+                }
+                String want = HoneyMarketEngine.canonicalFloraKey(floraKey);
+                long nowMs = System.currentTimeMillis();
+                if (h.hexId == null || !hexFloraRepository.isFloraReadyOnHexBlocking(h.hexId, want, nowMs)) {
+                    mainHandler.post(() -> onMainMessage.accept(
+                            "Esa flora no está lista en este terreno."));
+                    return;
+                }
+                h.floraType = want;
+                saveHiveBlocking(h);
+                mainHandler.post(() -> onMainMessage.accept(null));
+            } catch (Exception e) {
+                Log.e(TAG, "changeHiveForageFloraAsync", e);
+                mainHandler.post(() -> onMainMessage.accept(formatThrowableForUser(e)));
             }
         });
     }
@@ -3203,25 +4689,26 @@ public class HiveRepository {
             String hexId,
             String ownerId,
             String floraKey,
-            int playerLevel,
             Consumer<String> onMain) {
         if (onMain == null) {
             return;
         }
         ioExecutor.execute(() -> {
             try {
+                int playerLevel = playerProgressRepository != null
+                        ? playerProgressRepository.getLevel(ownerId)
+                        : 0;
                 String msg = hexFloraRepository.plantAdditionalFloraBlocking(
                         hexId,
                         floraKey,
                         ownerId,
-                        playerLevel,
                         economyRepository,
                         System.currentTimeMillis(),
-                        hexParcelRepository);
+                        hexParcelRepository,
+                        playerLevel);
                 if (msg == null) {
                     hexParcelRepository.syncHexParcelFlorasToCloudBlocking(hexId);
-                    int n = hexFloraRepository.listEntriesForHexBlocking(hexId).size();
-                    grantXp(ownerId, XpAwards.plantFlora(Math.max(0, n - 1)));
+                    grantXp(ownerId, XpAwards.PLANT_FLORA);
                 }
                 mainHandler.post(() -> onMain.accept(msg));
             } catch (Exception e) {

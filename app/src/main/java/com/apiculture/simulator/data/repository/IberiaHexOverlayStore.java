@@ -6,12 +6,15 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.apiculture.simulator.BuildConfig;
 import com.apiculture.simulator.domain.map.PlayableMapRegion;
 import com.apiculture.simulator.domain.parcel.BoundingBox;
 import com.apiculture.simulator.domain.parcel.HexParcel;
+import com.apiculture.simulator.domain.parcel.IberiaBounds;
+import com.apiculture.simulator.domain.parcel.MadagascarBounds;
 import com.apiculture.simulator.domain.parcel.HexParcelGenerator;
 import com.apiculture.simulator.domain.parcel.LandMask;
 import com.apiculture.simulator.presentation.map.HexOverlayDiskCache;
@@ -32,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -46,10 +50,14 @@ public final class IberiaHexOverlayStore {
 
     private static final String TAG = "HexOverlay";
     private static final int SCHEMA = 2;
+    /** Overlay con campo {@code place}; descarta caché de disco anterior. */
+    private static final int PLACES_VERSION = 1;
     private static final int GENERATE_CAP = 32000;
 
     private static final Object LOCK = new Object();
     private static final Map<PlayableMapRegion, List<HexParcel>> memoryCache =
+            new EnumMap<>(PlayableMapRegion.class);
+    private static final Map<PlayableMapRegion, Map<String, HexParcel>> memoryById =
             new EnumMap<>(PlayableMapRegion.class);
     private static final ExecutorService GEN_EXEC = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "hex-overlay-gen");
@@ -63,7 +71,9 @@ public final class IberiaHexOverlayStore {
 
     public static boolean isLoaded(PlayableMapRegion region) {
         PlayableMapRegion r = region != null ? region : PlayableMapRegion.IBERIA;
-        return memoryCache.get(r) != null;
+        synchronized (LOCK) {
+            return memoryCache.get(r) != null;
+        }
     }
 
     /**
@@ -81,6 +91,10 @@ public final class IberiaHexOverlayStore {
         Context app = appContext.getApplicationContext();
         GEN_EXEC.execute(() -> {
             getParcels(app, r);
+            if (r != PlayableMapRegion.IBERIA) {
+                HoneyOrderStore.maintainRegion(app, null, r);
+                PollinationOfferStore.maintainRegion(app, r);
+            }
             if (onDone != null) {
                 mainHandler().post(onDone);
             }
@@ -107,9 +121,15 @@ public final class IberiaHexOverlayStore {
 
     public static List<HexParcel> getParcels(Context appContext, PlayableMapRegion region) {
         PlayableMapRegion r = region != null ? region : PlayableMapRegion.IBERIA;
-        List<HexParcel> c = memoryCache.get(r);
-        if (c != null) {
-            return c;
+        synchronized (LOCK) {
+            List<HexParcel> c = memoryCache.get(r);
+            if (c != null) {
+                return c;
+            }
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            ensureLoadedAsync(appContext, r, null);
+            return Collections.emptyList();
         }
         synchronized (LOCK) {
             List<HexParcel> again = memoryCache.get(r);
@@ -125,9 +145,35 @@ public final class IberiaHexOverlayStore {
             if (loaded == null) {
                 loaded = generateAndSave(app, f, r);
             }
+            loaded = clipRegion(r, loaded);
             memoryCache.put(r, loaded);
+            memoryById.put(r, indexById(loaded));
             return loaded;
         }
+    }
+
+    @NonNull
+    private static Map<String, HexParcel> indexById(@NonNull List<HexParcel> parcels) {
+        Map<String, HexParcel> byId = new HashMap<>(Math.max(16, parcels.size() * 2));
+        for (int i = 0; i < parcels.size(); i++) {
+            HexParcel p = parcels.get(i);
+            if (p != null && p.id != null) {
+                byId.put(p.id, p);
+            }
+        }
+        return byId;
+    }
+
+    @NonNull
+    private static List<HexParcel> parcelsIfReady(Context appContext, PlayableMapRegion region) {
+        PlayableMapRegion r = region != null ? region : PlayableMapRegion.IBERIA;
+        if (isLoaded(r)) {
+            return getParcels(appContext, r);
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            return Collections.emptyList();
+        }
+        return getParcels(appContext, r);
     }
 
     @Nullable
@@ -136,13 +182,31 @@ public final class IberiaHexOverlayStore {
             return null;
         }
         PlayableMapRegion r = PlayableMapRegion.fromHexId(hexId);
-        HexParcel found = findIn(getParcels(appContext, r), hexId);
-        if (found != null || hexId.startsWith("za_") || hexId.startsWith("iberia_")) {
+        parcelsIfReady(appContext, r);
+        HexParcel found = lookupId(r, hexId);
+        if (found != null) {
             return found;
         }
-        PlayableMapRegion other = r == PlayableMapRegion.SOUTH_AFRICA
-                ? PlayableMapRegion.IBERIA : PlayableMapRegion.SOUTH_AFRICA;
-        return findIn(getParcels(appContext, other), hexId);
+        if (hexId.startsWith("za_") || hexId.startsWith("iberia_")
+                || hexId.startsWith("mdg_") || hexId.startsWith("hex_mdg_")) {
+            return null;
+        }
+        for (PlayableMapRegion other : PlayableMapRegion.values()) {
+            if (other == r || !isLoaded(other)) {
+                continue;
+            }
+            HexParcel alt = lookupId(other, hexId);
+            if (alt != null) {
+                return alt;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private static HexParcel lookupId(PlayableMapRegion region, String hexId) {
+        Map<String, HexParcel> byId = memoryById.get(region);
+        return byId != null ? byId.get(hexId) : null;
     }
 
     @Nullable
@@ -152,18 +216,7 @@ public final class IberiaHexOverlayStore {
             return null;
         }
         return com.apiculture.simulator.domain.parcel.HexParcelResolve.findContaining(
-                getParcels(appContext, r), lat, lon);
-    }
-
-    @Nullable
-    private static HexParcel findIn(List<HexParcel> all, String hexId) {
-        for (int i = 0; i < all.size(); i++) {
-            HexParcel p = all.get(i);
-            if (hexId.equals(p.id)) {
-                return p;
-            }
-        }
-        return null;
+                parcelsIfReady(appContext, r), lat, lon);
     }
 
     /**
@@ -282,6 +335,9 @@ public final class IberiaHexOverlayStore {
         }
         try {
             JSONObject root = new JSONObject(new String(readAllBytes(f), StandardCharsets.UTF_8));
+            if (root.optInt("places", 0) < PLACES_VERSION) {
+                return null;
+            }
             return parseParcelsJson(root, datasetKey(app, region));
         } catch (Exception e) {
             return null;
@@ -319,7 +375,8 @@ public final class IberiaHexOverlayStore {
                 MapHexOverlayConfig.MAP_HEX_MIN_LAND_FRACTION,
                 r.gridAnchorLat(),
                 r.gridAnchorLon());
-        List<HexParcel> list = generator.generate(r.box(), r.hexPrefix(), GENERATE_CAP);
+        List<HexParcel> list = clipRegion(r,
+                generator.generate(r.box(), r.hexPrefix(), GENERATE_CAP));
         Log.i(TAG, r.hexPrefix() + " generate " + list.size() + " hex in "
                 + (SystemClock.elapsedRealtime() - t0) + " ms");
         final String key = datasetKey(app, r);
@@ -335,6 +392,19 @@ public final class IberiaHexOverlayStore {
             }
         });
         return list;
+    }
+
+    private static List<HexParcel> clipRegion(PlayableMapRegion region, List<HexParcel> parcels) {
+        if (parcels == null) {
+            return Collections.emptyList();
+        }
+        if (region == PlayableMapRegion.IBERIA) {
+            return IberiaBounds.keepPlayable(parcels);
+        }
+        if (region == PlayableMapRegion.MADAGASCAR) {
+            return MadagascarBounds.keepPlayable(parcels);
+        }
+        return parcels;
     }
 
     private static JSONObject buildJson(List<HexParcel> parcels, String key) throws org.json.JSONException {
@@ -357,11 +427,15 @@ public final class IberiaHexOverlayStore {
             if (p.maxElevationMeters != null) {
                 o.put("elev", p.maxElevationMeters);
             }
+            if (p.placeName != null && !p.placeName.isEmpty()) {
+                o.put("place", p.placeName);
+            }
             arr.put(o);
         }
         JSONObject root = new JSONObject();
         root.put("schema", SCHEMA);
         root.put("key", key);
+        root.put("places", PLACES_VERSION);
         root.put("savedAt", System.currentTimeMillis());
         root.put("parcels", arr);
         return root;
@@ -397,7 +471,14 @@ public final class IberiaHexOverlayStore {
             if (o.has("elev") && !o.isNull("elev")) {
                 elevM = (int) Math.round(o.getDouble("elev"));
             }
-            out.add(new HexParcel(id, poly, clat, clon, a, co, elevM));
+            String place = null;
+            if (o.has("place") && !o.isNull("place")) {
+                String raw = o.optString("place", "").trim();
+                if (!raw.isEmpty()) {
+                    place = raw;
+                }
+            }
+            out.add(new HexParcel(id, poly, clat, clon, a, co, elevM, place));
         }
         return out;
     }

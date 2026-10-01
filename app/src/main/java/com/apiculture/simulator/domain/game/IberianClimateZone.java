@@ -1,5 +1,8 @@
 package com.apiculture.simulator.domain.game;
 
+import android.content.Context;
+
+import com.apiculture.simulator.R;
 import com.apiculture.simulator.domain.parcel.HexParcel;
 
 /**
@@ -12,6 +15,22 @@ public enum IberianClimateZone {
     MEDITERRANEAN,
     SOUTH,
     CONTINENTAL;
+
+    public String label(Context context) {
+        switch (this) {
+            case ATLANTIC:
+                return context.getString(R.string.map_climate_atlantic);
+            case MOUNTAIN:
+                return context.getString(R.string.map_climate_mountain);
+            case MEDITERRANEAN:
+                return context.getString(R.string.map_climate_mediterranean);
+            case SOUTH:
+                return context.getString(R.string.map_climate_south);
+            case CONTINENTAL:
+            default:
+                return context.getString(R.string.map_climate_continental);
+        }
+    }
 
     public String labelEs() {
         switch (this) {

@@ -1,36 +1,73 @@
 package com.apiculture.simulator.presentation.market;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import java.util.Arrays;
 
 /** Fila del mercado: un tipo de miel. */
 public final class MarketPillUi {
 
     public final @NonNull String floraKey;
     public final @NonNull String title;
-    public final double demandKg;
-    public final double filledKg;
-    public final int fillPercent;
     public final double priceEurPerKg;
-    /** Recargo/descuento por oferta, −25…+25. */
-    public final int priceAdjPercent;
     public final double userStockKg;
+    public final @NonNull double[] priceHistory7d;
+    @Nullable
+    public final String priceNote;
+    public final double demandLeftKg;
 
     public MarketPillUi(
             @NonNull String floraKey,
             @NonNull String title,
-            double demandKg,
-            double filledKg,
-            int fillPercent,
             double priceEurPerKg,
-            int priceAdjPercent,
-            double userStockKg) {
+            double userStockKg,
+            @NonNull double[] priceHistory7d) {
+        this(floraKey, title, priceEurPerKg, userStockKg, priceHistory7d, null, Double.POSITIVE_INFINITY);
+    }
+
+    public MarketPillUi(
+            @NonNull String floraKey,
+            @NonNull String title,
+            double priceEurPerKg,
+            double userStockKg,
+            @NonNull double[] priceHistory7d,
+            @Nullable String priceNote) {
+        this(floraKey, title, priceEurPerKg, userStockKg, priceHistory7d, priceNote, Double.POSITIVE_INFINITY);
+    }
+
+    public MarketPillUi(
+            @NonNull String floraKey,
+            @NonNull String title,
+            double priceEurPerKg,
+            double userStockKg,
+            @NonNull double[] priceHistory7d,
+            @Nullable String priceNote,
+            double demandLeftKg) {
         this.floraKey = floraKey;
         this.title = title;
-        this.demandKg = demandKg;
-        this.filledKg = filledKg;
-        this.fillPercent = fillPercent;
         this.priceEurPerKg = priceEurPerKg;
-        this.priceAdjPercent = priceAdjPercent;
         this.userStockKg = userStockKg;
+        this.priceHistory7d = priceHistory7d.length == 0 ? new double[0] : priceHistory7d.clone();
+        this.priceNote = priceNote;
+        this.demandLeftKg = demandLeftKg;
+    }
+
+    public double maxSellKg() {
+        return Math.round(Math.max(0.0, Math.min(userStockKg, demandLeftKg)) * 100.0) / 100.0;
+    }
+
+    boolean sameVisual(MarketPillUi other) {
+        if (other == null) {
+            return false;
+        }
+        if (!floraKey.equals(other.floraKey)) {
+            return false;
+        }
+        if (Math.abs(priceEurPerKg - other.priceEurPerKg) >= 1e-4
+                || Math.abs(userStockKg - other.userStockKg) >= 1e-4) {
+            return false;
+        }
+        return Arrays.equals(priceHistory7d, other.priceHistory7d);
     }
 }

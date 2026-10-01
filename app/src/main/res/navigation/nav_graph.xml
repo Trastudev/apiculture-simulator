@@ -53,12 +53,41 @@
     <fragment
         android:id="@+id/hiveDetailFragment"
         android:name="com.apiculture.simulator.presentation.hive.HiveDetailFragment"
-        android:label="" />
+        android:label="">
+        <action
+            android:id="@+id/action_hive_detail_to_apiary_yard"
+            app:destination="@id/apiaryYardFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/mapFragment"
         android:name="com.apiculture.simulator.presentation.map.SharedMapFragment"
-        android:label="" />
+        android:label="">
+        <argument
+            android:name="hintTranshumance"
+            android:defaultValue="false"
+            app:argType="boolean" />
+        <argument
+            android:name="focusLat"
+            android:defaultValue="0.0"
+            app:argType="float" />
+        <argument
+            android:name="focusLng"
+            android:defaultValue="0.0"
+            app:argType="float" />
+        <argument
+            android:name="focusZoom"
+            android:defaultValue="0.0"
+            app:argType="float" />
+        <argument
+            android:name="focusTripId"
+            android:defaultValue=""
+            app:argType="string" />
+        <argument
+            android:name="focusHexId"
+            android:defaultValue=""
+            app:argType="string" />
+    </fragment>
 
     <fragment
         android:id="@+id/rankingFragment"
@@ -68,7 +97,12 @@
     <fragment
         android:id="@+id/marketFragment"
         android:name="com.apiculture.simulator.presentation.market.MarketFragment"
-        android:label="Mercado" />
+        android:label="Mercado">
+        <argument
+            android:name="openContracts"
+            android:defaultValue="false"
+            app:argType="boolean" />
+    </fragment>
 
     <fragment
         android:id="@+id/eventsFragment"
@@ -84,6 +118,11 @@
         android:id="@+id/adminGrantsFragment"
         android:name="com.apiculture.simulator.presentation.admin.AdminGrantsFragment"
         android:label="@string/admin_grants_title" />
+
+    <fragment
+        android:id="@+id/adminTripsFragment"
+        android:name="com.apiculture.simulator.presentation.admin.AdminTripsFragment"
+        android:label="@string/admin_trips_title" />
 
     <fragment
         android:id="@+id/shopFragment"

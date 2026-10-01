@@ -1,6 +1,8 @@
 package com.apiculture.simulator.presentation.dashboard;
 
 import android.app.Application;
+import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
 import androidx.annotation.NonNull;
@@ -17,6 +19,7 @@ import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
 import com.apiculture.simulator.data.repository.ProfileRepository;
 import com.apiculture.simulator.data.repository.EconomyRepository;
+import com.apiculture.simulator.data.repository.HoneyLogistics;
 import com.apiculture.simulator.data.repository.HiveRepository;
 import com.apiculture.simulator.data.repository.LeaderboardRepository;
 import com.apiculture.simulator.data.repository.PlayerProgressRepository;
@@ -28,7 +31,7 @@ import com.apiculture.simulator.domain.game.DemandSurgeMilestones;
 import com.apiculture.simulator.domain.game.ColonyGameRules;
 import com.apiculture.simulator.domain.game.GameCalendar;
 import com.apiculture.simulator.domain.game.HiveHoneyRules;
-import com.apiculture.simulator.domain.game.XpAwards;
+import com.apiculture.simulator.domain.game.HiveHoneyStocks;
 import com.apiculture.simulator.domain.market.HoneyMarketEngine;
 import com.apiculture.simulator.domain.market.HoneyMarketSnapshot;
 import com.apiculture.simulator.domain.population.HivePopulationState;
@@ -37,6 +40,10 @@ import com.apiculture.simulator.domain.game.LevelSystem;
 import com.apiculture.simulator.domain.game.Season;
 import com.apiculture.simulator.domain.parcel.FloraPlantingProgressRow;
 import com.apiculture.simulator.presentation.hive.HiveSiteSummaryUi;
+import com.apiculture.simulator.presentation.profile.ProfilePhoto;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -61,6 +68,9 @@ public class DashboardViewModel extends AndroidViewModel {
     private final MutableLiveData<String> seasonText = new MutableLiveData<>();
     private final MutableLiveData<String> dayText = new MutableLiveData<>();
     private final MutableLiveData<String> profileName = new MutableLiveData<>();
+    private final MutableLiveData<Bitmap> profilePhoto = new MutableLiveData<>();
+    /** Falso mientras el nombre y la foto aún no han llegado ni hay copia local. */
+    private final MutableLiveData<Boolean> profileReady = new MutableLiveData<>(true);
     private final MutableLiveData<String> headerHoneyBrand = new MutableLiveData<>();
     private final MutableLiveData<String> profileSubtitle = new MutableLiveData<>();
     private final MutableLiveData<String> xpLabel = new MutableLiveData<>();
@@ -70,6 +80,7 @@ public class DashboardViewModel extends AndroidViewModel {
     private final MutableLiveData<String> eventSubtitle = new MutableLiveData<>();
     private final MutableLiveData<GlobalEventBanner> globalEventBanner = new MutableLiveData<>();
     private final MutableLiveData<Boolean> isAdmin = new MutableLiveData<>(false);
+    private final MutableLiveData<Boolean> resetBusy = new MutableLiveData<>(false);
     private final MutableLiveData<Integer> queenInventoryCount = new MutableLiveData<>(0);
     private final MutableLiveData<Integer> treatInventoryCount = new MutableLiveData<>(0);
     private final MutableLiveData<Integer> feedInventoryCount = new MutableLiveData<>(0);
@@ -81,7 +92,7 @@ public class DashboardViewModel extends AndroidViewModel {
 
     // Estado interno sencillo de progreso del jugador
     private int level = 0;
-    private int xp = 0;
+    private double xp = 0;
     private int xpMaxInternal;
 
     private final HiveRepository hiveRepository;
@@ -116,16 +127,13 @@ public class DashboardViewModel extends AndroidViewModel {
         GameClock clock = new GameClock();
         applyGameDateToUi(LocalDate.now(), clock);
 
-        NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
         refreshEconomyDisplay();
 
         profileName.setValue(application.getString(R.string.dashboard_default_player));
         headerHoneyBrand.setValue("—");
         xpMaxInternal = LevelSystem.xpForLevel(level);
-        xpMax.setValue(xpMaxInternal);
-        xpCurrent.setValue(xp);
+        publishXpUi();
         profileSubtitle.setValue(buildProfileSubtitle());
-        xpLabel.setValue(buildXpLabel(nf));
 
         eventTitle.setValue(getApplication().getString(R.string.dashboard_no_event_title));
         eventSubtitle.setValue(getApplication().getString(R.string.dashboard_no_event_subtitle));
@@ -178,27 +186,82 @@ public class DashboardViewModel extends AndroidViewModel {
             xp = playerProgressRepository.getXp(firebaseUid);
         }
         xpMaxInternal = LevelSystem.xpForLevel(level);
-        xpMax.setValue(xpMaxInternal);
-        xpCurrent.setValue(xp);
-        NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
-        xpLabel.setValue(buildXpLabel(nf));
+        publishXpUi();
         profileSubtitle.setValue(buildProfileSubtitle());
     }
 
-    /** Carga nombre de jugador y marca de miel desde Firestore para cabecera y tarjeta de perfil. */
+    /** Carga nombre de jugador y marca de miel para cabecera y tarjeta de perfil. */
     public void refreshPlayerProfile(@Nullable String firebaseUid) {
         if (profileRepository == null || firebaseUid == null || firebaseUid.isEmpty()) {
             profileName.postValue(getApplication().getString(R.string.dashboard_default_player));
             headerHoneyBrand.postValue("—");
             isAdmin.postValue(false);
+            profilePhoto.postValue(null);
+            profileReady.postValue(true);
             return;
         }
-        profileRepository.fetchDisplayProfile(firebaseUid, p -> {
+        if (!applyCachedProfile(firebaseUid)) {
+            profileReady.setValue(false);
+        }
+        final String uid = firebaseUid;
+        profileRepository.fetchDisplayProfile(uid, p -> swarmBannerIo.execute(() -> {
+            publishProfile(p.playerName, p.honeyBrand,
+                    ProfilePhoto.decodeBase64(p.photoBase64));
+            saveCachedProfile(uid, p.playerName, p.honeyBrand, p.photoBase64);
+            profileReady.postValue(true);
+        }));
+    }
+
+    private static final String PROFILE_CACHE = "profile_header_cache";
+
+    private void publishProfile(@Nullable String playerName, @Nullable String honeyBrand,
+            @Nullable Bitmap photo) {
+        String defPlayer = getApplication().getString(R.string.dashboard_default_player);
+        String name = playerName == null || playerName.isEmpty() ? defPlayer : playerName;
+        profileName.postValue(name);
+        headerHoneyBrand.postValue(honeyBrand == null || honeyBrand.isEmpty() ? "—" : honeyBrand);
+        isAdmin.postValue(AdminRoles.isAdminPlayerName(playerName));
+        profilePhoto.postValue(photo);
+    }
+
+    /** @return true si ya había nombre y foto de una visita anterior. */
+    private boolean applyCachedProfile(@NonNull String uid) {
+        String raw = getApplication().getSharedPreferences(PROFILE_CACHE, Context.MODE_PRIVATE)
+                .getString(uid, null);
+        if (raw == null || raw.isEmpty()) {
+            return false;
+        }
+        try {
+            JSONObject o = new JSONObject(raw);
+            String name = o.optString("playerName", "");
+            String brand = o.optString("honeyBrand", "");
+            Bitmap photo = ProfilePhoto.decodeBase64(o.optString("photoBase64", ""));
             String defPlayer = getApplication().getString(R.string.dashboard_default_player);
-            profileName.postValue(p.playerName.isEmpty() ? defPlayer : p.playerName);
-            headerHoneyBrand.postValue(p.honeyBrand.isEmpty() ? "—" : p.honeyBrand);
-            isAdmin.postValue(AdminRoles.isAdminPlayerName(p.playerName));
-        });
+            profileName.setValue(name.isEmpty() ? defPlayer : name);
+            headerHoneyBrand.setValue(brand.isEmpty() ? "—" : brand);
+            isAdmin.setValue(AdminRoles.isAdminPlayerName(name));
+            profilePhoto.setValue(photo);
+            profileReady.setValue(true);
+            return true;
+        } catch (JSONException e) {
+            return false;
+        }
+    }
+
+    private void saveCachedProfile(@NonNull String uid, @Nullable String playerName,
+            @Nullable String honeyBrand, @Nullable String photoBase64) {
+        JSONObject o = new JSONObject();
+        try {
+            o.put("playerName", playerName != null ? playerName : "");
+            o.put("honeyBrand", honeyBrand != null ? honeyBrand : "");
+            o.put("photoBase64", photoBase64 != null ? photoBase64 : "");
+        } catch (JSONException e) {
+            return;
+        }
+        getApplication().getSharedPreferences(PROFILE_CACHE, Context.MODE_PRIVATE)
+                .edit()
+                .putString(uid, o.toString())
+                .apply();
     }
 
     /**
@@ -207,7 +270,7 @@ public class DashboardViewModel extends AndroidViewModel {
      */
     public void refreshEconomyDisplay() {
         statCoins.setValue(Long.toString(Math.round(economyRepository.getBalance())));
-        statHoney.setValue(Long.toString(Math.round(economyRepository.getHoneyStock())) + " kg");
+        statHoney.setValue(String.format(Locale.getDefault(), "%.2f kg", economyRepository.getHoneyStock()));
     }
 
     /**
@@ -223,16 +286,34 @@ public class DashboardViewModel extends AndroidViewModel {
         hiveRepository.loadUiGameDate(uid, date -> applyGameDateToUi(date, clock));
     }
 
+    public void loadWeeklyHoney(String ownerId, Consumer<double[]> onMain) {
+        hiveRepository.loadWeeklyHoney(ownerId, onMain);
+    }
+
+    public static Season southernSeason(Season northern) {
+        switch (northern) {
+            case SPRING: return Season.AUTUMN;
+            case SUMMER: return Season.WINTER;
+            case AUTUMN: return Season.SPRING;
+            case WINTER:
+            default: return Season.SUMMER;
+        }
+    }
+
     private void applyGameDateToUi(@Nullable LocalDate gameDate, @NonNull GameClock clock) {
         LocalDate today = LocalDate.now();
         LocalDate d = gameDate != null ? gameDate : today;
-        Season season = Season.fromDayOfYear(d.getDayOfYear());
-        seasonText.setValue(season.emoji() + " " + season.labelEs());
+        Season north = Season.fromDayOfYear(d.getDayOfYear());
+        Season south = southernSeason(north);
+        String northLabel = north.emoji() + " " + north.label(getApplication());
+        String southLabel = south.emoji() + " " + south.label(getApplication());
+        seasonText.setValue(getApplication().getString(
+                R.string.dashboard_season_pair, northLabel, southLabel));
         if (d.isAfter(today)) {
-            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("d MMM yyyy", new Locale("es", "ES"));
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault());
             dayText.setValue(getApplication().getString(R.string.dashboard_date_simulated, d.format(fmt)));
         } else {
-            dayText.setValue(clock.currentDateLabel() + " · " + clock.currentTimeLabel());
+            dayText.setValue("");
         }
     }
 
@@ -286,18 +367,24 @@ public class DashboardViewModel extends AndroidViewModel {
 
     public void resetGameToStarterState(String ownerId, Consumer<String> onResult) {
         if (ownerId == null || ownerId.isEmpty()) {
+            resetBusy.setValue(false);
             onResult.accept("Sesión no válida.");
             return;
         }
+        resetBusy.setValue(true);
         ApicultureApp app = (ApicultureApp) getApplication();
         app.resetPlayerToStarterState(ownerId, 0L, msg -> {
-            if (msg == null) {
-                loadAndApplyProgress(ownerId);
-                refreshEconomyDisplay();
-                refreshFloraPlantings(ownerId);
-                refreshGameClock();
-                refreshSwarmRiskBannerNow();
-                refreshInventoryDisplay();
+            try {
+                if (msg == null) {
+                    loadAndApplyProgress(ownerId);
+                    refreshEconomyDisplay();
+                    refreshFloraPlantings(ownerId);
+                    refreshGameClock();
+                    refreshSwarmRiskBannerNow();
+                    refreshInventoryDisplay();
+                }
+            } finally {
+                resetBusy.setValue(false);
             }
             onResult.accept(msg);
         });
@@ -317,8 +404,22 @@ public class DashboardViewModel extends AndroidViewModel {
         @NonNull
         public final Map<String, Double> kgByFlora;
 
+        public final boolean needWarehouse;
+        /** El camión va de camino: el resumen espera a que el viaje termine. */
+        public final boolean deferred;
+
         public HarvestAllResult(boolean success, String message, double totalKg, int hiveCount,
                 @Nullable Map<String, Double> kgByFlora) {
+            this(success, message, totalKg, hiveCount, kgByFlora, false);
+        }
+
+        public HarvestAllResult(boolean success, String message, double totalKg, int hiveCount,
+                @Nullable Map<String, Double> kgByFlora, boolean needWarehouse) {
+            this(success, message, totalKg, hiveCount, kgByFlora, needWarehouse, false);
+        }
+
+        public HarvestAllResult(boolean success, String message, double totalKg, int hiveCount,
+                @Nullable Map<String, Double> kgByFlora, boolean needWarehouse, boolean deferred) {
             this.success = success;
             this.message = message != null ? message : "";
             this.totalKg = totalKg;
@@ -326,6 +427,8 @@ public class DashboardViewModel extends AndroidViewModel {
             this.kgByFlora = kgByFlora == null
                     ? Collections.emptyMap()
                     : Collections.unmodifiableMap(new LinkedHashMap<>(kgByFlora));
+            this.needWarehouse = needWarehouse;
+            this.deferred = deferred;
         }
     }
 
@@ -336,7 +439,46 @@ public class DashboardViewModel extends AndroidViewModel {
     /**
      * Recolecta de cada colmena la miel por encima de 3 kg de reserva habitual.
      */
-    public void harvestAllHives(@Nullable HarvestAllCallback onDone) {
+    public void previewHarvestAll(@Nullable Consumer<HoneyLogistics.HarvestPlan> onDone) {
+        Application ap = getApplication();
+        String uid = ownerIdForHives.getValue();
+        if (uid == null || uid.isEmpty()) {
+            if (onDone != null) {
+                onDone.accept(new HoneyLogistics.HarvestPlan(null, 0));
+            }
+            return;
+        }
+        swarmBannerIo.execute(() -> {
+            List<HiveEntity> list = hiveRepository.getLocalHivesSync(uid);
+            HoneyLogistics.HarvestPlan plan = HoneyLogistics.previewHarvestAll(ap, uid, list);
+            mainHandler.post(() -> {
+                if (onDone != null) {
+                    onDone.accept(plan);
+                }
+            });
+        });
+    }
+
+    public void withLocalHives(@Nullable Consumer<List<HiveEntity>> onDone) {
+        String uid = ownerIdForHives.getValue();
+        if (uid == null || uid.isEmpty()) {
+            if (onDone != null) {
+                onDone.accept(Collections.emptyList());
+            }
+            return;
+        }
+        swarmBannerIo.execute(() -> {
+            List<HiveEntity> list = hiveRepository.getLocalHivesSync(uid);
+            mainHandler.post(() -> {
+                if (onDone != null) {
+                    onDone.accept(list != null ? list : Collections.emptyList());
+                }
+            });
+        });
+    }
+
+    public void commitHarvestAll(@Nullable List<HoneyLogistics.CollectPreview> trips,
+            @Nullable HarvestAllCallback onDone) {
         Application ap = getApplication();
         String uid = ownerIdForHives.getValue();
         if (uid == null || uid.isEmpty()) {
@@ -347,40 +489,8 @@ public class DashboardViewModel extends AndroidViewModel {
             return;
         }
         swarmBannerIo.execute(() -> {
-            List<HiveEntity> list = hiveRepository.getLocalHivesSync(uid);
-            double totalKg = 0.0;
-            int hiveCount = 0;
-            Map<String, Double> byFlora = new LinkedHashMap<>();
-            if (list != null) {
-                for (HiveEntity h : list) {
-                    if (h == null) {
-                        continue;
-                    }
-                    double stock = Math.max(0.0, h.honeyProduction);
-                    double min = HiveHoneyRules.HARVEST_ALL_LEAVE_KG;
-                    if (stock <= min + 1e-9) {
-                        continue;
-                    }
-                    double harvested = stock - min;
-                    h.honeyProduction = min;
-                    hiveRepository.saveHive(h);
-                    String flora = (h.floraType != null && !h.floraType.isEmpty())
-                            ? h.floraType
-                            : "Mil flores";
-                    String floraKey = HoneyMarketEngine.canonicalFloraKey(flora);
-                    economyRepository.addHoney(floraKey, harvested);
-                    Double prev = byFlora.get(floraKey);
-                    byFlora.put(floraKey, (prev == null ? 0.0 : prev) + harvested);
-                    totalKg += harvested;
-                    hiveCount++;
-                }
-            }
-            if (totalKg > 1e-9) {
-                hiveRepository.grantXp(uid, XpAwards.harvest(totalKg));
-            }
-            final double kgDone = totalKg;
-            final int nDone = hiveCount;
-            final Map<String, Double> floraDone = byFlora;
+            HoneyLogistics.HarvestCommit done = HoneyLogistics.commitHarvestBlocking(
+                    ap, uid, hiveRepository, economyRepository, trips);
             mainHandler.post(() -> {
                 refreshEconomyDisplay();
                 refreshSwarmRiskBannerNow();
@@ -388,11 +498,12 @@ public class DashboardViewModel extends AndroidViewModel {
                 if (onDone == null) {
                     return;
                 }
-                if (kgDone <= 1e-9) {
+                if (!done.success) {
                     onDone.onDone(new HarvestAllResult(false,
                             ap.getString(R.string.dashboard_harvest_all_none), 0, 0, null));
                 } else {
-                    onDone.onDone(new HarvestAllResult(true, "", kgDone, nDone, floraDone));
+                    onDone.onDone(new HarvestAllResult(true, "", done.totalKg, done.hiveCount,
+                            done.kgByFlora, false, done.deferred));
                 }
             });
         });
@@ -503,29 +614,18 @@ public class DashboardViewModel extends AndroidViewModel {
             sellNextBucket(keys, index + 1, kgSold, eurSold, onDone);
             return;
         }
-        HoneyMarketSnapshot snap = marketRepository.getSnapshot();
-        if (snap == null) {
-            finishSellAll(kgSold, eurSold, ap.getString(R.string.dashboard_sell_all_market), onDone);
+        double price = marketRepository.priceEurPerKgForFlora(flora);
+        HoneyLogistics.Result r = HoneyLogistics.dispatchWholesale(
+                ap, ownerIdForHives.getValue(), flora, kg, price, economyRepository, marketRepository);
+        if (r == HoneyLogistics.Result.NO_CASH) {
+            finishSellAll(kgSold, eurSold, ap.getString(R.string.market_order_fail_travel), onDone);
             return;
         }
-        marketRepository.executeGlobalSale(flora, kg, snap, economyRepository,
-                new MarketRepository.MarketSaleExecutionCallback() {
-                    @Override
-                    public void onSuccess(double unitPriceEurPerKg) {
-                        sellNextBucket(keys, index + 1, kgSold + kg, eurSold + kg * unitPriceEurPerKg, onDone);
-                    }
-
-                    @Override
-                    public void onFailure(String reasonCodeOrMessage) {
-                        String reason = reasonCodeOrMessage != null ? reasonCodeOrMessage : "error";
-                        if ("stock".equals(reason)) {
-                            reason = ap.getString(R.string.market_sell_fail_stock);
-                        } else if ("snapshot".equals(reason) || "invalid".equals(reason)) {
-                            reason = ap.getString(R.string.dashboard_sell_all_market);
-                        }
-                        finishSellAll(kgSold, eurSold, reason, onDone);
-                    }
-                });
+        if (r == HoneyLogistics.Result.FAILED) {
+            finishSellAll(kgSold, eurSold, ap.getString(R.string.market_sell_fail_stock), onDone);
+            return;
+        }
+        sellNextBucket(keys, index + 1, kgSold + kg, eurSold + kg * price, onDone);
     }
 
     private void finishSellAll(double kgSold, double eurSold, String reason,
@@ -547,6 +647,9 @@ public class DashboardViewModel extends AndroidViewModel {
         }
         int sum = 0;
         for (HiveEntity h : list) {
+            if (h == null || h.inWarehouse) {
+                continue;
+            }
             sum += HivePopulationState.adultWorkersForUi(h, HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
         }
         return nf.format(sum);
@@ -586,7 +689,7 @@ public class DashboardViewModel extends AndroidViewModel {
         String fallbackName = app.getString(R.string.dashboard_swarm_risk_unnamed_colmena);
         List<HiveSwarmRisk> out = new ArrayList<>();
         for (HiveEntity h : list) {
-            if (h == null || h.id == null || h.id.trim().isEmpty()) {
+            if (h == null || h.inWarehouse || h.id == null || h.id.trim().isEmpty()) {
                 continue;
             }
             HivePopulationState p = HivePopulationState.fromHiveEntityOrDefault(h,
@@ -627,7 +730,7 @@ public class DashboardViewModel extends AndroidViewModel {
         String fallbackName = app.getString(R.string.dashboard_swarm_risk_unnamed_colmena);
         List<QueenDeathHiveRow> rows = new ArrayList<>();
         for (HiveEntity h : list) {
-            if (h == null || h.id == null || h.id.trim().isEmpty()) {
+            if (h == null || h.inWarehouse || h.id == null || h.id.trim().isEmpty()) {
                 continue;
             }
             HivePopulationState p = HivePopulationState.fromHiveEntityOrDefault(h,
@@ -685,7 +788,7 @@ public class DashboardViewModel extends AndroidViewModel {
         String fallbackName = app.getString(R.string.dashboard_swarm_risk_unnamed_colmena);
         List<HoneyCapHiveRow> rows = new ArrayList<>();
         for (HiveEntity h : list) {
-            if (h == null || h.id == null) {
+            if (h == null || h.inWarehouse || h.id == null) {
                 continue;
             }
             if (!HiveHoneyRules.isHoneyAtCapacity(h)) {
@@ -718,31 +821,34 @@ public class DashboardViewModel extends AndroidViewModel {
         level = result.level;
         xp = result.xp;
         xpMaxInternal = result.maxXp;
-
-        NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
-        xpCurrent.setValue(xp);
-        xpMax.setValue(xpMaxInternal);
-        xpLabel.setValue(buildXpLabel(nf));
+        publishXpUi();
         profileSubtitle.setValue(buildProfileSubtitle());
     }
 
     private String buildProfileSubtitle() {
         // Texto simple de rango según el nivel actual
+        Application app = getApplication();
         String rango;
         if (level >= 10) {
-            rango = "Apicultor experto";
+            rango = app.getString(R.string.rank_expert);
         } else if (level >= 5) {
-            rango = "Apicultor avanzado";
+            rango = app.getString(R.string.rank_advanced);
         } else if (level >= 1) {
-            rango = "Apicultor principiante";
+            rango = app.getString(R.string.rank_beginner);
         } else {
-            rango = "Aprendiz";
+            rango = app.getString(R.string.rank_apprentice);
         }
-        return "Nivel " + level + " · " + rango;
+        return app.getString(R.string.profile_rank_line, level, rango);
     }
 
-    private String buildXpLabel(NumberFormat nf) {
-        return nf.format(xp) + " / " + nf.format(xpMaxInternal) + " XP";
+    private void publishXpUi() {
+        xpMax.setValue(Math.max(1, xpMaxInternal) * 10);
+        xpCurrent.setValue((int) Math.round(xp * 10.0));
+        xpLabel.setValue(displayXp(xp) + " / " + xpMaxInternal + " XP");
+    }
+
+    private static int displayXp(double value) {
+        return (int) Math.floor(value + 1e-9);
     }
 
     public LiveData<String> statCoins() {
@@ -751,6 +857,10 @@ public class DashboardViewModel extends AndroidViewModel {
 
     public LiveData<String> statHoney() {
         return statHoney;
+    }
+
+    public LiveData<Integer> economyRevision() {
+        return economyRepository.revision();
     }
 
     public LiveData<String> statNectar() {
@@ -767,6 +877,14 @@ public class DashboardViewModel extends AndroidViewModel {
 
     public LiveData<String> profileName() {
         return profileName;
+    }
+
+    public LiveData<Bitmap> profilePhoto() {
+        return profilePhoto;
+    }
+
+    public LiveData<Boolean> profileReady() {
+        return profileReady;
     }
 
     public LiveData<String> headerHoneyBrand() {
@@ -803,6 +921,10 @@ public class DashboardViewModel extends AndroidViewModel {
 
     public LiveData<Boolean> isAdmin() {
         return isAdmin;
+    }
+
+    public LiveData<Boolean> resetBusy() {
+        return resetBusy;
     }
 
     public LiveData<Integer> queenInventoryCount() {
@@ -845,6 +967,18 @@ public class DashboardViewModel extends AndroidViewModel {
         });
     }
 
+    public void dismissGlobalEvent(@Nullable String uid) {
+        if (globalEventRepository == null) {
+            return;
+        }
+        GlobalEventRepository.Snapshot snap = globalEventRepository.cached();
+        if (snap == null || !snap.surge.exists()) {
+            return;
+        }
+        globalEventRepository.markDismissed(uid, snap.surge.instanceId());
+        applyGlobalEventSnapshot(snap);
+    }
+
     private void applyGlobalEventSnapshot(@Nullable GlobalEventRepository.Snapshot snap) {
         Application ap = getApplication();
         if (snap == null) {
@@ -853,23 +987,43 @@ public class DashboardViewModel extends AndroidViewModel {
             globalEventBanner.setValue(GlobalEventBanner.none(ap));
             return;
         }
-        GlobalEventBanner banner = GlobalEventBanner.from(ap, snap, globalEventRepository, economyRepository);
+        String uid = ownerIdForHives.getValue();
+        boolean includeEnded = snap.myKgSold > 1e-6;
+        GlobalEventBanner banner = GlobalEventBanner.from(
+                ap, snap, globalEventRepository, economyRepository, uid, includeEnded);
         eventTitle.setValue(banner.title);
         eventSubtitle.setValue(banner.subtitle);
         globalEventBanner.setValue(banner);
-        if (!banner.visible || !banner.ended || !banner.showProgress || banner.claimed
-                || globalEventRepository == null) {
+        if (globalEventRepository == null) {
             return;
         }
-        String uid = ownerIdForHives.getValue();
         String instanceId = snap.surge.instanceId();
-        if (uid == null || uid.isEmpty() || instanceId.isEmpty()) {
+        boolean finished = snap.surge.exists() && snap.surge.isFinished(snap.kgSoldTowardGoal);
+        if (!finished || instanceId.isEmpty() || uid == null || uid.isEmpty()) {
+            return;
+        }
+        if (globalEventRepository.hasClaimedLocal(instanceId)
+                || globalEventRepository.hasDismissed(uid, instanceId)) {
             return;
         }
         int highest = DemandSurgeMilestones.highestReached(
                 snap.kgSoldTowardGoal, snap.surge.targetDemandKg);
         globalEventRepository.hasParticipated(uid, instanceId, participated -> {
-            globalEventBanner.setValue(banner.withCanClaim(participated && highest >= 15));
+            if (!participated) {
+                if (!includeEnded) {
+                    GlobalEventBanner hidden = GlobalEventBanner.from(
+                            ap, snap, globalEventRepository, economyRepository, uid, false);
+                    eventTitle.setValue(hidden.title);
+                    eventSubtitle.setValue(hidden.subtitle);
+                    globalEventBanner.setValue(hidden);
+                }
+                return;
+            }
+            GlobalEventBanner shown = GlobalEventBanner.from(
+                    ap, snap, globalEventRepository, economyRepository, uid, true);
+            eventTitle.setValue(shown.title);
+            eventSubtitle.setValue(shown.subtitle);
+            globalEventBanner.setValue(shown.withCanClaim(highest >= 15));
         });
     }
 
@@ -904,11 +1058,12 @@ public class DashboardViewModel extends AndroidViewModel {
         public final String floraKey;
         public final boolean canSellEventHoney;
         public final String sellButtonLabel;
+        public final boolean canDismiss;
 
         public GlobalEventBanner(String title, String subtitle, boolean visible, boolean showProgress,
                 int progressPct, String progressLabel, boolean ended, boolean canClaim, boolean claimed,
                 int highestMilestone, String myKgLabel, String statusLabel, int floraIconRes,
-                String floraKey, boolean canSellEventHoney, String sellButtonLabel) {
+                String floraKey, boolean canSellEventHoney, String sellButtonLabel, boolean canDismiss) {
             this.title = title;
             this.subtitle = subtitle;
             this.visible = visible;
@@ -925,40 +1080,58 @@ public class DashboardViewModel extends AndroidViewModel {
             this.floraKey = floraKey != null ? floraKey : "";
             this.canSellEventHoney = canSellEventHoney;
             this.sellButtonLabel = sellButtonLabel != null ? sellButtonLabel : "";
+            this.canDismiss = canDismiss;
         }
 
         GlobalEventBanner withCanClaim(boolean canClaim) {
             return new GlobalEventBanner(title, subtitle, visible, showProgress, progressPct,
                     progressLabel, ended, canClaim, claimed, highestMilestone, myKgLabel, statusLabel,
-                    floraIconRes, floraKey, canSellEventHoney, sellButtonLabel);
+                    floraIconRes, floraKey, canSellEventHoney, sellButtonLabel, canDismiss);
         }
 
         static GlobalEventBanner none(Application ap) {
             return new GlobalEventBanner(
                     ap.getString(R.string.dashboard_no_event_title),
                     ap.getString(R.string.dashboard_no_event_subtitle),
-                    false, false, 0, "", false, false, false, 0, "", "", 0, "", false, "");
+                    false, false, 0, "", false, false, false, 0, "", "", 0, "", false, "", false);
         }
 
         static GlobalEventBanner from(
                 Application ap,
                 GlobalEventRepository.Snapshot snap,
                 GlobalEventRepository repo,
-                @Nullable EconomyRepository economy) {
-            if (snap.surge.exists() && (snap.surge.isLive() || snap.surge.isEnded())) {
+                @Nullable EconomyRepository economy,
+                @Nullable String uid,
+                boolean includeFinished) {
+            boolean surgeClaimed = snap.surge.exists()
+                    && repo != null
+                    && repo.hasClaimedLocal(snap.surge.instanceId());
+            boolean dismissed = snap.surge.exists()
+                    && repo != null
+                    && repo.hasDismissed(uid, snap.surge.instanceId());
+            boolean surgeGoal = snap.surge.exists()
+                    && snap.surge.isGoalComplete(snap.kgSoldTowardGoal);
+            boolean surgeFinished = snap.surge.exists()
+                    && snap.surge.isFinished(snap.kgSoldTowardGoal);
+            boolean showSurge = snap.surge.exists()
+                    && !surgeClaimed
+                    && !dismissed
+                    && (snap.surge.isLive() || (surgeFinished && includeFinished));
+            if (showSurge) {
                 String flora = snap.surge.floraKey.isEmpty() ? "miel" : snap.surge.floraKey;
                 String floraKey = snap.surge.floraKey.isEmpty()
                         ? ""
                         : HoneyMarketEngine.canonicalFloraKey(snap.surge.floraKey);
                 int floraIcon = HiveSiteSummaryUi.floraHoneyJarIcon(flora);
+                String demandX = formatDemandMult(snap.surge.demandMult);
                 String title = floraIcon != 0
-                        ? ap.getString(R.string.dashboard_global_event_surge_graphic)
-                        : ap.getString(R.string.dashboard_global_event_surge, flora);
+                        ? ap.getString(R.string.dashboard_global_event_surge_graphic, demandX)
+                        : ap.getString(R.string.dashboard_global_event_surge, flora, demandX);
                 int highest = DemandSurgeMilestones.highestReached(
                         snap.kgSoldTowardGoal, snap.surge.targetDemandKg);
                 int pct = snap.surge.targetDemandKg <= 1e-9 ? 0
                         : (int) Math.min(100, Math.round(100.0 * snap.kgSoldTowardGoal / snap.surge.targetDemandKg));
-                boolean ended = snap.surge.isEnded();
+                boolean ended = surgeFinished;
                 boolean canSell = !ended && !floraKey.isEmpty() && !"miel".equalsIgnoreCase(floraKey);
                 double stock = (canSell && economy != null)
                         ? economy.getHoneyStockForFlora(floraKey)
@@ -970,12 +1143,10 @@ public class DashboardViewModel extends AndroidViewModel {
                             : ap.getString(R.string.dashboard_global_event_sell_flora, flora);
                 }
                 StringBuilder sub = new StringBuilder();
-                if (ended) {
+                if (surgeGoal) {
+                    appendLine(sub, ap.getString(R.string.dashboard_global_event_achieved_body));
+                } else if (ended) {
                     appendLine(sub, ap.getString(R.string.dashboard_global_event_ended));
-                }
-                boolean claimed = repo != null && repo.hasClaimedLocal(snap.surge.instanceId());
-                if (claimed) {
-                    appendLine(sub, ap.getString(R.string.dashboard_global_event_claimed));
                 }
                 if (snap.shift.isLive()) {
                     appendLine(sub, ap.getString(R.string.dashboard_global_event_shift,
@@ -989,29 +1160,52 @@ public class DashboardViewModel extends AndroidViewModel {
                 String progressLabel = ap.getString(R.string.dashboard_global_event_progress_short,
                         snap.kgSoldTowardGoal, snap.surge.targetDemandKg, pct);
                 String myKg = ap.getString(R.string.dashboard_global_event_my_kg_short, snap.myKgSold);
-                String status = ended
-                        ? ap.getString(R.string.dashboard_global_event_ended_badge)
-                        : ap.getString(R.string.dashboard_global_event_live);
+                String status;
+                if (surgeGoal) {
+                    status = ap.getString(R.string.dashboard_global_event_achieved);
+                } else if (ended) {
+                    status = ap.getString(R.string.dashboard_global_event_ended_badge);
+                } else {
+                    status = ap.getString(R.string.dashboard_global_event_live);
+                }
                 return new GlobalEventBanner(title, sub.toString(), true, true, pct, progressLabel,
-                        ended, false, claimed, highest, myKg, status, floraIcon,
-                        floraKey, canSell, sellLabel);
+                        ended, false, false, highest, myKg, status, floraIcon,
+                        floraKey, canSell, sellLabel, ended);
             }
             String live = ap.getString(R.string.dashboard_global_event_live);
-            if (snap.shift.isLive()) {
-                return new GlobalEventBanner(
-                        ap.getString(R.string.dashboard_global_event_kicker),
-                        ap.getString(R.string.dashboard_global_event_shift,
-                                signed(snap.shift.demandDeltaPercent),
-                                signed(snap.shift.priceDeltaPercent)),
-                        true, false, 0, "", false, false, false, 0, "", live, 0, "", false, "");
+            boolean shiftLive = snap.shift.isLive();
+            boolean velLive = snap.velutina.isLive();
+            if (shiftLive && velLive) {
+                if (snap.velutina.startsAtMs >= snap.shift.startsAtMs) {
+                    return velutinaBanner(ap, snap, live);
+                }
+                return shiftBanner(ap, snap, live);
             }
-            if (snap.velutina.isLive()) {
-                return new GlobalEventBanner(
-                        ap.getString(R.string.dashboard_global_event_kicker),
-                        ap.getString(R.string.dashboard_global_event_velutina, snap.velutina.lossPercent),
-                        true, false, 0, "", false, false, false, 0, "", live, 0, "", false, "");
+            if (shiftLive) {
+                return shiftBanner(ap, snap, live);
+            }
+            if (velLive) {
+                return velutinaBanner(ap, snap, live);
             }
             return none(ap);
+        }
+
+        private static GlobalEventBanner shiftBanner(
+                Application ap, GlobalEventRepository.Snapshot snap, String live) {
+            return new GlobalEventBanner(
+                    ap.getString(R.string.dashboard_global_event_kicker),
+                    ap.getString(R.string.dashboard_global_event_shift,
+                            signed(snap.shift.demandDeltaPercent),
+                            signed(snap.shift.priceDeltaPercent)),
+                    true, false, 0, "", false, false, false, 0, "", live, 0, "", false, "", false);
+        }
+
+        private static GlobalEventBanner velutinaBanner(
+                Application ap, GlobalEventRepository.Snapshot snap, String live) {
+            return new GlobalEventBanner(
+                    ap.getString(R.string.dashboard_global_event_kicker),
+                    ap.getString(R.string.dashboard_global_event_velutina, snap.velutina.lossPercent),
+                    true, false, 0, "", false, false, false, 0, "", live, 0, "", false, "", false);
         }
 
         private static void appendLine(StringBuilder sb, String line) {
@@ -1023,6 +1217,15 @@ public class DashboardViewModel extends AndroidViewModel {
 
         private static String signed(int pct) {
             return (pct >= 0 ? "+" : "") + pct;
+        }
+
+        @NonNull
+        private static String formatDemandMult(double raw) {
+            double m = GlobalEventRepository.clampSurgeDemandMult(raw);
+            if (Math.abs(m - Math.round(m)) < 0.05) {
+                return String.valueOf(Math.round(m));
+            }
+            return String.format(Locale.getDefault(), "%.1f", m);
         }
     }
 

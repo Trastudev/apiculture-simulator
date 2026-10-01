@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="8dp">
+
+    <RadioButton
+        android:id="@+id/rb_harvest_truck"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clickable="false"
+        android:focusable="false"
+        android:minWidth="0dp"
+        android:minHeight="0dp" />
+
+    <ImageView
+        android:id="@+id/iv_harvest_truck"
+        android:layout_width="44dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="2dp"
+        android:contentDescription="@string/harvest_trips_confirm_one"
+        android:scaleType="fitCenter"
+        tools:src="@drawable/ic_fleet_truck_1" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_harvest_trip_route"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/event_ink"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            tools:text="Camión sale de Almacén" />
+
+        <TextView
+            android:id="@+id/tv_harvest_trip_level"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textColor="@color/event_gold_dark"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            tools:text="Nivel 1" />
+
+        <TextView
+            android:id="@+id/tv_harvest_trip_meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/event_ink_muted"
+            android:textSize="12sp"
+            tools:text="2,4 kg · 12 km" />
+    </LinearLayout>
+</LinearLayout>

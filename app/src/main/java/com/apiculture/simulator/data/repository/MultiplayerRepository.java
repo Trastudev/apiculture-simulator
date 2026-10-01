@@ -12,13 +12,7 @@ public class MultiplayerRepository {
     private final FirebaseFirestore firestore;
 
     public MultiplayerRepository() {
-        FirebaseFirestore instance;
-        try {
-            instance = FirebaseFirestore.getInstance();
-        } catch (Exception e) {
-            instance = null;
-        }
-        firestore = instance;
+        firestore = null;
     }
 
     public interface RankingCallback {

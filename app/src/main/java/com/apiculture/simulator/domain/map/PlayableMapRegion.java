@@ -2,44 +2,90 @@ package com.apiculture.simulator.domain.map;
 
 import com.apiculture.simulator.domain.parcel.BoundingBox;
 import com.apiculture.simulator.domain.parcel.IberiaBounds;
+import com.apiculture.simulator.domain.parcel.MadagascarBounds;
 import com.apiculture.simulator.domain.parcel.SouthAfricaBounds;
 
 import androidx.annotation.Nullable;
 
 /**
- * Mapas jugables: la cámara y la malla hexagonal se limitan a una región para no ver
- * el resto del mundo (p. ej. Alemania desde Iberia).
+ * Mapas jugables: la cámara y la malla hexagonal se limitan a una región.
  */
 public enum PlayableMapRegion {
     IBERIA,
-    SOUTH_AFRICA;
+    SOUTH_AFRICA,
+    MADAGASCAR;
 
     public String prefsValue() {
-        return this == SOUTH_AFRICA ? "za" : "iberia";
+        switch (this) {
+            case SOUTH_AFRICA:
+                return "za";
+            case MADAGASCAR:
+                return "mdg";
+            case IBERIA:
+            default:
+                return "iberia";
+        }
     }
 
     public static PlayableMapRegion fromPrefsValue(@Nullable String raw) {
-        if (raw != null && (raw.equals("za") || raw.equals("south_africa"))) {
-            return SOUTH_AFRICA;
+        if (raw != null) {
+            String v = raw.trim().toLowerCase();
+            if ("za".equals(v) || "south_africa".equals(v)) {
+                return SOUTH_AFRICA;
+            }
+            if ("mdg".equals(v) || "madagascar".equals(v)) {
+                return MADAGASCAR;
+            }
         }
         return IBERIA;
     }
 
     public BoundingBox box() {
-        return this == SOUTH_AFRICA ? SouthAfricaBounds.BOX : IberiaBounds.BOX;
+        switch (this) {
+            case SOUTH_AFRICA:
+                return SouthAfricaBounds.BOX;
+            case MADAGASCAR:
+                return MadagascarBounds.BOX;
+            case IBERIA:
+            default:
+                return IberiaBounds.BOX;
+        }
     }
 
-    /** Área objetivo del hexágono: en Sudáfrica el doble que en Iberia (70 km²). */
     public double hexTargetAreaKm2() {
-        return this == SOUTH_AFRICA ? 140.0 : 70.0;
+        switch (this) {
+            case SOUTH_AFRICA:
+                return 140.0;
+            case MADAGASCAR:
+                return 90.0;
+            case IBERIA:
+            default:
+                return 70.0;
+        }
     }
 
     public String hexPrefix() {
-        return this == SOUTH_AFRICA ? "za" : "iberia";
+        switch (this) {
+            case SOUTH_AFRICA:
+                return "za";
+            case MADAGASCAR:
+                return "mdg";
+            case IBERIA:
+            default:
+                return "iberia";
+        }
     }
 
     public String overlaySubdir() {
-        return this == SOUTH_AFRICA ? "za_hex" : "iberia_hex";
+        switch (this) {
+            case SOUTH_AFRICA:
+                return "za_hex";
+            case MADAGASCAR:
+                return "mdg_hex";
+            case IBERIA:
+            default:
+                return "iberia_hex";
+        }
     }
 
     public String overlayAssetPath() {
@@ -47,49 +93,168 @@ public enum PlayableMapRegion {
     }
 
     public double gridAnchorLat() {
-        return this == SOUTH_AFRICA ? -28.5 : 40.0;
+        switch (this) {
+            case SOUTH_AFRICA:
+                return -28.5;
+            case MADAGASCAR:
+                return -19.0;
+            case IBERIA:
+            default:
+                return 40.0;
+        }
     }
 
     public double gridAnchorLon() {
-        return this == SOUTH_AFRICA ? 24.8 : -3.0;
+        switch (this) {
+            case SOUTH_AFRICA:
+                return 24.8;
+            case MADAGASCAR:
+                return 46.8;
+            case IBERIA:
+            default:
+                return -3.0;
+        }
     }
 
-    /** Zoom mínimo: la pantalla no cabe Europa / todo África. */
     public float minZoom() {
-        return this == SOUTH_AFRICA ? 5.55f : 5.8f;
+        switch (this) {
+            case SOUTH_AFRICA:
+                return 8.05f;
+            case MADAGASCAR:
+                return 6.85f;
+            case IBERIA:
+            default:
+                return 8.25f;
+        }
     }
 
     public float defaultZoom() {
-        return 6.4f;
+        switch (this) {
+            case SOUTH_AFRICA:
+                return 8.2f;
+            case MADAGASCAR:
+                return 7.35f;
+            case IBERIA:
+            default:
+                return 8.4f;
+        }
     }
 
     public double defaultLookLat() {
-        return this == SOUTH_AFRICA ? -33.92 : 40.42;
+        switch (this) {
+            case SOUTH_AFRICA:
+                return -33.92;
+            case MADAGASCAR:
+                return -18.88;
+            case IBERIA:
+            default:
+                return 40.42;
+        }
     }
 
     public double defaultLookLon() {
-        return this == SOUTH_AFRICA ? 18.42 : -3.70;
+        switch (this) {
+            case SOUTH_AFRICA:
+                return 18.42;
+            case MADAGASCAR:
+                return 47.51;
+            case IBERIA:
+            default:
+                return -3.70;
+        }
     }
 
     public static PlayableMapRegion fromHexId(@Nullable String hexId) {
-        if (hexId != null && (hexId.startsWith("hex_za_") || hexId.startsWith("za_"))) {
-            return SOUTH_AFRICA;
+        if (hexId != null) {
+            if (hexId.startsWith("hex_za_") || hexId.startsWith("za_")) {
+                return SOUTH_AFRICA;
+            }
+            if (hexId.startsWith("hex_mdg_") || hexId.startsWith("mdg_")) {
+                return MADAGASCAR;
+            }
         }
         return IBERIA;
     }
 
     @Nullable
     public static PlayableMapRegion containing(double lat, double lon) {
+        if (MADAGASCAR.box().containsLatLon(lat, lon) && MadagascarBounds.keepCentroid(lat, lon)) {
+            return MADAGASCAR;
+        }
         if (SOUTH_AFRICA.box().containsLatLon(lat, lon)) {
             return SOUTH_AFRICA;
         }
-        if (IBERIA.box().containsLatLon(lat, lon)) {
+        if (IBERIA.box().containsLatLon(lat, lon) && IberiaBounds.keepCentroid(lat, lon)) {
             return IBERIA;
         }
         return null;
     }
 
+    /** Regiones con paquete de carreteras descargable (GraphHopper). */
+    public static PlayableMapRegion[] roadGraphRegions() {
+        return new PlayableMapRegion[]{IBERIA, SOUTH_AFRICA, MADAGASCAR};
+    }
+
+    public boolean hasRoadGraph() {
+        return this == IBERIA || this == SOUTH_AFRICA || this == MADAGASCAR;
+    }
+
+    public String roadGraphSubdir() {
+        switch (this) {
+            case SOUTH_AFRICA:
+                return "routing-graph/za";
+            case MADAGASCAR:
+                return "routing-graph/madagascar";
+            case IBERIA:
+            default:
+                return "routing-graph/iberia";
+        }
+    }
+
+    public String roadGraphArchiveName() {
+        switch (this) {
+            case SOUTH_AFRICA:
+                return "za-car-lite.tar.gz";
+            case MADAGASCAR:
+                return "madagascar-car-lite.tar.gz";
+            case IBERIA:
+            default:
+                return "iberia-car-lite.tar.gz";
+        }
+    }
+
+    public String roadGraphReleaseUrl() {
+        switch (this) {
+            case SOUTH_AFRICA:
+                return "https://github.com/Trastudev/apiculture-simulator/releases/download/"
+                        + "routing-graph-za-v1/za-car-lite.tar.gz";
+            case MADAGASCAR:
+                return "https://github.com/Trastudev/apiculture-simulator/releases/download/"
+                        + "routing-graph-madagascar-v1/madagascar-car-lite.tar.gz";
+            case IBERIA:
+            default:
+                return "https://github.com/Trastudev/apiculture-simulator/releases/download/"
+                        + "routing-graph-iberia-v1/iberia-car-lite.tar.gz";
+        }
+    }
+
+    public int roadGraphNotificationId() {
+        if (this == MADAGASCAR) {
+            return 48202;
+        }
+        if (this == SOUTH_AFRICA) {
+            return 48203;
+        }
+        return 48201;
+    }
+
     public boolean containsHive(double lat, double lon) {
+        if (this == IBERIA) {
+            return IberiaBounds.BOX.containsLatLon(lat, lon) && IberiaBounds.keepCentroid(lat, lon);
+        }
+        if (this == MADAGASCAR) {
+            return MadagascarBounds.BOX.containsLatLon(lat, lon) && MadagascarBounds.keepCentroid(lat, lon);
+        }
         return box().containsLatLon(lat, lon);
     }
 }

@@ -57,16 +57,37 @@
             android:textSize="14sp"
             tools:text="Mensaje de aviso del apiario." />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_notice_ok"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="@string/game_notice_ok"
-            android:textAllCaps="false"
-            android:textColor="@color/event_ink"
-            android:textStyle="bold"
-            app:backgroundTint="@color/event_gold"
-            app:cornerRadius="14dp" />
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_notice_cancel"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:text="@string/game_notice_back"
+                android:textAllCaps="false"
+                android:textColor="@color/event_ink_muted"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_notice_ok"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="@string/game_notice_ok"
+                android:textAllCaps="false"
+                android:textColor="@color/event_ink"
+                android:textStyle="bold"
+                app:backgroundTint="@color/event_gold"
+                app:cornerRadius="14dp" />
+        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

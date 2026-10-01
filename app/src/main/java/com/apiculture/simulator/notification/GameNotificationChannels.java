@@ -15,6 +15,7 @@ import com.apiculture.simulator.R;
 public final class GameNotificationChannels {
 
     public static final String ID_DAILY_PRODUCTION = "daily_production";
+    public static final String ID_GRAPH = "routing_graph";
 
     private GameNotificationChannels() {
     }
@@ -33,5 +34,11 @@ public final class GameNotificationChannels {
                 NotificationManager.IMPORTANCE_DEFAULT);
         ch.setDescription(context.getString(R.string.notification_channel_daily_desc));
         nm.createNotificationChannel(ch);
+        NotificationChannel graph = new NotificationChannel(
+                ID_GRAPH,
+                context.getString(R.string.notification_channel_graph_title),
+                NotificationManager.IMPORTANCE_LOW);
+        graph.setDescription(context.getString(R.string.notification_channel_graph_desc));
+        nm.createNotificationChannel(graph);
     }
 }

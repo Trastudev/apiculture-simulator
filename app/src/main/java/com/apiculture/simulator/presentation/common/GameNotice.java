@@ -68,6 +68,15 @@ public final class GameNotice {
         });
     }
 
+    @Nullable
+    public static Activity currentActivity() {
+        Activity resumed = resumedActivity.get();
+        if (resumed != null && !resumed.isFinishing() && !resumed.isDestroyed()) {
+            return resumed;
+        }
+        return null;
+    }
+
     public static void show(@Nullable Context context, @StringRes int messageRes) {
         if (context == null) {
             return;
@@ -123,11 +132,42 @@ public final class GameNotice {
         CharSequence heading = title != null && title.length() > 0
                 ? title
                 : activity.getString(R.string.game_notice_title);
-        activity.runOnUiThread(() -> present(activity, heading, body));
+        activity.runOnUiThread(() -> present(activity, heading, body, R.string.game_notice_ok, false, null));
+    }
+
+    public static void confirm(@Nullable Context context, @Nullable CharSequence title,
+            @Nullable CharSequence message, @StringRes int positiveRes, @Nullable Runnable onConfirm) {
+        confirm(context, title, message, positiveRes, R.string.game_notice_back, onConfirm, null);
+    }
+
+    public static void confirm(@Nullable Context context, @Nullable CharSequence title,
+            @Nullable CharSequence message, @StringRes int positiveRes, @StringRes int negativeRes,
+            @Nullable Runnable onConfirm, @Nullable Runnable onCancel) {
+        Activity activity = resolveActivity(context);
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            return;
+        }
+        CharSequence body = message != null ? message : "";
+        if (body.length() == 0) {
+            return;
+        }
+        CharSequence heading = title != null && title.length() > 0
+                ? title
+                : activity.getString(R.string.game_notice_title);
+        int ok = positiveRes != 0 ? positiveRes : R.string.game_notice_ok;
+        int cancel = negativeRes != 0 ? negativeRes : R.string.game_notice_back;
+        activity.runOnUiThread(() -> present(activity, heading, body, ok, cancel, true, onConfirm, onCancel));
     }
 
     private static void present(@NonNull Activity activity, @NonNull CharSequence title,
-            @NonNull CharSequence message) {
+            @NonNull CharSequence message, @StringRes int okRes, boolean showCancel,
+            @Nullable Runnable onOk) {
+        present(activity, title, message, okRes, R.string.game_notice_back, showCancel, onOk, null);
+    }
+
+    private static void present(@NonNull Activity activity, @NonNull CharSequence title,
+            @NonNull CharSequence message, @StringRes int okRes, @StringRes int cancelRes,
+            boolean showCancel, @Nullable Runnable onOk, @Nullable Runnable onCancel) {
         if (activity.isFinishing() || activity.isDestroyed()) {
             return;
         }
@@ -147,9 +187,26 @@ public final class GameNotice {
         TextView tvTitle = dialog.findViewById(R.id.tv_notice_title);
         TextView tvMessage = dialog.findViewById(R.id.tv_notice_message);
         MaterialButton btnOk = dialog.findViewById(R.id.btn_notice_ok);
+        MaterialButton btnCancel = dialog.findViewById(R.id.btn_notice_cancel);
         tvTitle.setText(title);
         tvMessage.setText(message);
-        btnOk.setOnClickListener(v -> dialog.dismiss());
+        btnOk.setText(okRes);
+        btnOk.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (onOk != null) {
+                onOk.run();
+            }
+        });
+        if (btnCancel != null) {
+            btnCancel.setText(cancelRes);
+            btnCancel.setVisibility(showCancel ? android.view.View.VISIBLE : android.view.View.GONE);
+            btnCancel.setOnClickListener(v -> {
+                dialog.dismiss();
+                if (onCancel != null) {
+                    onCancel.run();
+                }
+            });
+        }
         showing = new WeakReference<>(dialog);
         dialog.show();
     }

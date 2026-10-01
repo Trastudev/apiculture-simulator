@@ -14,4 +14,12 @@
 .cxx
 google-services.json
 tools/bots/state.json
+server/node_modules/
+server/.env
+server/firestore-key.json
+*firebase-adminsdk*.json
 tools/bots/_secrets_out/
+tools/hex-places/cache/
+tools/routing-graph/data/
+tools/routing-graph/*.jar
+tools/routing-graph/jdk-21/

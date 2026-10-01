@@ -1,0 +1,1 @@
+ALTER TABLE players ADD COLUMN IF NOT EXISTS honey_stock_seq bigint NOT NULL DEFAULT 0;

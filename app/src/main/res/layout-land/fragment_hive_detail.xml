@@ -20,6 +20,17 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <ImageButton
+                android:id="@+id/btn_hive_prev"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/hive_detail_prev"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_chevron_left"
+                android:visibility="gone" />
+
             <ImageView
                 android:layout_width="80dp"
                 android:layout_height="80dp"
@@ -182,10 +193,12 @@
                         android:layout_marginStart="14dp"
                         android:contentDescription="@string/cd_hive_header_supers"
                         android:src="@drawable/ic_alza"
+                        android:visibility="gone"
                         app:tint="@null" />
 
                     <TextView
                         android:id="@+id/tv_hive_header_supers"
+                        android:visibility="gone"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="4dp"
@@ -231,7 +244,140 @@
                         android:textStyle="bold"
                         tools:text="82 %" />
                 </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/ll_hive_care_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/iv_care_treat"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:contentDescription="@string/hive_treat_title"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/tv_care_treat"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:visibility="gone"
+                            tools:text="Tratamiento · 5 días"
+                            tools:visibility="visible" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/iv_care_feed"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:contentDescription="@string/hive_feed_title"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/tv_care_feed"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:textColor="@color/dash_text_card"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:visibility="gone"
+                            tools:text="Alimento · 3 días" />
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btn_hive_next"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/hive_detail_next"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_chevron_right"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_hive_yard_index"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="center"
+            android:textColor="@color/event_ink_muted"
+            android:textSize="12sp"
+            android:visibility="gone"
+            tools:text="2 / 5"
+            tools:visibility="visible" />
+
+        <LinearLayout
+            android:id="@+id/ll_hive_pending_contract"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_contract_chip"
+            android:orientation="vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/tv_hive_pending_contract"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/event_gold_dark"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="Viaja el 21 sep a Huerta de Alzira. Hasta entonces sigue pecoreando aquí." />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_hive_pending_yard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/hive_pending_contract_open_yard"
+                android:textAllCaps="false"
+                android:textColor="@color/event_ink"
+                android:textStyle="bold"
+                app:backgroundTint="@color/event_gold"
+                app:cornerRadius="14dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_hive_trip_cancel"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/hive_trip_cancel"
+                android:textAllCaps="false"
+                android:textColor="@color/event_gold_dark"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:visibility="visible" />
         </LinearLayout>
 
         <!-- Alertas de la colmena (bajo miel/abejas/salud/varroa) -->
@@ -353,6 +499,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="5dp"
                         android:layout_weight="1"
+                        android:visibility="gone"
                         android:text="@string/hive_card_buy_super"
                         android:textAllCaps="false"
                         app:backgroundTint="@color/dash_header_bar"
@@ -412,6 +559,26 @@
                         android:textColor="@color/dash_text_card"
                         android:textSize="9sp"
                         android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_forage_bloom"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:gravity="center"
+                        android:textColor="@color/dash_muted"
+                        android:textSize="8sp"
+                        tools:text="Floración 62 %" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_change_forage"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minHeight="32dp"
+                        android:paddingHorizontal="8dp"
+                        android:text="@string/hive_change_forage"
+                        android:textSize="10sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -465,7 +632,7 @@
                         android:ellipsize="end"
                         android:gravity="center"
                         android:maxLines="2"
-                        android:text="Cota media"
+                        android:text="@string/hive_elevation_band"
                         android:textColor="@color/dash_muted"
                         android:textSize="8sp" />
 
@@ -508,7 +675,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:gravity="center"
-                        android:text="Población"
+                        android:text="@string/hive_section_population"
                         android:textColor="@color/dash_muted"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -807,7 +974,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Población"
+                    android:text="@string/hive_section_population"
                     android:textColor="@color/dash_text_card"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -838,7 +1005,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Huevo"
+                            android:text="@string/hive_brood_egg"
                             android:textColor="@color/dash_muted"
                             android:textSize="10sp" />
 
@@ -867,7 +1034,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Larva"
+                            android:text="@string/hive_brood_larva"
                             android:textColor="@color/dash_muted"
                             android:textSize="10sp" />
 
@@ -896,7 +1063,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Pupa"
+                            android:text="@string/hive_brood_pupa"
                             android:textColor="@color/dash_muted"
                             android:textSize="10sp" />
 
@@ -971,7 +1138,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Salud y varroa"
+                    android:text="@string/hive_section_health"
                     android:textColor="@color/dash_text_card"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -987,7 +1154,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Salud de la colmena"
+                        android:text="@string/hive_health_label"
                         android:textColor="@color/dash_text_card"
                         android:textSize="12sp" />
 
@@ -1022,7 +1189,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Infestación varroa"
+                        android:text="@string/hive_varroa_label"
                         android:textColor="@color/dash_text_card"
                         android:textSize="12sp" />
 
@@ -1065,6 +1232,57 @@
                     android:textColor="@color/dash_muted"
                     android:textSize="11sp"
                     android:lineSpacingExtra="2dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_honey_pantry"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:cardBackgroundColor="@color/dash_card_bg"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="2dp"
+            app:strokeWidth="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/hive_honey_pantry_title"
+                    android:textColor="@color/dash_text_card"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/hive_honey_pantry_hint"
+                    android:textColor="@color/dash_muted"
+                    android:textSize="10sp" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:clipToPadding="false"
+                    android:overScrollMode="never"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/ll_honey_pantry"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -1144,7 +1362,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Media: 0,000 kg/día"
+                        android:text="@string/hive_chart_average"
                         android:textColor="@color/dash_good"
                         android:textSize="12sp" />
 
@@ -1586,7 +1804,7 @@
                         android:textColor="@color/dash_text_card"
                         android:textSize="13sp"
                         android:textStyle="bold"
-                        tools:text="Flora disponible (septiembre 2026)" />
+                        tools:text="Flora disponible (2026)" />
 
                     <TextView
                         android:id="@+id/tv_flora_month_avg"
@@ -1600,8 +1818,22 @@
                     <com.apiculture.simulator.presentation.hive.FloraMonthLineChartView
                         android:id="@+id/flora_month_chart"
                         android:layout_width="match_parent"
-                        android:layout_height="156dp"
+                        android:layout_height="176dp"
                         android:layout_marginTop="6dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_sell_hive"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="16dp"
+                        android:textAllCaps="false"
+                        android:textColor="@color/dash_text_card"
+                        android:textStyle="bold"
+                        app:cornerRadius="14dp"
+                        app:strokeColor="@color/event_gold_stroke"
+                        app:strokeWidth="1.5dp"
+                        tools:text="Vender colmena (100,00 B)" />
 
                     <TextView
                         android:id="@+id/tv_chart_worker_net_title"

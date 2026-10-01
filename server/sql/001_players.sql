@@ -4,7 +4,7 @@ CREATE TABLE players (
     honey_brand text,
     profile_complete boolean NOT NULL DEFAULT false,
     time_zone_id text,
-    economy_balance_eur numeric(14, 2) NOT NULL DEFAULT 10000,
+    economy_balance_eur numeric(14, 2) NOT NULL DEFAULT 20000,
     economy_honey_buckets_json text,
     economy_honey_sold_kg_total numeric(14, 3) NOT NULL DEFAULT 0,
     economy_honey_sold_by_flora_json text,

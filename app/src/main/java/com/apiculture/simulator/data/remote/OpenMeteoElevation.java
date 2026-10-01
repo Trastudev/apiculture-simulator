@@ -1,5 +1,6 @@
 package com.apiculture.simulator.data.remote;
 
+import android.os.SystemClock;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -27,6 +28,8 @@ public final class OpenMeteoElevation {
     public static final int MISSING = -1;
     /** Cota por defecto si no hay dato (banda baja–media). */
     public static final int FALLBACK_METERS = 500;
+    private static final long FAIL_COOLDOWN_MS = 5 * 60_000L;
+    private static volatile long failUntilElapsed;
 
     private OpenMeteoElevation() {
     }
@@ -35,6 +38,9 @@ public final class OpenMeteoElevation {
      * @return metros sobre la marcha, o {@link #MISSING} si error
      */
     public static int fetchMetersBlocking(double lat, double lng) {
+        if (SystemClock.elapsedRealtime() < failUntilElapsed) {
+            return MISSING;
+        }
         String urlStr = ELEVATION_URL
                 + "?latitude=" + String.format(Locale.US, "%.6f", lat)
                 + "&longitude=" + String.format(Locale.US, "%.6f", lng);
@@ -43,8 +49,8 @@ public final class OpenMeteoElevation {
             URL url = new URL(urlStr);
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
-            connection.setConnectTimeout(15_000);
-            connection.setReadTimeout(20_000);
+            connection.setConnectTimeout(8_000);
+            connection.setReadTimeout(8_000);
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("User-Agent", "ApicultureSimulator/1.0");
 
@@ -70,6 +76,7 @@ public final class OpenMeteoElevation {
             int m = (int) Math.round(arr.optDouble(0, 0.0));
             return Math.max(0, m);
         } catch (Exception e) {
+            failUntilElapsed = SystemClock.elapsedRealtime() + FAIL_COOLDOWN_MS;
             Log.w(TAG, "Elevación", e);
             return MISSING;
         } finally {

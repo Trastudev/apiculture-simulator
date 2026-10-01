@@ -7,7 +7,8 @@ import androidx.lifecycle.ViewModel;
 import android.content.Intent;
 
 import com.apiculture.simulator.data.repository.AuthRepository;
-import com.google.firebase.auth.FirebaseUser;
+import com.apiculture.simulator.data.session.SignedInUser;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 
 public class AuthViewModel extends ViewModel {
 
@@ -28,34 +29,6 @@ public class AuthViewModel extends ViewModel {
         return error;
     }
 
-    public void login(String email, String password) {
-        authRepository.login(email, password, new AuthRepository.AuthCallback() {
-            @Override
-            public void onSuccess(com.google.firebase.auth.FirebaseUser user) {
-                isLoggedIn.postValue(true);
-            }
-
-            @Override
-            public void onError(String message) {
-                error.postValue(message);
-            }
-        });
-    }
-
-    public void register(String email, String password) {
-        authRepository.register(email, password, new AuthRepository.AuthCallback() {
-            @Override
-            public void onSuccess(com.google.firebase.auth.FirebaseUser user) {
-                isLoggedIn.postValue(true);
-            }
-
-            @Override
-            public void onError(String message) {
-                error.postValue(message);
-            }
-        });
-    }
-
     public boolean isGoogleSignInConfigured() {
         return authRepository.isGoogleSignInConfigured();
     }
@@ -64,10 +37,10 @@ public class AuthViewModel extends ViewModel {
         return authRepository.googleSignInIntent();
     }
 
-    public void loginWithGoogleIdToken(String idToken) {
-        authRepository.signInWithGoogleIdToken(idToken, new AuthRepository.AuthCallback() {
+    public void loginWithGoogle(GoogleSignInAccount account) {
+        authRepository.signInWithGoogle(account, new AuthRepository.AuthCallback() {
             @Override
-            public void onSuccess(FirebaseUser user) {
+            public void onSuccess(SignedInUser user) {
                 isLoggedIn.postValue(true);
             }
 

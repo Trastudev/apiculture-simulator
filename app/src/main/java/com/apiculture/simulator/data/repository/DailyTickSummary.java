@@ -12,13 +12,28 @@ public final class DailyTickSummary {
     public final int velutinaHiveCount;
     public final int queenMissingCount;
     public final int swarmCount;
+    public final List<String> cropNotes;
+    public final double forageFromNeighborKg;
+    public final double forageTakenByNeighborsKg;
 
     public DailyTickSummary(int dayKey, List<HiveDayStartupSummary> summaries) {
-        this(dayKey, summaries, 0, 0, 0);
+        this(dayKey, summaries, 0, 0, 0, Collections.emptyList(), 0, 0);
     }
 
     public DailyTickSummary(int dayKey, List<HiveDayStartupSummary> summaries,
             int velutinaHiveCount, int queenMissingCount, int swarmCount) {
+        this(dayKey, summaries, velutinaHiveCount, queenMissingCount, swarmCount, Collections.emptyList(), 0, 0);
+    }
+
+    public DailyTickSummary(int dayKey, List<HiveDayStartupSummary> summaries,
+            int velutinaHiveCount, int queenMissingCount, int swarmCount,
+            List<String> cropNotes) {
+        this(dayKey, summaries, velutinaHiveCount, queenMissingCount, swarmCount, cropNotes, 0, 0);
+    }
+
+    public DailyTickSummary(int dayKey, List<HiveDayStartupSummary> summaries,
+            int velutinaHiveCount, int queenMissingCount, int swarmCount,
+            List<String> cropNotes, double forageFromNeighborKg, double forageTakenByNeighborsKg) {
         this.dayKey = dayKey;
         this.summaries = summaries == null
                 ? Collections.emptyList()
@@ -26,6 +41,11 @@ public final class DailyTickSummary {
         this.velutinaHiveCount = Math.max(0, velutinaHiveCount);
         this.queenMissingCount = Math.max(0, queenMissingCount);
         this.swarmCount = Math.max(0, swarmCount);
+        this.cropNotes = cropNotes == null
+                ? Collections.emptyList()
+                : Collections.unmodifiableList(new ArrayList<>(cropNotes));
+        this.forageFromNeighborKg = Math.max(0.0, forageFromNeighborKg);
+        this.forageTakenByNeighborsKg = Math.max(0.0, forageTakenByNeighborsKg);
     }
 
     public double totalHoneyKg() {

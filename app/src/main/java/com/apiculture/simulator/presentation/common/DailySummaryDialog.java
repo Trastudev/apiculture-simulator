@@ -45,17 +45,29 @@ public final class DailySummaryDialog {
     }
 
     public static void show(@Nullable Context context, @Nullable TickAppliedDayResult result) {
+        show(context, result, null);
+    }
+
+    public static void show(@Nullable Context context, @Nullable TickAppliedDayResult result,
+            @Nullable Runnable onDismiss) {
         if (context == null || result == null || result.days.isEmpty()) {
+            if (onDismiss != null) {
+                onDismiss.run();
+            }
             return;
         }
         Activity activity = resolveActivity(context);
         if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            if (onDismiss != null) {
+                onDismiss.run();
+            }
             return;
         }
-        activity.runOnUiThread(() -> present(activity, result));
+        activity.runOnUiThread(() -> present(activity, result, onDismiss));
     }
 
-    private static void present(@NonNull Activity activity, @NonNull TickAppliedDayResult result) {
+    private static void present(@NonNull Activity activity, @NonNull TickAppliedDayResult result,
+            @Nullable Runnable onDismiss) {
         if (activity.isFinishing() || activity.isDestroyed()) {
             return;
         }
@@ -65,6 +77,8 @@ public final class DailySummaryDialog {
         int swarm = 0;
         int velutina = 0;
         int queenMissing = 0;
+        double fromNeighbors = 0;
+        double takenByNeighbors = 0;
         int minDay = Integer.MAX_VALUE;
         int maxDay = 0;
         for (DailyTickSummary day : result.days) {
@@ -72,6 +86,8 @@ public final class DailySummaryDialog {
             swarm += day.swarmCount;
             velutina += day.velutinaHiveCount;
             queenMissing += day.queenMissingCount;
+            fromNeighbors += day.forageFromNeighborKg;
+            takenByNeighbors += day.forageTakenByNeighborsKg;
             if (day.dayKey < minDay) {
                 minDay = day.dayKey;
             }
@@ -101,6 +117,9 @@ public final class DailySummaryDialog {
         TextView tvTitle = dialog.findViewById(R.id.tv_daily_summary_title);
         LinearLayout honeyRows = dialog.findViewById(R.id.ll_daily_honey_rows);
         TextView tvHoneyEmpty = dialog.findViewById(R.id.tv_daily_honey_empty);
+        LinearLayout forageMelee = dialog.findViewById(R.id.ll_daily_forage_melee);
+        TextView tvFromNeighbors = dialog.findViewById(R.id.tv_daily_forage_from_neighbors);
+        TextView tvTakenByNeighbors = dialog.findViewById(R.id.tv_daily_forage_taken_by_neighbors);
         TextView tvPopArrow = dialog.findViewById(R.id.tv_daily_pop_arrow);
         TextView tvPopText = dialog.findViewById(R.id.tv_daily_pop_text);
         TextView tvAlerts = dialog.findViewById(R.id.tv_daily_summary_alerts);
@@ -139,6 +158,22 @@ public final class DailySummaryDialog {
             }
         }
 
+        if (fromNeighbors > 0.0005 || takenByNeighbors > 0.0005) {
+            forageMelee.setVisibility(View.VISIBLE);
+            tvFromNeighbors.setText(activity.getString(R.string.startup_sim_summary_forage_from_neighbors,
+                    String.format(Locale.getDefault(), "%.1f", fromNeighbors)));
+            tvTakenByNeighbors.setText(activity.getString(R.string.startup_sim_summary_forage_taken_by_neighbors,
+                    String.format(Locale.getDefault(), "%.1f", takenByNeighbors)));
+            tvFromNeighbors.setVisibility(fromNeighbors > 0.0005 ? View.VISIBLE : View.GONE);
+            tvTakenByNeighbors.setVisibility(takenByNeighbors > 0.0005 ? View.VISIBLE : View.GONE);
+            View fromRow = (View) tvFromNeighbors.getParent();
+            View takenRow = (View) tvTakenByNeighbors.getParent();
+            fromRow.setVisibility(fromNeighbors > 0.0005 ? View.VISIBLE : View.GONE);
+            takenRow.setVisibility(takenByNeighbors > 0.0005 ? View.VISIBLE : View.GONE);
+        } else {
+            forageMelee.setVisibility(View.GONE);
+        }
+
         if (workerNet > 0) {
             tvPopArrow.setText("↑");
             tvPopText.setText(activity.getString(R.string.startup_sim_summary_pop_up,
@@ -168,6 +203,20 @@ public final class DailySummaryDialog {
             }
             alerts.append(activity.getString(R.string.startup_sim_summary_totals_queen, queenMissing));
         }
+        for (DailyTickSummary day : result.days) {
+            if (day.cropNotes == null) {
+                continue;
+            }
+            for (String note : day.cropNotes) {
+                if (note == null || note.trim().isEmpty()) {
+                    continue;
+                }
+                if (alerts.length() > 0) {
+                    alerts.append('\n');
+                }
+                alerts.append(note);
+            }
+        }
         if (alerts.length() > 0) {
             tvAlerts.setVisibility(View.VISIBLE);
             tvAlerts.setText(alerts.toString());
@@ -176,6 +225,9 @@ public final class DailySummaryDialog {
         }
 
         btnOk.setOnClickListener(v -> dialog.dismiss());
+        if (onDismiss != null) {
+            dialog.setOnDismissListener(d -> onDismiss.run());
+        }
         dialog.show();
     }
 

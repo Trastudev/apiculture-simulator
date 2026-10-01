@@ -7,9 +7,7 @@ const HEXES_PER_BATCH = 50;
 const ORDERS_PER_BATCH = 2;
 const OFFERS_PER_BATCH = 2;
 const POLLINATION_HEXES_PER_BATCH = 70;
-const PRICE_BONUS = 1.12;
-const GRID_COLS = 12;
-const GRID_ROWS = 10;
+const PRICE_BONUS = 1.5;
 let clockReady = false;
 
 function num(value) {
@@ -59,35 +57,20 @@ function utcDayEnd(dayKey) {
   return Date.UTC(year, month - 1, day + 1, 0, 0, 0, 0);
 }
 
-function haversineKm(lat1, lon1, lat2, lon2) {
-  const r = 6371;
-  const p1 = lat1 * Math.PI / 180;
-  const p2 = lat2 * Math.PI / 180;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(p1) * Math.cos(p2) * Math.sin(dLon / 2) ** 2;
-  return 2 * r * Math.asin(Math.min(1, Math.sqrt(a)));
-}
-
-// El precio se toma del snapshot de mercado almacenado por la API. Cuando no
-// hay snapshot del día se conserva el fallback histórico de 4,5 €/kg; el
-// bonus de comanda es 1,12 y produce 5,04 €/kg.
-function basePrice(flora, prices) {
-  const value = prices && prices.get(catalog.canonicalFlora(flora));
-  return Number.isFinite(value) && value > 0 ? value : 4.5;
+// La comanda paga la media entre el mínimo y el máximo de esa flora
+// (el precio con oferta = demanda) multiplicada por 1,5.
+function basePrice(flora) {
+  const mean = catalog.meanPriceEur(flora);
+  return (mean > 0 ? mean : 12) * catalog.orderScarcity(flora);
 }
 
 function cropForParcel(parcel, band, nowMs, dayKey) {
   return catalog.offerForParcel(parcel, band, nowMs, dayKey);
 }
 
-function floraForParcel(parcel, band, seed) {
-  const maxLevel = catalog.BAND_MAX_LEVEL[band] || 99;
-  const candidates = (parcel.nativePool || [])
-    .filter((flora) => catalog.floraAccessLevel(flora) <= maxLevel);
-  const pool = candidates.length ? candidates : ["Mil flores"];
-  return pool[floorMod(hash32(`${parcel.id}:flora:${seed}`), pool.length)];
+function floraForParcel(parcel, band, seed, nowMs) {
+  const pool = catalog.orderFloraCandidates(parcel, band);
+  return catalog.pickSeasonalFlora(parcel, pool, nowMs, `${parcel.id}:flora:${seed}`);
 }
 
 function orderCount(eligible, region) {
@@ -103,100 +86,40 @@ function offerCount(parcelCount, band) {
   return Math.min(48, Math.max(catalog.BAND_POLLINATION_COUNT[band] || 0, density));
 }
 
-function bucketCells(parcels) {
-  if (!parcels.length) return new Map();
-  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
-  for (const p of parcels) {
-    minLat = Math.min(minLat, p.lat);
-    maxLat = Math.max(maxLat, p.lat);
-    minLng = Math.min(minLng, p.lng);
-    maxLng = Math.max(maxLng, p.lng);
-  }
-  const latSpan = Math.max(0.01, maxLat - minLat);
-  const lngSpan = Math.max(0.01, maxLng - minLng);
-  const cells = new Map();
-  for (const p of parcels) {
-    const row = Math.max(0, Math.min(GRID_ROWS - 1,
-        Math.floor((p.lat - minLat) / latSpan * GRID_ROWS)));
-    const col = Math.max(0, Math.min(GRID_COLS - 1,
-        Math.floor((p.lng - minLng) / lngSpan * GRID_COLS)));
-    const key = row * GRID_COLS + col;
-    if (!cells.has(key)) cells.set(key, []);
-    cells.get(key).push(p);
-  }
-  return cells;
-}
-
 function pickScattered(parcels, want, used, seed) {
-  const available = parcels.filter((p) => p && !used.has(p.id));
+  const available = (parcels || []).filter((p) => p && p.id && !used.has(p.id));
   if (!available.length || want <= 0) return [];
-  const cells = bucketCells(available);
-  const keys = Array.from(cells.keys()).sort((a, b) => {
-    const ah = hash64(`offer-cell:${seed}:${a}`) & 0x7fffffffffffffffn;
-    const bh = hash64(`offer-cell:${seed}:${b}`) & 0x7fffffffffffffffn;
-    return ah < bh ? -1 : ah > bh ? 1 : 0;
+  available.sort((a, b) => {
+    const lat = a.lat - b.lat;
+    if (Math.abs(lat) > 1e-7) return lat;
+    const lng = a.lng - b.lng;
+    if (Math.abs(lng) > 1e-7) return lng;
+    return String(a.id).localeCompare(String(b.id));
   });
+  const n = available.length;
+  const take = Math.min(want, n);
+  const shift = floorMod(hash32(String(seed)), n);
   const out = [];
-  const visited = new Set();
-  const stride = Math.max(1, Math.floor(keys.length / Math.max(1, want)));
-  for (let pass = 0; pass < 2 && out.length < want; pass++) {
-    for (let i = pass; i < keys.length && out.length < want; i += stride) {
-      const key = keys[i];
-      if (visited.has(key)) continue;
-      visited.add(key);
-      const bucket = cells.get(key) || [];
-      const start = floorMod(hash32(`${seed}:${key}:${pass}`), bucket.length);
-      for (let n = 0; n < bucket.length; n++) {
-        const p = bucket[(start + n) % bucket.length];
-        if (!p || used.has(p.id)) continue;
-        used.add(p.id);
-        out.push(p);
-        break;
-      }
-    }
-  }
-  for (const key of keys) {
-    if (out.length >= want) break;
-    if (visited.has(key)) continue;
-    visited.add(key);
-    const bucket = cells.get(key) || [];
-    const p = bucket[floorMod(hash32(`${seed}:${key}:fill`), bucket.length)];
-    if (p && !used.has(p.id)) {
-      used.add(p.id);
-      out.push(p);
-    }
-  }
-  // Si la malla tiene menos celdas que el cupo, completa con parcels libres
-  // sin duplicar el mismo destino.
-  for (const p of available) {
-    if (out.length >= want) break;
-    if (used.has(p.id)) continue;
-    used.add(p.id);
-    out.push(p);
+  for (let i = 0; i < take; i++) {
+    const idx = Math.floor((i + 0.5) * n / take);
+    const parcel = available[(idx + shift) % n];
+    used.add(parcel.id);
+    out.push(parcel);
   }
   return out;
 }
 
 function nearestReplacement(parcels, dead, used, band, seed) {
   if (!dead) return null;
-  const ranked = parcels
-    .filter((p) => !used.has(p.id))
-    .map((p) => ({ p, km: haversineKm(dead.dest_lat, dead.dest_lng, p.lat, p.lng) }))
-    .sort((a, b) => a.km - b.km);
-  for (const radius of [40, 80, 180, 10000]) {
-    const hit = ranked.find((x) => x.km <= radius);
-    if (hit) {
-      used.add(hit.p.id);
-      return hit.p;
-    }
-  }
-  return null;
+  const picks = pickScattered(parcels, 1, used, seed);
+  return picks[0] || null;
 }
 
 function orderRow(region, band, parcel, dayKey, nowMs, seed, old, prices) {
-  const flora = floraForParcel(parcel, band, seed);
+  const flora = floraForParcel(parcel, band, seed, nowMs);
   const oldPrice = old && num(old.unit_price) > 0 ? num(old.unit_price) : 0;
   const id = `srv-ho-${region}-${dayKey}-${band}-${hash32(`${parcel.id}:${seed}`).toString(16)}`;
+  const pin = catalog.pointInParcel(parcel, `${id}:pin`);
   return {
     id,
     npc_name: catalog.npc(parcel),
@@ -205,10 +128,10 @@ function orderRow(region, band, parcel, dayKey, nowMs, seed, old, prices) {
     kg: kgForBand(band, seed),
     unit_price: oldPrice > 0
       ? oldPrice
-      : Math.round(basePrice(flora, prices) * PRICE_BONUS * 100) / 100,
+      : Math.round(basePrice(flora) * PRICE_BONUS * 100) / 100,
     dest_hex_id: parcel.id,
-    dest_lat: parcel.lat,
-    dest_lng: parcel.lng,
+    dest_lat: pin.lat,
+    dest_lng: pin.lng,
     dest_label: parcel.place || parcel.id,
     region,
     created_day_key: dayKey,
@@ -295,8 +218,34 @@ async function insertOffers(client, rows) {
   }
 }
 
+async function scatterOpenOrders(client, region, parcels) {
+  const byId = new Map(parcels.map((parcel) => [parcel.id, parcel]));
+  const rows = await client.query(
+    `SELECT id, dest_hex_id, dest_lat, dest_lng
+       FROM honey_orders
+      WHERE region=$1 AND taken=false`,
+    [region]
+  );
+  for (const row of rows.rows) {
+    const parcel = byId.get(row.dest_hex_id);
+    if (!parcel) continue;
+    const lat = num(row.dest_lat);
+    const lng = num(row.dest_lng);
+    if (Math.abs(lat - parcel.lat) > 1e-6 || Math.abs(lng - parcel.lng) > 1e-6) continue;
+    const pin = catalog.pointInParcel(parcel, `${row.id}:pin`);
+    if (Math.abs(pin.lat - lat) < 1e-7 && Math.abs(pin.lng - lng) < 1e-7) continue;
+    await client.query(
+      `UPDATE honey_orders
+          SET dest_lat=$2, dest_lng=$3, updated_at=now()
+        WHERE id=$1 AND taken=false`,
+      [row.id, pin.lat, pin.lng]
+    );
+  }
+}
+
 async function maintainRegion(client, region, nowMs, dayKey, prices) {
   const all = catalog.getParcels(region);
+  await scatterOpenOrders(client, region, all);
   const pendingOrders = [];
   const pendingOffers = [];
   // La primera pasada tras desplegar el reloj descarta el pool legado de
@@ -324,6 +273,38 @@ async function maintainRegion(client, region, nowMs, dayKey, prices) {
       WHERE region=$1 AND taken=true AND expire_epoch_ms < $2`,
     [region, staleBefore]
   );
+  const playableIds = new Set(all.map((p) => p.id));
+  const outsideOrders = await client.query(
+    `SELECT id, dest_hex_id, taken FROM honey_orders WHERE region=$1`,
+    [region]
+  );
+  for (const row of outsideOrders.rows) {
+    if (playableIds.has(row.dest_hex_id)) continue;
+    if (row.taken) {
+      const trip = await client.query(
+        "SELECT 1 FROM cargo_trips WHERE order_id=$1 LIMIT 1",
+        [row.id]
+      );
+      if (trip.rowCount > 0) continue;
+    }
+    await client.query("DELETE FROM honey_orders WHERE id=$1", [row.id]);
+  }
+  const outsideOffers = await client.query(
+    `SELECT id, hex_id, taken FROM pollination_offers WHERE region=$1`,
+    [region]
+  );
+  for (const row of outsideOffers.rows) {
+    if (playableIds.has(row.hex_id)) continue;
+    if (row.taken) {
+      const contract = await client.query(
+        `SELECT 1 FROM pollination_contracts
+          WHERE hex_id=$1 AND region=$2 AND status IN ('ACTIVE','RETURNING') LIMIT 1`,
+        [row.hex_id, region]
+      );
+      if (contract.rowCount > 0) continue;
+    }
+    await client.query("DELETE FROM pollination_offers WHERE id=$1", [row.id]);
+  }
   const orders = await client.query(
     `SELECT * FROM honey_orders WHERE region=$1 AND taken=false ORDER BY created_day_key,id`,
     [region]
@@ -680,7 +661,39 @@ function offerJson(row) {
   };
 }
 
-async function snapshot(pool, region, ownerId) {
+function nearBox(near) {
+  if (!near) return null;
+  const lat = Number(near.lat);
+  const lng = Number(near.lng);
+  const km = Number(near.km);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(km) || km <= 0) {
+    return null;
+  }
+  const dLat = km / 111;
+  const cos = Math.cos((lat * Math.PI) / 180);
+  const dLng = km / (111 * Math.max(0.2, Math.abs(cos)));
+  return { lat, lng, km, minLat: lat - dLat, maxLat: lat + dLat, minLng: lng - dLng, maxLng: lng + dLng };
+}
+
+function withinNear(box, lat, lng) {
+  if (!box) return true;
+  const p1 = (box.lat * Math.PI) / 180;
+  const p2 = (lat * Math.PI) / 180;
+  const dphi = ((lat - box.lat) * Math.PI) / 180;
+  const dl = ((lng - box.lng) * Math.PI) / 180;
+  const a = Math.sin(dphi / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  const km = 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(a)));
+  return km <= box.km;
+}
+
+async function snapshot(pool, region, ownerId, near) {
+  const box = nearBox(near);
+  const params = [region || null, ownerId || null];
+  let boxSql = "";
+  if (box) {
+    params.push(box.minLat, box.maxLat, box.minLng, box.maxLng);
+    boxSql = " AND dest_lat BETWEEN $3 AND $4 AND dest_lng BETWEEN $5 AND $6";
+  }
   const result = await pool.query(
     `SELECT id,npc_name,portrait_index,flora_key,kg,unit_price,dest_hex_id,
             dest_lat,dest_lng,dest_label,region,created_day_key,expire_epoch_ms,
@@ -688,8 +701,9 @@ async function snapshot(pool, region, ownerId) {
        FROM honey_orders
       WHERE ($1::text IS NULL OR region=$1)
          AND ($2::text IS NULL OR taken=false OR claimed_by=$2)
+         ${boxSql}
       ORDER BY region,band,created_day_key,id`,
-    [region || null, ownerId || null]
+    params
   );
   const offers = await pool.query(
     `SELECT id,hex_id,flora,start_doy,end_doy,band,region,created_day_key,
@@ -697,14 +711,22 @@ async function snapshot(pool, region, ownerId) {
        FROM pollination_offers
       WHERE ($1::text IS NULL OR region=$1)
          AND ($2::text IS NULL OR taken=false OR claimed_by=$2)
+         ${boxSql}
       ORDER BY region,band,created_day_key,id`,
-    [region || null, ownerId || null]
+    params
   );
+  const orderRows = box
+    ? result.rows.filter((row) => withinNear(box, num(row.dest_lat), num(row.dest_lng)))
+    : result.rows;
+  const offerRows = box
+    ? offers.rows.filter((row) => withinNear(box, num(row.dest_lat), num(row.dest_lng)))
+    : offers.rows;
   return {
     ready: clockReady,
     dayKey: utcDayKey(),
-    orders: result.rows.map(orderJson),
-    offers: offers.rows.map(offerJson),
+    partial: Boolean(box),
+    orders: orderRows.map(orderJson),
+    offers: offerRows.map(offerJson),
   };
 }
 

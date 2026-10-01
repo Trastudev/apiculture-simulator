@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="20dp"
+    app:cardBackgroundColor="@color/event_cream"
+    app:cardCornerRadius="22dp"
+    app:cardElevation="10dp"
+    app:strokeColor="@color/event_gold_stroke"
+    app:strokeWidth="1.5dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_event_global_body"
+        android:orientation="vertical"
+        android:paddingHorizontal="18dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="14dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:background="@drawable/bg_event_kicker_pill"
+            android:letterSpacing="0.08"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"
+            android:text="@string/truck_confirm_kicker"
+            android:textAllCaps="true"
+            android:textColor="@color/white"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/iv_truck_confirm"
+            android:layout_width="128dp"
+            android:layout_height="72dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:contentDescription="@string/truck_confirm_send"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_fleet_truck_1" />
+
+        <TextView
+            android:id="@+id/tv_truck_origin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/event_ink"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            tools:text="Origen: Almacén Madrid" />
+
+        <TextView
+            android:id="@+id/tv_truck_dest"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/event_ink"
+            android:textSize="14sp"
+            tools:text="Destino: Móstoles" />
+
+        <TextView
+            android:id="@+id/tv_truck_cargo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/event_ink"
+            android:textSize="13sp"
+            tools:text="Romero · 8,0 kg · 14,40 B/kg" />
+
+        <TextView
+            android:id="@+id/tv_truck_road"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/event_ink_muted"
+            android:textSize="13sp"
+            tools:text="32 km por carretera · 27 min" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/truck_confirm_gross_label"
+                    android:textColor="@color/event_ink"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_truck_gross"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/event_ink"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    tools:text="115,20" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="6dp"
+                    android:contentDescription="@string/cd_stat_balance"
+                    android:src="@drawable/ic_beecoin" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/truck_confirm_travel_label"
+                    android:textColor="@color/event_ink"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tv_truck_travel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/event_ink"
+                    android:textSize="14sp"
+                    tools:text="2,40" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="6dp"
+                    android:contentDescription="@string/cd_stat_balance"
+                    android:src="@drawable/ic_beecoin" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/truck_confirm_net_label"
+                    android:textColor="@color/event_ink"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_truck_net"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/event_ink"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    tools:text="112,80" />
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginStart="6dp"
+                    android:contentDescription="@string/cd_stat_balance"
+                    android:src="@drawable/ic_beecoin" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_truck_send"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="14dp"
+            android:text="@string/truck_confirm_send"
+            android:textAllCaps="false"
+            android:textColor="@color/event_ink"
+            android:textStyle="bold"
+            app:backgroundTint="@color/event_gold"
+            app:cornerRadius="14dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_truck_back"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:text="@string/truck_confirm_back"
+            android:textAllCaps="false"
+            android:textColor="@color/event_ink_muted" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

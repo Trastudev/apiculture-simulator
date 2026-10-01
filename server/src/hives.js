@@ -144,7 +144,9 @@ async function saveHive(pool, id, body) {
   }
   for (const [jsonKey, column] of FIELDS) {
     if (Object.prototype.hasOwnProperty.call(body, jsonKey)) {
-      values[column] = body[jsonKey];
+      let value = body[jsonKey];
+      if (value === "null") value = null;
+      values[column] = value;
     }
   }
   const columns = Object.keys(DEFAULTS);
@@ -219,6 +221,21 @@ async function handleHive(req, res, pool, send, readBody) {
     }
     const row = await saveHive(pool, id, body);
     send(res, 200, rowToHive(row));
+    return true;
+  }
+
+  if (req.method === "DELETE") {
+    const existing = await getHive(pool, id);
+    if (!existing) {
+      send(res, 200, { ok: true });
+      return true;
+    }
+    if (auth.isConfigured() && req.authUid && !auth.sameUid(req.authUid, existing.owner_id)) {
+      send(res, 403, { ok: false, error: "OWNER_MISMATCH" });
+      return true;
+    }
+    await pool.query("DELETE FROM hives WHERE id = $1", [id]);
+    send(res, 200, { ok: true });
     return true;
   }
 

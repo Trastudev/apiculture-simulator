@@ -447,6 +447,15 @@ async function saveRow(pool, def, id, body) {
       values.route_road_kinds = current.route_road_kinds;
     }
   }
+  if (def.route === "player-stores" && values.kind === "warehouse" && current && current.body) {
+    const prev = typeof current.body === "string" ? JSON.parse(current.body) : current.body;
+    const next = values.body || {};
+    const prevSeq = Number(prev && prev.honeyStockSeq) || 0;
+    const nextSeq = Number(next && next.honeyStockSeq) || 0;
+    if (prevSeq > 0 && nextSeq < prevSeq) {
+      values.body = prev;
+    }
+  }
   const columns = def.fields.map((item) => item.column);
   const placeholders = columns.map((_, index) => "$" + (index + 2));
   const updates = columns.map((column) => column + " = EXCLUDED." + column);
@@ -564,6 +573,18 @@ async function handleTable(req, res, pool, send, readBody) {
       }
       const existing = await readRow(pool, def, id, false);
       if (existing && !enforceOwner(req, res, existing[def.ownerColumn], send)) {
+        return true;
+      }
+    }
+    if (def.table === "hex_parcels" && body.siteId) {
+      const clash = await pool.query(
+        `SELECT owner_id FROM hex_parcels
+         WHERE site_id = $1 AND owner_id IS NOT NULL AND owner_id <> $2
+         LIMIT 1`,
+        [String(body.siteId), String(body.ownerId || "")]
+      );
+      if (clash.rows[0]) {
+        send(res, 409, { ok: false, error: "SITE_OWNED" });
         return true;
       }
     }

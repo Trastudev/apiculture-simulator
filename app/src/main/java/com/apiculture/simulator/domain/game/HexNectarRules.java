@@ -1,10 +1,13 @@
 package com.apiculture.simulator.domain.game;
 
+import android.content.Context;
+
+import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
 import com.apiculture.simulator.domain.parcel.HexFlora;
+import com.apiculture.simulator.domain.parcel.HexParcel;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -28,7 +31,7 @@ public final class HexNectarRules {
         if (hive == null) {
             return SouthernAfricanClimateZone.HIGHVELD;
         }
-        int elev = hive.elevationMeters >= 0 ? hive.elevationMeters : 800;
+        int elev = hive.elevationMeters >= 0 ? hive.elevationMeters : -1;
         return SouthernAfricanClimateZone.forHive(hive.lat, hive.lng, elev);
     }
 
@@ -51,6 +54,27 @@ public final class HexNectarRules {
         return zoneForHive(hive).bloomShiftDays();
     }
 
+    public static int bloomShiftDaysForParcel(HexParcel parcel, String floraType) {
+        if (parcel == null) {
+            return 0;
+        }
+        if (HexFlora.isMadagascarParcel(parcel)) {
+            int shift = MadagascarClimateZone.forParcel(parcel).bloomShiftDays();
+            if (!HexFlora.usesSouthernCalendar(floraType)) {
+                shift += Hemispheres.SEASON_FLIP_DAYS;
+            }
+            return shift;
+        }
+        if (HexFlora.isZaParcel(parcel)) {
+            int shift = SouthernAfricanClimateZone.forParcel(parcel).bloomShiftDays();
+            if (!HexFlora.usesSouthernCalendar(floraType)) {
+                shift += Hemispheres.SEASON_FLIP_DAYS;
+            }
+            return shift;
+        }
+        return IberianClimateZone.forParcel(parcel).bloomShiftDays();
+    }
+
     /** Factor de cosecha del año (misma flora + mismo hex + mismo año → mismo valor en todos los dispositivos). */
     public static double vintageFactor(String hexId, String floraType, int year) {
         String hex = hexId != null && !hexId.isEmpty() ? hexId : "_";
@@ -60,6 +84,16 @@ public final class HexNectarRules {
         double min = GameBalanceConfig.vintageMin;
         double max = GameBalanceConfig.vintageMax;
         return min + u * (max - min);
+    }
+
+    public static String vintageLabel(Context context, double vintage) {
+        if (vintage >= 1.08) {
+            return context.getString(R.string.vintage_good);
+        }
+        if (vintage <= 0.88) {
+            return context.getString(R.string.vintage_weak);
+        }
+        return context.getString(R.string.vintage_average);
     }
 
     public static String vintageLabelEs(double vintage) {
@@ -80,8 +114,14 @@ public final class HexNectarRules {
         if (floraType == null || floraType.isEmpty()) {
             return true;
         }
-        String nativeKey = HexFlora.randomNativeForZone(hexId, zone);
-        return nativeKey.equalsIgnoreCase(HexFlora.canonicalKey(floraType));
+        String want = HexFlora.canonicalKey(floraType);
+        List<String> mix = HexFlora.nativeMixForZone(hexId, zone);
+        for (int i = 0; i < mix.size(); i++) {
+            if (want.equalsIgnoreCase(mix.get(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean isNativeFlora(HiveEntity hive) {
@@ -90,8 +130,13 @@ public final class HexNectarRules {
         }
         String want = HexFlora.canonicalKey(hive.floraType);
         if (isSouthernHive(hive)) {
-            String nativeKey = HexFlora.randomNativeForZone(hive.hexId, southernZoneForHive(hive));
-            return want.equalsIgnoreCase(nativeKey);
+            List<String> mix = HexFlora.nativeMixForZone(hive.hexId, southernZoneForHive(hive));
+            for (int i = 0; i < mix.size(); i++) {
+                if (want.equalsIgnoreCase(mix.get(i))) {
+                    return true;
+                }
+            }
+            return false;
         }
         return isNativeFlora(hive.hexId, hive.floraType, zoneForHive(hive));
     }
@@ -137,21 +182,6 @@ public final class HexNectarRules {
         }
         boolean nativeFlora = isNativeFlora(hive);
         primaryN *= crowdingFactor(hivesOnSameFlora, nativeFlora);
-
-        List<String> ready = readyFlorasOnHex != null ? readyFlorasOnHex : Collections.emptyList();
-        if (primaryN < GameBalanceConfig.secondaryNectarTrigger && !ready.isEmpty()) {
-            double best = 0.0;
-            String want = primary != null ? primary.trim() : "";
-            for (String other : ready) {
-                if (other == null || other.equalsIgnoreCase(want)) {
-                    continue;
-                }
-                double ov = vintageFactor(hexId, other, year);
-                int oShift = bloomShiftDays(hive, other);
-                best = Math.max(best, NectarFlow.intensity01(other, day.getDayOfYear(), oShift, ov));
-            }
-            primaryN += GameBalanceConfig.secondaryNectarShare * best;
-        }
         return Math.max(0.0, Math.min(GameBalanceConfig.nectarIntensityCap, primaryN));
     }
 }

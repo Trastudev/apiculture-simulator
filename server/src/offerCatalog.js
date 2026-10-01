@@ -93,21 +93,72 @@ function loadRegion(region) {
   return out;
 }
 
+const FRANCE_CLIP_WEST_LON = -1.92;
+const FRANCE_MAX_LAT = [
+  -1.92, 43.60,
+  -1.78, 43.58,
+  -1.40, 43.50,
+  -0.70, 43.20,
+  -0.20, 43.02,
+  0.70, 42.92,
+  1.50, 42.88,
+  2.20, 42.74,
+  3.00, 42.72,
+  3.40, 42.74,
+  4.55, 42.80,
+];
+
+function franceMaxLat(lon) {
+  if (lon <= FRANCE_MAX_LAT[0]) return FRANCE_MAX_LAT[1];
+  const n = FRANCE_MAX_LAT.length / 2;
+  for (let i = 0; i < n - 1; i++) {
+    const lon0 = FRANCE_MAX_LAT[i * 2];
+    const lat0 = FRANCE_MAX_LAT[i * 2 + 1];
+    const lon1 = FRANCE_MAX_LAT[(i + 1) * 2];
+    const lat1 = FRANCE_MAX_LAT[(i + 1) * 2 + 1];
+    if (lon <= lon1) {
+      const t = (lon - lon0) / (lon1 - lon0);
+      return lat0 + t * (lat1 - lat0);
+    }
+  }
+  return FRANCE_MAX_LAT[FRANCE_MAX_LAT.length - 1];
+}
+
+/** Mismos recortes que el mapa del teléfono: sin Francia profunda ni Magreb. */
+function playableCentroid(region, lat, lon) {
+  if (region === "iberia") {
+    if (lat < 36.00) return false;
+    if (lon > -1.50 && lat < 37.30) return false;
+    if (lon <= FRANCE_CLIP_WEST_LON) return true;
+    return lat <= franceMaxLat(lon);
+  }
+  if (region === "mdg") {
+    if (lat > -12.20 && lon < 47.40) return false;
+    if (lon < 43.18 || lon > 50.52) return false;
+    if (lat > -11.90 || lat < -25.65) return false;
+    return true;
+  }
+  return true;
+}
+
 function normalizeParcel(region, p) {
   if (!p || !p.id) return null;
   const lat = Number(p.clat);
   const lng = Number(p.clon);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (!playableCentroid(region, lat, lng)) return null;
   const rawElevation = p.elev == null ? NaN : Number(p.elev);
   const elevation = Number.isFinite(rawElevation) ? rawElevation : -1;
   const climate = climateFor(region, lat, lng, elevation);
   const nativePool = (NATIVE_POOLS[region] && NATIVE_POOLS[region][climate]) || ["Mil flores"];
   const contractCrops = (CONTRACT_CROPS[region] && CONTRACT_CROPS[region][climate]) || [];
+  const ring = Array.isArray(p.ring) && p.ring.length >= 3 ? p.ring : null;
   return {
     id: String(p.id),
     region,
     lat,
     lng,
+    ring,
     place: p.place || "",
     elevation,
     climate,
@@ -175,6 +226,52 @@ function mdgClimate(lat, lon, elev) {
   if (lon >= 48.85) return "EQUATORIAL";
   if (lon >= 48.15 && e < 520 && lat >= -23.6) return "EQUATORIAL";
   return "TROPICAL";
+}
+
+function ringContains(lat, lon, ring) {
+  if (!ring || ring.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const yi = Number(ring[i][0]);
+    const xi = Number(ring[i][1]);
+    const yj = Number(ring[j][0]);
+    const xj = Number(ring[j][1]);
+    if (((yi > lat) !== (yj > lat))
+        && (lon < (xj - xi) * (lat - yi) / (yj - yi + 1e-18) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/** Punto estable dentro del hex. Un apiario o una tienda en el centro no lo ocupan. */
+function pointInParcel(parcel, seed) {
+  const lat = parcel ? Number(parcel.lat) : 0;
+  const lng = parcel ? Number(parcel.lng) : 0;
+  const ring = parcel && parcel.ring;
+  if (!ring) return { lat, lng };
+  let minLat = Number(ring[0][0]);
+  let maxLat = minLat;
+  let minLng = Number(ring[0][1]);
+  let maxLng = minLng;
+  for (const vertex of ring) {
+    const y = Number(vertex[0]);
+    const x = Number(vertex[1]);
+    if (y < minLat) minLat = y;
+    if (y > maxLat) maxLat = y;
+    if (x < minLng) minLng = x;
+    if (x > maxLng) maxLng = x;
+  }
+  for (let i = 0; i < 40; i++) {
+    const u = (hash32(`${seed}:lat:${i}`) % 1000000) / 1000000;
+    const v = (hash32(`${seed}:lng:${i}`) % 1000000) / 1000000;
+    const candidateLat = minLat + u * (maxLat - minLat);
+    const candidateLng = minLng + v * (maxLng - minLng);
+    if (ringContains(candidateLat, candidateLng, ring)) {
+      return { lat: candidateLat, lng: candidateLng };
+    }
+  }
+  return { lat, lng };
 }
 
 function orderEligible(parcel, band) {
@@ -291,6 +388,80 @@ function bloomShiftDays(parcel, flora) {
     ? { EQUATORIAL: -4, HIGHLANDS: 2, DESERT: 5, TROPICAL: 0 }[parcel.climate] || 0
     : { FYNBOS: 0, KAROO: 4, HIGHVELD: 0, SUBTROPICAL: -6, BUSHVELD: -3 }[parcel.climate] || 0;
   return usesSouthernCalendar(flora) ? local : local + 183;
+}
+
+function doyOf(nowMs) {
+  const date = new Date(nowMs);
+  const start = Date.UTC(date.getUTCFullYear(), 0, 1);
+  return Math.min(365, Math.floor((nowMs - start) / 86400000) + 1);
+}
+
+function circularDoyDistance(a, b) {
+  const d = Math.abs(wrapDoy(a) - wrapDoy(b));
+  return Math.min(d, 365 - d);
+}
+
+/** Altura de floración hoy en el clima de la parcela, de 0 a la cima del pico. */
+function bloomHeight(parcel, flora, doy) {
+  const peaks = PEAK_BY_KEY.get(canonicalFlora(flora)) || [];
+  const shift = bloomShiftDays(parcel, flora);
+  let best = 0;
+  for (const peak of peaks) {
+    const center = wrapDoy(Number(peak.center || 0) + shift);
+    const width = Math.max(1, Number(peak.width || 1));
+    const height = Number(peak.height || 0);
+    const distance = circularDoyDistance(doy, center);
+    const value = height * Math.exp(-0.5 * (distance / width) ** 2);
+    if (value > best) best = value;
+  }
+  return best;
+}
+
+const BLOOM_IN = 0.4;
+const BLOOM_EDGE = 0.15;
+
+function orderFloraCandidates(parcel, band) {
+  const maxLevel = BAND_MAX_LEVEL[band] ?? 99;
+  const seen = new Set();
+  const out = [];
+  const sources = [...(parcel && parcel.nativePool || []), ...(parcel && parcel.contractCrops || [])];
+  for (const flora of sources) {
+    const key = canonicalFlora(flora);
+    if (!key || seen.has(key)) continue;
+    if (floraAccessLevel(flora) > maxLevel) continue;
+    seen.add(key);
+    out.push(flora);
+  }
+  return out.length ? out : ["Mil flores"];
+}
+
+/**
+ * 75 % miel en flor en este clima, 15 % en el borde y 10 % fuera de época.
+ * Si el grupo sorteado está vacío, pasa al siguiente sin cambiar de clima.
+ */
+function pickSeasonalFlora(parcel, floras, nowMs, seed) {
+  const list = floras && floras.length ? floras : ["Mil flores"];
+  const doy = doyOf(nowMs);
+  const buckets = { bloom: [], edge: [], out: [] };
+  for (const flora of list) {
+    const height = bloomHeight(parcel, flora, doy);
+    if (height >= BLOOM_IN) buckets.bloom.push(flora);
+    else if (height >= BLOOM_EDGE) buckets.edge.push(flora);
+    else buckets.out.push(flora);
+  }
+  const roll = hash32(`${seed}:season`) % 100;
+  const order = roll < 75
+    ? ["bloom", "edge", "out"]
+    : roll < 90
+      ? ["edge", "bloom", "out"]
+      : ["out", "edge", "bloom"];
+  for (const name of order) {
+    const bucket = buckets[name];
+    if (bucket.length) {
+      return bucket[hash32(`${seed}:${name}`) % bucket.length];
+    }
+  }
+  return list[0];
 }
 
 function bloomSpans(parcel, flora, minBloom01) {
@@ -430,7 +601,8 @@ function offerForParcel(parcel, band, nowMs, dayKey) {
     let bestWait = Number.MAX_SAFE_INTEGER;
     const bandMinLevel = BAND_MIN_LEVEL[band] ?? 0;
     for (const flora of parcel.contractCrops || []) {
-      if (cropAccessLevel(flora) > bandMinLevel) continue;
+      // Desde el nivel 2 el contrato no exige haber desbloqueado el cultivo.
+      if (bandMinLevel < 2 && cropAccessLevel(flora) > bandMinLevel) continue;
       for (const slot of packSlots(parcel, flora)) {
         if (containsDoy([slot.startDoy, slot.endDoy], doy)) continue;
         const wait = daysUntilStart(slot.startDoy, doy);
@@ -487,6 +659,45 @@ function floraAccessLevel(flora) {
   return FLORA_ACCESS.get(canonicalFlora(flora)) || 0;
 }
 
+// Dentro de un mismo nivel, de la más fácil de encontrar a la más escasa.
+// El factor va de 1 a 1,2: como mucho un 20 % entre la primera y la última.
+const SCARCITY_BANDS = [
+  ["Mil flores", "Eucalipto", "Romero", "Tomillo", "Lavanda", "Bosque", "Litchi", "Arboç", "Girofle", "Ravintsara", "Longose"],
+  ["Mango", "Mielato de encina y roble"],
+  ["Campo de rabaniza", "Café", "Niaouli", "Tapia"],
+  ["Castaño", "Brezo"],
+  ["Campo de facelia", "Tamarindo", "Baobab", "Mangle"],
+  ["Sisal", "Jujube", "Raketa"],
+  ["Acacia", "Aloe", "Marula", "Boekenhout"],
+  ["Fynbos", "Protea", "Buchu"],
+];
+const ORDER_SCARCITY = new Map();
+for (const band of SCARCITY_BANDS) {
+  const last = Math.max(1, band.length - 1);
+  band.forEach((flora, index) => {
+    const factor = band.length <= 1 ? 1 : 1 + 0.2 * index / last;
+    ORDER_SCARCITY.set(canonicalFlora(flora), Math.round(factor * 1000) / 1000);
+  });
+}
+
+function orderScarcity(flora) {
+  return ORDER_SCARCITY.get(canonicalFlora(flora)) || 1;
+}
+
+const MIN_MEAN_PRICE_EUR = 12;
+const MAX_MEAN_PRICE_EUR = 18;
+let maxFloraAccessLevel = 1;
+for (const level of FLORA_ACCESS.values()) {
+  if (level > maxFloraAccessLevel) maxFloraAccessLevel = level;
+}
+
+/** Precio de mercado con la oferta igual a la demanda: 12 €/kg en la miel más temprana y 18 en la de mayor nivel. */
+function meanPriceEur(flora) {
+  const level = floraAccessLevel(flora);
+  const t = Math.min(1, Math.max(0, level) / maxFloraAccessLevel);
+  return Math.round((MIN_MEAN_PRICE_EUR + (MAX_MEAN_PRICE_EUR - MIN_MEAN_PRICE_EUR) * t) * 100) / 100;
+}
+
 function npc(parcel) {
   return NPC_NAMES[parcel.npcIndex % NPC_NAMES.length];
 }
@@ -536,15 +747,23 @@ module.exports = {
   BAND_POLLINATION_COUNT,
   NPC_NAMES,
   getParcels,
+  playableCentroid,
   orderEligible,
+  pointInParcel,
+  ringContains,
   offerEligible,
   bandDailyOrderCount,
   bandDailyOfferCount,
   floraAccessLevel,
+  orderScarcity,
+  meanPriceEur,
   cropAccessLevel,
   canonicalFlora,
   bloomShiftDays,
+  bloomHeight,
   bloomSpans,
+  orderFloraCandidates,
+  pickSeasonalFlora,
   offerForParcel,
   seasonalKeepRate,
   npc,

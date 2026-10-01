@@ -23,7 +23,7 @@ import com.apiculture.simulator.domain.game.SouthernAfricanClimateZone;
 import com.apiculture.simulator.domain.parcel.HexFlora;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import com.google.firebase.auth.FirebaseAuth;
+import com.apiculture.simulator.data.session.PlayerAuth;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,7 +69,7 @@ public class AdminEventsFragment extends Fragment {
             }
         });
         viewModel.events().observe(getViewLifecycleOwner(), this::bindStatus);
-        String uid = FirebaseAuth.getInstance().getUid();
+        String uid = PlayerAuth.getInstance().getUid();
         viewModel.checkAdmin(uid);
 
         binding.btnAdminBack.setOnClickListener(v ->
@@ -106,34 +106,39 @@ public class AdminEventsFragment extends Fragment {
         if (snap == null || binding == null) {
             return;
         }
-        binding.tvAdminSurgeStatus.setText(statusLine(snap.surge));
-        binding.btnSurgeToggle.setText(snap.surge.isLive()
+        boolean surgeLive = isAdminLive(snap.surge, snap.kgSoldTowardGoal);
+        binding.tvAdminSurgeStatus.setText(statusLine(snap.surge, snap.kgSoldTowardGoal));
+        binding.btnSurgeToggle.setText(surgeLive
                 ? R.string.admin_deactivate : R.string.admin_activate);
-        binding.tvAdminShiftStatus.setText(statusLine(snap.shift));
+        binding.tvAdminShiftStatus.setText(statusLine(snap.shift, 0));
         binding.btnShiftToggle.setText(snap.shift.isLive()
                 ? R.string.admin_deactivate : R.string.admin_activate);
-        binding.tvAdminVelutinaStatus.setText(statusLine(snap.velutina));
+        binding.tvAdminVelutinaStatus.setText(statusLine(snap.velutina, 0));
         binding.btnVelutinaToggle.setText(snap.velutina.isLive()
                 ? R.string.admin_deactivate : R.string.admin_activate);
     }
 
-    private String statusLine(GlobalEventRepository.EventDoc d) {
+    private static boolean isAdminLive(GlobalEventRepository.EventDoc d, double kgSold) {
+        return d != null && d.isLive() && !d.isGoalComplete(kgSold);
+    }
+
+    private String statusLine(GlobalEventRepository.EventDoc d, double kgSold) {
         if (d == null || !d.exists()) {
             return getString(R.string.admin_status_off);
         }
-        if (d.isLive()) {
+        if (isAdminLive(d, kgSold)) {
             return getString(R.string.admin_status_on, Math.max(1, d.durationDays));
         }
-        if (d.isEnded()) {
+        if (d.isEnded() || d.isGoalComplete(kgSold)) {
             return getString(R.string.admin_status_ended);
         }
         return getString(R.string.admin_status_off);
     }
 
     private void onSurgeToggle() {
-        String uid = FirebaseAuth.getInstance().getUid();
+        String uid = PlayerAuth.getInstance().getUid();
         GlobalEventRepository.Snapshot snap = viewModel.cached();
-        if (snap != null && snap.surge.isLive()) {
+        if (snap != null && isAdminLive(snap.surge, snap.kgSoldTowardGoal)) {
             viewModel.deactivateSurge(msg -> toast(msg, R.string.admin_saved));
             return;
         }
@@ -141,11 +146,13 @@ public class AdminEventsFragment extends Fragment {
         String flora = sel != null ? sel.toString() : HexFlora.MIL_FLORES;
         int days = parseInt(binding.editSurgeDays.getText() != null
                 ? binding.editSurgeDays.getText().toString() : "3", 3);
-        viewModel.activateSurge(flora, days, uid, msg -> toast(msg, R.string.admin_saved));
+        double demandMult = parseDouble(text(binding.editSurgeDemandMult),
+                GlobalEventRepository.SURGE_DEMAND_MULT);
+        viewModel.activateSurge(flora, days, demandMult, uid, msg -> toast(msg, R.string.admin_saved));
     }
 
     private void onShiftToggle() {
-        String uid = FirebaseAuth.getInstance().getUid();
+        String uid = PlayerAuth.getInstance().getUid();
         GlobalEventRepository.Snapshot snap = viewModel.cached();
         if (snap != null && snap.shift.isLive()) {
             viewModel.deactivateShift(msg -> toast(msg, R.string.admin_saved));
@@ -172,7 +179,7 @@ public class AdminEventsFragment extends Fragment {
     }
 
     private void onVelutinaToggle() {
-        String uid = FirebaseAuth.getInstance().getUid();
+        String uid = PlayerAuth.getInstance().getUid();
         GlobalEventRepository.Snapshot snap = viewModel.cached();
         if (snap != null && snap.velutina.isLive()) {
             viewModel.deactivateVelutina(msg -> toast(msg, R.string.admin_saved));
@@ -219,6 +226,17 @@ public class AdminEventsFragment extends Fragment {
     private static int parseInt(String raw, int def) {
         try {
             return Integer.parseInt(raw.trim());
+        } catch (Exception e) {
+            return def;
+        }
+    }
+
+    private static double parseDouble(String raw, double def) {
+        if (raw == null) {
+            return def;
+        }
+        try {
+            return Double.parseDouble(raw.trim().replace(',', '.'));
         } catch (Exception e) {
             return def;
         }

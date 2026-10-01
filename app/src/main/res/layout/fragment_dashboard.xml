@@ -30,78 +30,108 @@
             android:textStyle="bold"
             tools:text="Miel del Valle" />
 
-        <HorizontalScrollView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fillViewport="true"
-            android:scrollbars="none">
+            android:orientation="vertical"
+            android:paddingVertical="2dp">
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingVertical="2dp">
+                android:gravity="center"
+                android:orientation="horizontal">
 
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:contentDescription="@string/cd_stat_balance"
-                    android:src="@drawable/ic_beecoin" />
-
-                <TextView
-                    android:id="@+id/tv_stat_coins"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:textColor="@color/dash_text_card"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    tools:text="12.450" />
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="horizontal">
 
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:layout_marginStart="10dp"
-                    android:contentDescription="@string/cd_stat_honey_harvested"
-                    android:src="@drawable/ic_recolectar" />
+                    <ImageView
+                        android:id="@+id/iv_stat_coins"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:contentDescription="@string/cd_stat_balance"
+                        android:src="@drawable/ic_beecoin" />
 
-                <TextView
-                    android:id="@+id/tv_stat_honey"
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:id="@+id/tv_stat_coins"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        tools:text="12.450,00" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:textColor="@color/dash_text_card"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    tools:text="348 kg" />
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="horizontal">
 
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_marginStart="10dp"
-                    android:contentDescription="@string/cd_stat_bees"
-                    android:src="@drawable/ic_abeja" />
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@string/cd_stat_honey_harvested"
+                        android:src="@drawable/ic_recolectar" />
 
-                <TextView
-                    android:id="@+id/tv_stat_nectar"
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:id="@+id/tv_stat_honey"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        tools:text="348 kg" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:textColor="@color/dash_text_card"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    tools:text="24.500" />
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:contentDescription="@string/cd_stat_bees"
+                        android:src="@drawable/ic_abeja" />
+
+                    <TextView
+                        android:id="@+id/tv_stat_nectar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        tools:text="24.500" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:orientation="horizontal">
 
                 <LinearLayout
                     android:id="@+id/btn_inventory_treatments"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
                     android:background="?attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
-                    android:gravity="center_vertical"
+                    android:gravity="center"
                     android:orientation="horizontal"
                     android:padding="2dp">
 
@@ -124,13 +154,13 @@
 
                 <LinearLayout
                     android:id="@+id/btn_inventory_feed"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
                     android:background="?attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
-                    android:gravity="center_vertical"
+                    android:gravity="center"
                     android:orientation="horizontal"
                     android:padding="2dp">
 
@@ -153,13 +183,13 @@
 
                 <LinearLayout
                     android:id="@+id/btn_inventory_queens"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
                     android:background="?attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
-                    android:gravity="center_vertical"
+                    android:gravity="center"
                     android:orientation="horizontal"
                     android:padding="2dp">
 
@@ -180,7 +210,7 @@
                         tools:text="2" />
                 </LinearLayout>
             </LinearLayout>
-        </HorizontalScrollView>
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -191,16 +221,19 @@
 
             <TextView
                 android:id="@+id/tv_season"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="6dp"
+                android:layout_weight="1"
                 android:background="@drawable/bg_dash_pill_season"
+                android:gravity="center"
+                android:maxLines="2"
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="6dp"
                 android:textColor="#AD1457"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                tools:text="🌸 Primavera" />
+                tools:text="Norte 🍂 Otoño · Sur 🌸 Primavera" />
 
             <TextView
                 android:id="@+id/tv_day"
@@ -213,7 +246,34 @@
                 android:textColor="@color/login_text_dark"
                 android:textSize="12sp"
                 android:textStyle="bold"
+                android:visibility="gone"
                 tools:text="Día 42" />
+
+            <FrameLayout
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="2dp">
+
+                <ImageButton
+                    android:id="@+id/btn_dashboard_mail"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/mail_open"
+                    android:padding="8dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_mail_closed" />
+
+                <View
+                    android:id="@+id/mail_unread_dot"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_alert_dot"
+                    android:visibility="gone" />
+            </FrameLayout>
 
             <ImageButton
                 android:id="@+id/btn_dashboard_settings"
@@ -270,13 +330,14 @@
                                 android:background="@drawable/bg_dash_avatar_ring"
                                 android:padding="4dp">
 
-                                <ImageView
+                                <com.google.android.material.imageview.ShapeableImageView
+                                    android:id="@+id/iv_profile_photo"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
-                                    android:contentDescription="@string/cd_bee_mascot"
-                                    android:padding="10dp"
-                                    android:scaleType="centerInside"
-                                    android:src="@drawable/ic_apicultor" />
+                                    android:contentDescription="@string/profile_edit_photo"
+                                    android:scaleType="centerCrop"
+                                    android:src="@drawable/ic_apicultor"
+                                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Apisim.Circle" />
                             </FrameLayout>
 
                             <LinearLayout
@@ -563,6 +624,12 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="@dimen/dash_section_spacing" />
 
+                <include
+                    android:id="@+id/dash_trips"
+                    layout="@layout/include_dashboard_trips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -693,6 +760,7 @@
                             android:textStyle="bold" />
 
                         <LinearLayout
+                            android:id="@+id/week_chart"
                             android:layout_width="match_parent"
                             android:layout_height="110dp"
                             android:gravity="bottom"
@@ -802,7 +870,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:gravity="center"
-                                android:text="L"
+                                android:text="@string/weekday_mon"
                                 android:textColor="@color/dash_muted"
                                 android:textSize="11sp" />
 
@@ -811,7 +879,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:gravity="center"
-                                android:text="M"
+                                android:text="@string/weekday_tue"
                                 android:textColor="@color/dash_muted"
                                 android:textSize="11sp" />
 
@@ -820,7 +888,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:gravity="center"
-                                android:text="X"
+                                android:text="@string/weekday_wed"
                                 android:textColor="@color/dash_muted"
                                 android:textSize="11sp" />
 
@@ -829,7 +897,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:gravity="center"
-                                android:text="J"
+                                android:text="@string/weekday_thu"
                                 android:textColor="@color/dash_muted"
                                 android:textSize="11sp" />
 
@@ -838,7 +906,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:gravity="center"
-                                android:text="V"
+                                android:text="@string/weekday_fri"
                                 android:textColor="@color/dash_muted"
                                 android:textSize="11sp" />
 
@@ -847,7 +915,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:gravity="center"
-                                android:text="S"
+                                android:text="@string/weekday_sat"
                                 android:textColor="@color/dash_muted"
                                 android:textSize="11sp" />
 
@@ -856,7 +924,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
                                 android:gravity="center"
-                                android:text="D"
+                                android:text="@string/weekday_sun"
                                 android:textColor="@color/dash_muted"
                                 android:textSize="11sp" />
                         </LinearLayout>

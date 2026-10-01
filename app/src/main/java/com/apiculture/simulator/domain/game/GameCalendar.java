@@ -1,6 +1,7 @@
 package com.apiculture.simulator.domain.game;
 
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 
@@ -31,6 +32,20 @@ public final class GameCalendar {
         return toDayKey(LocalDate.now(userTimeZone()));
     }
 
+    /**
+     * Último día de producción ya exigible: hoy si ya pasó la hora de corte, si no ayer.
+     * El mismo criterio que el reloj del servidor.
+     */
+    public static int dueProductionDayKey() {
+        ZonedDateTime now = ZonedDateTime.now(userTimeZone());
+        LocalDate day = now.toLocalDate();
+        if (now.getHour() < PRODUCTION_HOUR
+                || (now.getHour() == PRODUCTION_HOUR && now.getMinute() < PRODUCTION_MINUTE)) {
+            day = day.minusDays(1);
+        }
+        return toDayKey(day);
+    }
+
     /** Día de mercado mundial ({@code yyyymmdd} en UTC). */
     public static int currentGlobalMarketDayKey() {
         return toDayKey(LocalDate.now(globalMarketTimeZone()));
@@ -48,6 +63,27 @@ public final class GameCalendar {
      */
     public static ZoneId userTimeZone() {
         return ZoneId.systemDefault();
+    }
+
+    /**
+     * Próximo corte de cálculo diario ({@link #PRODUCTION_HOUR}:00 local).
+     * Si ya son esa hora o más tarde, el siguiente es mañana.
+     */
+    public static long nextProductionEpochMs() {
+        return nextProductionEpochMs(System.currentTimeMillis());
+    }
+
+    public static long nextProductionEpochMs(long nowEpochMs) {
+        ZoneId z = userTimeZone();
+        ZonedDateTime now = ZonedDateTime.ofInstant(java.time.Instant.ofEpochMilli(nowEpochMs), z);
+        ZonedDateTime next = now.withHour(PRODUCTION_HOUR)
+                .withMinute(PRODUCTION_MINUTE)
+                .withSecond(0)
+                .withNano(0);
+        if (!now.isBefore(next)) {
+            next = next.plusDays(1);
+        }
+        return next.toInstant().toEpochMilli();
     }
 
     /** Reloj único del mercado global. */

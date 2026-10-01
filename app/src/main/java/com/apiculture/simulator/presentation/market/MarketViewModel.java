@@ -1,32 +1,64 @@
 package com.apiculture.simulator.presentation.market;
 
+import android.app.Application;
+import android.os.Handler;
+import android.os.Looper;
+
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.apiculture.simulator.data.repository.EconomyRepository;
+import com.apiculture.simulator.data.repository.HoneyLogistics;
+import com.apiculture.simulator.data.repository.MapRegionPrefs;
 import com.apiculture.simulator.data.repository.MarketRepository;
-import com.apiculture.simulator.domain.game.GameCalendar;
+import com.apiculture.simulator.data.repository.WarehouseHoneyStore;
+import com.apiculture.simulator.domain.game.ExoticHoneyRules;
+import com.apiculture.simulator.domain.map.PlayableMapRegion;
+import com.apiculture.simulator.domain.map.ProvincialMarket;
 import com.apiculture.simulator.domain.market.HoneyMarketEngine;
 import com.apiculture.simulator.domain.market.HoneyMarketSnapshot;
 import com.apiculture.simulator.domain.parcel.HexFlora;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 public class MarketViewModel extends ViewModel {
+    private final Application app;
     private final EconomyRepository economyRepository;
     private final MarketRepository marketRepository;
     private final MutableLiveData<MarketUiState> ui = new MutableLiveData<>();
-    private Map<String, Double> globalSoldByFlora = new HashMap<>();
-    private int boundSalesDayKey = Integer.MIN_VALUE;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final ExecutorService compute = Executors.newSingleThreadExecutor();
+    private boolean pushScheduled;
+    private int pushGeneration;
+    private MarketUiState lastPosted;
 
-    public MarketViewModel(EconomyRepository economyRepository, MarketRepository marketRepository) {
+    private String selectedWarehouseHexId;
+
+    public MarketViewModel(Application app, EconomyRepository economyRepository,
+            MarketRepository marketRepository) {
+        this.app = app;
         this.economyRepository = economyRepository;
         this.marketRepository = marketRepository;
+    }
+
+    public void setSelectedWarehouse(@Nullable String hexId) {
+        if (this.selectedWarehouseHexId == null ? hexId == null : this.selectedWarehouseHexId.equals(hexId)) {
+            return;
+        }
+        this.selectedWarehouseHexId = hexId;
+        refresh();
+    }
+
+    @Nullable
+    public String getSelectedWarehouseHexId() {
+        return selectedWarehouseHexId;
     }
 
     public LiveData<MarketUiState> uiState() {
@@ -35,76 +67,103 @@ public class MarketViewModel extends ViewModel {
 
     public void attachGlobalSalesStream() {
         marketRepository.setSnapshotChangedListener(this::refresh);
-        HoneyMarketSnapshot s = marketRepository.getSnapshot();
-        int todayKey = GameCalendar.currentGlobalMarketDayKey();
-        if (s == null || s.dayKey != todayKey) {
-            boundSalesDayKey = Integer.MIN_VALUE;
-            globalSoldByFlora = new HashMap<>();
-            pushUi();
-            return;
-        }
-        if (boundSalesDayKey != todayKey) {
-            boundSalesDayKey = todayKey;
-            globalSoldByFlora = new HashMap<>();
-        }
-        marketRepository.attachGlobalSoldListener(todayKey, map -> {
-            if (GameCalendar.currentGlobalMarketDayKey() != boundSalesDayKey) {
-                globalSoldByFlora = new HashMap<>();
-                boundSalesDayKey = Integer.MIN_VALUE;
-                refresh();
-                return;
-            }
-            globalSoldByFlora = map != null ? new HashMap<>(map) : new HashMap<>();
-            pushUi();
-        });
-        pushUi();
+        schedulePushUi();
     }
 
     public void detachGlobalSalesStream() {
         marketRepository.setSnapshotChangedListener(null);
-        marketRepository.clearGlobalSoldListener();
+        mainHandler.removeCallbacksAndMessages(null);
+        pushScheduled = false;
     }
 
     public void refresh() {
-        HoneyMarketSnapshot s = marketRepository.getSnapshot();
-        int todayKey = GameCalendar.currentGlobalMarketDayKey();
-        if (s == null || s.dayKey != todayKey || boundSalesDayKey != todayKey) {
-            attachGlobalSalesStream();
+        schedulePushUi();
+    }
+
+    private void schedulePushUi() {
+        if (pushScheduled) {
             return;
         }
-        pushUi();
+        pushScheduled = true;
+        mainHandler.post(() -> {
+            pushScheduled = false;
+            pushUi();
+        });
     }
 
     private void pushUi() {
-        HoneyMarketSnapshot s = marketRepository.getSnapshot();
-        int todayKey = GameCalendar.currentGlobalMarketDayKey();
-        List<MarketPillUi> pills = new ArrayList<>();
-        if (s != null) {
-            boolean sameDay = boundSalesDayKey == todayKey && s.dayKey == todayKey;
-            Map<String, Double> sold = sameDay ? globalSoldByFlora : new HashMap<>();
-            for (String flora : HexFlora.FLORA_TYPES) {
-                double demand = s.demandKgByFlora.getOrDefault(flora, 0.0);
-                double g = sold.getOrDefault(flora, 0.0);
-                double base = s.priceForFloraOrDefault(flora, 12.0);
-                double price = HoneyMarketEngine.priceEurPerKgFromSupply(flora, demand, g, base);
-                int adj = HoneyMarketEngine.supplyPriceAdjustmentPercent(demand, g);
-                double stock = economyRepository.getHoneyStockForFlora(flora);
-                int pct = 0;
-                if (demand > 1e-6) {
-                    pct = (int) Math.min(100, Math.round(100.0 * g / demand));
+        final int gen = ++pushGeneration;
+        compute.execute(() -> {
+            MarketUiState next = buildUi();
+            mainHandler.post(() -> {
+                if (gen != pushGeneration) {
+                    return;
                 }
-                pills.add(new MarketPillUi(flora, flora, demand, g, pct, price, adj, stock));
+                if (next.sameVisual(lastPosted)) {
+                    return;
+                }
+                lastPosted = next;
+                ui.setValue(next);
+            });
+        });
+    }
+
+    private MarketUiState buildUi() {
+        HoneyMarketSnapshot s = marketRepository.getSnapshot();
+        List<MarketPillUi> pills = new ArrayList<>();
+        Map<String, Double> stocks;
+        double totalHoney;
+        String uid = currentUid();
+        if (selectedWarehouseHexId != null && !selectedWarehouseHexId.isEmpty()) {
+            stocks = WarehouseHoneyStore.at(app, uid, selectedWarehouseHexId);
+            totalHoney = WarehouseHoneyStore.totalAt(app, uid, selectedWarehouseHexId);
+        } else {
+            stocks = economyRepository.copyHoneyBuckets();
+            totalHoney = economyRepository.getHoneyStock();
+        }
+        if (s != null) {
+            Map<String, double[]> histories = marketRepository.last7PostedPricesByFlora();
+            PlayableMapRegion region = MapRegionPrefs.get(app);
+            for (String flora : HexFlora.FLORA_TYPES) {
+                String key = HoneyMarketEngine.canonicalFloraKey(flora);
+                if (ExoticHoneyRules.isExotic(region, key)) {
+                    continue;
+                }
+                double[] history = histories.get(key);
+                if (history == null) {
+                    history = new double[0];
+                } else {
+                    history = history.clone();
+                }
+                double price = history.length > 0
+                        ? history[history.length - 1]
+                        : marketRepository.priceEurPerKgForFlora(key);
+                double stock = stocks.getOrDefault(key, 0.0);
+                pills.add(new MarketPillUi(flora, flora, price, stock, history));
             }
         }
         int players = s != null ? s.playerCount : 1;
-        ui.setValue(new MarketUiState(
+        return new MarketUiState(
                 economyRepository.getBalance(),
-                economyRepository.getHoneyStock(),
+                totalHoney,
                 players,
-                pills));
+                pills);
     }
 
     public void sellFloraKg(String floraKey, double kg, Consumer<MarketSellResult> done) {
+        sellFloraKg(floraKey, kg, null, done);
+    }
+
+    public void sellFloraKg(String floraKey, double kg,
+            @Nullable ProvincialMarket destMarket,
+            Consumer<MarketSellResult> done) {
+        sellFloraKg(floraKey, kg, destMarket, null, done);
+    }
+
+    public void sellFloraKg(String floraKey, double kg,
+            @Nullable ProvincialMarket destMarket,
+            @Nullable String truckId,
+            Consumer<MarketSellResult> done) {
         if (kg <= 0.0) {
             done.accept(MarketSellResult.fail("invalid"));
             return;
@@ -114,26 +173,36 @@ public class MarketViewModel extends ViewModel {
             done.accept(MarketSellResult.fail("snapshot"));
             return;
         }
-        marketRepository.executeGlobalSale(floraKey, kg, s, economyRepository,
-                new MarketRepository.MarketSaleExecutionCallback() {
-                    @Override
-                    public void onSuccess(double unitPriceEurPerKg) {
-                        pushUi();
-                        done.accept(MarketSellResult.ok(unitPriceEurPerKg));
-                    }
-
-                    @Override
-                    public void onFailure(String reasonCodeOrMessage) {
-                        pushUi();
-                        done.accept(MarketSellResult.fail(
-                                reasonCodeOrMessage != null ? reasonCodeOrMessage : "error"));
+        String flora = HoneyMarketEngine.canonicalFloraKey(floraKey);
+        double price = marketRepository.priceEurPerKgForFlora(flora, destMarket);
+        HoneyLogistics.dispatchWholesaleTo(
+                app, currentUid(), flora, kg, price, destMarket, economyRepository, marketRepository,
+                truckId, r -> {
+                    schedulePushUi();
+                    if (r == HoneyLogistics.Result.STARTED || r == HoneyLogistics.Result.INSTANT) {
+                        done.accept(MarketSellResult.ok(price).withDispatched(r == HoneyLogistics.Result.STARTED));
+                    } else if (r == HoneyLogistics.Result.NO_CASH) {
+                        done.accept(MarketSellResult.fail("travel"));
+                    } else if (r == HoneyLogistics.Result.NO_DEMAND) {
+                        done.accept(MarketSellResult.fail("demand"));
+                    } else if (r == HoneyLogistics.Result.NO_FLEET) {
+                        done.accept(MarketSellResult.fail("fleet"));
+                    } else {
+                        done.accept(MarketSellResult.fail("stock"));
                     }
                 });
     }
 
+    @Nullable
+    private String currentUid() {
+        com.apiculture.simulator.data.session.SignedInUser u =
+                com.apiculture.simulator.data.session.PlayerAuth.getInstance().getCurrentUser();
+        return u != null ? u.getUid() : "";
+    }
+
     @Override
     protected void onCleared() {
-        marketRepository.setSnapshotChangedListener(null);
-        marketRepository.clearGlobalSoldListener();
+        detachGlobalSalesStream();
+        compute.shutdownNow();
     }
 }

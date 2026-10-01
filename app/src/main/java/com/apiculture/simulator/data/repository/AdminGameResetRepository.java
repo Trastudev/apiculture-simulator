@@ -10,8 +10,12 @@ import androidx.annotation.Nullable;
 
 import com.apiculture.simulator.domain.admin.AdminRoles;
 import com.apiculture.simulator.domain.game.GameCalendar;
+import org.json.JSONObject;
+
 import com.google.android.gms.tasks.Tasks;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -70,6 +74,19 @@ public class AdminGameResetRepository {
 
     /** Lee la generación remota (0 si no hay doc / error). */
     public void fetchRemoteGeneration(@NonNull Consumer<Long> onMain) {
+        if (GameServer.enabled()) {
+            io.execute(() -> {
+                long gen = 0L;
+                JSONObject row = GameServer.fetchJson("/global-events/admin_reset");
+                JSONObject body = row != null ? row.optJSONObject("body") : null;
+                if (body != null) {
+                    gen = body.optLong("generation", 0L);
+                }
+                long out = gen;
+                main.post(() -> onMain.accept(out));
+            });
+            return;
+        }
         if (firestore == null) {
             main.post(() -> onMain.accept(0L));
             return;
@@ -100,8 +117,32 @@ public class AdminGameResetRepository {
     public void issueGlobalPlayerReset(@NonNull String adminUid,
             @NonNull Consumer<String> onMainMessage,
             @NonNull Consumer<String> onMainOk) {
+        if (GameServer.enabled()) {
+            if (adminUid == null || adminUid.isEmpty()) {
+                main.post(() -> onMainMessage.accept("Sesión no válida."));
+                return;
+            }
+            io.execute(() -> {
+                GameServer.wipeEveryone();
+                long nextGen = System.currentTimeMillis();
+                try {
+                    JSONObject body = new JSONObject();
+                    body.put("generation", nextGen);
+                    body.put("issuedBy", adminUid);
+                    JSONObject row = new JSONObject();
+                    row.put("status", "reset");
+                    row.put("body", body);
+                    GameServer.putJson("/global-events/admin_reset", row);
+                } catch (Exception ignored) {
+                }
+                long gen = nextGen;
+                main.post(() -> onMainOk.accept(
+                        "Reset global #" + gen + " aplicado en el servidor."));
+            });
+            return;
+        }
         if (firestore == null) {
-            main.post(() -> onMainMessage.accept("Firestore no disponible."));
+            main.post(() -> onMainMessage.accept("Servidor no disponible."));
             return;
         }
         if (adminUid == null || adminUid.isEmpty()) {
@@ -151,9 +192,14 @@ public class AdminGameResetRepository {
                 for (String uid : uids) {
                     hiveDeletes += deleteOwnerHivesBlocking(uid);
                     parcelDeletes += deleteOwnerParcelsBlocking(uid);
+                    deleteOwnedDocsBlocking("pollinationContracts", uid);
                     mergeUserStarterBlocking(uid, todayKey);
                     mergePlayerStarterBlocking(uid);
+                    forgetPlayerEventBlocking(uid);
                 }
+                forgetWorldEventsBlocking();
+                zeroHoneyMarketBlocking();
+                GameServer.wipeEveryone();
 
                 Map<String, Object> resetDoc = new HashMap<>();
                 resetDoc.put(FIELD_GENERATION, nextGen);
@@ -239,11 +285,17 @@ public class AdminGameResetRepository {
         m.put("invFeed", 0);
         m.put("invQueensJson", "[]");
         m.put("invQueens100", 0);
+        m.put("hqIberiaLat", FieldValue.delete());
+        m.put("hqIberiaLng", FieldValue.delete());
+        m.put("hqZaLat", FieldValue.delete());
+        m.put("hqZaLng", FieldValue.delete());
+        m.put("hqMdgLat", FieldValue.delete());
+        m.put("hqMdgLng", FieldValue.delete());
         Tasks.await(firestore.collection("users").document(uid).set(m, SetOptions.merge()));
 
         Map<String, Object> prod = new HashMap<>();
         prod.put("gameStartDayKey", todayKey);
-        prod.put("lastProcessedProductionDayKey", 0);
+        prod.put("lastProcessedProductionDayKey", todayKey);
         Tasks.await(firestore.collection("users").document(uid)
                 .collection("meta").document("productionState")
                 .set(prod, SetOptions.merge()));
@@ -259,6 +311,108 @@ public class AdminGameResetRepository {
         m.put("honeySoldKgByFlora", new HashMap<String, Double>());
         m.put("hiveCount", 0);
         m.put("adultBeeCount", 0);
+        m.put("netWorthB", 0);
+        m.put("netWorthDayKey", todayKeyFromDevice());
+        m.put("contractCount", 0);
+        m.put("orderCount", 0);
+        m.put(MarketRepository.FIELD_HIVES_IBERIA, 0);
+        m.put(MarketRepository.FIELD_HIVES_ZA, 0);
+        m.put(MarketRepository.FIELD_HIVES_MDG, 0);
+        m.put("mapRegion", "iberia");
         Tasks.await(firestore.collection("players").document(uid).set(m, SetOptions.merge()));
+    }
+
+    private static int todayKeyFromDevice() {
+        return GameCalendar.toDayKey(LocalDate.now(GameCalendar.userTimeZone()));
+    }
+
+    /** Quita la aportación de un jugador al evento y descuenta esos kilos del total. */
+    public void forgetPlayerEventBlocking(@NonNull String uid) throws Exception {
+        if (firestore == null || uid.isEmpty()) {
+            return;
+        }
+        QuerySnapshot progress = Tasks.await(firestore.collection(GlobalEventRepository.COL_PROGRESS).get());
+        for (DocumentSnapshot event : progress.getDocuments()) {
+            DocumentReference part = event.getReference().collection("participants").document(uid);
+            DocumentSnapshot row = Tasks.await(part.get());
+            if (!row.exists()) {
+                continue;
+            }
+            double kg = 0;
+            Object raw = row.get("kgSold");
+            if (raw instanceof Number) {
+                kg = ((Number) raw).doubleValue();
+            }
+            Tasks.await(part.delete());
+            if (kg > 0) {
+                Map<String, Object> dec = new HashMap<>();
+                dec.put("kgSold", FieldValue.increment(-kg));
+                Tasks.await(event.getReference().set(dec, SetOptions.merge()));
+            }
+        }
+    }
+
+    private void forgetWorldEventsBlocking() throws Exception {
+        QuerySnapshot progress = Tasks.await(firestore.collection(GlobalEventRepository.COL_PROGRESS).get());
+        for (DocumentSnapshot event : progress.getDocuments()) {
+            QuerySnapshot parts = Tasks.await(event.getReference().collection("participants").get());
+            WriteBatch batch = firestore.batch();
+            int n = 0;
+            for (DocumentSnapshot row : parts.getDocuments()) {
+                batch.delete(row.getReference());
+                n++;
+                if (n >= 400) {
+                    Tasks.await(batch.commit());
+                    batch = firestore.batch();
+                    n = 0;
+                }
+            }
+            if (n > 0) {
+                Tasks.await(batch.commit());
+            }
+            Map<String, Object> zero = new HashMap<>();
+            zero.put("kgSold", 0.0);
+            Tasks.await(event.getReference().set(zero, SetOptions.merge()));
+        }
+    }
+
+    private void zeroHoneyMarketBlocking() throws Exception {
+        QuerySnapshot days = Tasks.await(firestore.collection("globalHoneyMarket").get());
+        for (DocumentSnapshot day : days.getDocuments()) {
+            QuerySnapshot sales = Tasks.await(day.getReference().collection("floraSalesUtc").get());
+            WriteBatch batch = firestore.batch();
+            int n = 0;
+            for (DocumentSnapshot sale : sales.getDocuments()) {
+                batch.delete(sale.getReference());
+                n++;
+                if (n >= 400) {
+                    Tasks.await(batch.commit());
+                    batch = firestore.batch();
+                    n = 0;
+                }
+            }
+            if (n > 0) {
+                Tasks.await(batch.commit());
+            }
+        }
+    }
+
+    private void deleteOwnedDocsBlocking(@NonNull String collection, @NonNull String uid) throws Exception {
+        QuerySnapshot snap = Tasks.await(
+                firestore.collection(collection).whereEqualTo("ownerId", uid).get());
+        WriteBatch batch = firestore.batch();
+        int n = 0;
+        for (DocumentSnapshot doc : snap.getDocuments()) {
+            batch.delete(doc.getReference());
+            n++;
+            if (n >= 400) {
+                Tasks.await(batch.commit());
+                batch = firestore.batch();
+                n = 0;
+            }
+        }
+        if (n > 0) {
+            Tasks.await(batch.commit());
+        }
     }
 }

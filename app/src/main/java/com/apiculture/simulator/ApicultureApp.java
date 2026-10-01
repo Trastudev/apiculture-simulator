@@ -15,28 +15,27 @@ import com.apiculture.simulator.data.repository.EventInventoryStore;
 import com.apiculture.simulator.data.repository.HexFloraRepository;
 import com.apiculture.simulator.data.repository.HexParcelRepository;
 import com.apiculture.simulator.data.repository.HiveRepository;
+import com.apiculture.simulator.data.repository.HoneyOrderStore;
 import com.apiculture.simulator.data.repository.LeaderboardRepository;
 import com.apiculture.simulator.data.repository.PlayerProgressRepository;
-import com.apiculture.simulator.data.repository.HexOverlaySeedInstaller;
-import com.apiculture.simulator.data.repository.IberiaHexOverlayStore;
+import com.apiculture.simulator.data.repository.PollinationContractRepository;
+import com.apiculture.simulator.data.repository.GameLocale;
+import com.apiculture.simulator.data.repository.GameStartupWarmup;
 import com.apiculture.simulator.data.repository.GlobalEventRepository;
 import com.apiculture.simulator.data.repository.MarketRepository;
 import com.apiculture.simulator.data.repository.MultiplayerRepository;
 import com.apiculture.simulator.data.repository.ProfileRepository;
 import com.apiculture.simulator.data.repository.UserGameStateRepository;
 import com.apiculture.simulator.data.repository.WeatherRepository;
-import com.apiculture.simulator.domain.map.PlayableMapRegion;
 import com.google.android.gms.ads.MobileAds;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+import com.google.android.gms.ads.RequestConfiguration;
+import com.apiculture.simulator.data.session.PlayerAuth;
+import com.apiculture.simulator.data.session.SignedInUser;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.apiculture.simulator.domain.game.GameBalanceConfig;
-import com.apiculture.simulator.domain.parcel.HexParcel;
 import com.apiculture.simulator.notification.GameNotificationChannels;
 import com.apiculture.simulator.presentation.common.GameNotice;
 import com.apiculture.simulator.presentation.common.LevelUpDialog;
 
-import java.util.List;
 import java.util.function.Consumer;
 
 public class ApicultureApp extends Application {
@@ -56,12 +55,24 @@ public class ApicultureApp extends Application {
     private LeaderboardRepository leaderboardRepository;
     private GlobalEventRepository globalEventRepository;
     private AdminGameResetRepository adminGameResetRepository;
+    private PollinationContractRepository pollinationContractRepository;
     private FirebaseFirestore firestore;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        GameLocale.apply(this);
         try {
+            // Público general de 13 años o más: no es tratamiento infantil.
+            // El filtro G evita anuncios de categorías adultas en un juego PEGI 3.
+            RequestConfiguration ads = new RequestConfiguration.Builder()
+                    .setTagForChildDirectedTreatment(
+                            RequestConfiguration.TAG_FOR_CHILD_DIRECTED_TREATMENT_FALSE)
+                    .setTagForUnderAgeOfConsent(
+                            RequestConfiguration.TAG_FOR_UNDER_AGE_OF_CONSENT_FALSE)
+                    .setMaxAdContentRating(RequestConfiguration.MAX_AD_CONTENT_RATING_G)
+                    .build();
+            MobileAds.setRequestConfiguration(ads);
             MobileAds.initialize(this, initializationStatus -> {
             });
         } catch (Throwable ignored) {
@@ -69,22 +80,18 @@ public class ApicultureApp extends Application {
         GameNotificationChannels.ensureCreated(this);
         GameNotice.install(this);
         LevelUpDialog.install(this);
-        GameBalanceConfig.load(this);
         database = AppDatabase.getInstance(this);
         authRepository = new AuthRepository(this);
         weatherRepository = new WeatherRepository();
         economyRepository = new EconomyRepository(this);
-        try {
-            firestore = FirebaseFirestore.getInstance();
-        } catch (Exception e) {
-            firestore = null;
-        }
+        firestore = null;
         profileRepository = new ProfileRepository(firestore);
         marketRepository = new MarketRepository(this, firestore, authRepository);
         globalEventRepository = new GlobalEventRepository(this, firestore);
         globalEventRepository.setMarketRepository(marketRepository);
         globalEventRepository.setEconomyRepository(economyRepository);
         globalEventRepository.startListening();
+        HoneyOrderStore.startListening(this);
         adminGameResetRepository = new AdminGameResetRepository(this, firestore);
         hexFloraRepository = new HexFloraRepository(
                 database.hexFloraDao(),
@@ -111,31 +118,38 @@ public class ApicultureApp extends Application {
         playerProgressRepository = new PlayerProgressRepository(this);
         hiveRepository.setPlayerProgressRepository(playerProgressRepository);
         hexParcelRepository.setPlayerProgressRepository(playerProgressRepository);
+        PollinationContractRepository pollinationContractRepository = new PollinationContractRepository(
+                database.pollinationContractDao(),
+                database.hiveDao(),
+                economyRepository,
+                this,
+                firestore);
+        pollinationContractRepository.setPlayerProgressRepository(playerProgressRepository);
+        pollinationContractRepository.setHiveRepository(hiveRepository);
+        pollinationContractRepository.setHexParcelRepository(hexParcelRepository);
+        hiveRepository.setPollinationContractRepository(pollinationContractRepository);
+        this.pollinationContractRepository = pollinationContractRepository;
         Handler mainHandler = new Handler(Looper.getMainLooper());
         userGameStateRepository = new UserGameStateRepository(
                 this, firestore, economyRepository, playerProgressRepository, mainHandler);
         leaderboardRepository = new LeaderboardRepository(
                 this, firestore, hiveRepository, economyRepository, playerProgressRepository);
+        HexParcelRepository.setOnOwnershipKnown(leaderboardRepository::enqueuePublish);
         economyRepository.setEconomyChangedCallback(() -> mainHandler.post(() -> {
-            FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+            SignedInUser u = PlayerAuth.getInstance().getCurrentUser();
             if (u != null) {
                 userGameStateRepository.enqueuePush(u.getUid());
             }
         }));
         playerProgressRepository.setProgressChangedCallback(() -> mainHandler.post(() -> {
-            FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+            SignedInUser u = PlayerAuth.getInstance().getCurrentUser();
             if (u != null) {
                 userGameStateRepository.enqueuePush(u.getUid());
                 leaderboardRepository.enqueuePublish(u.getUid());
             }
         }));
 
-        new Thread(() -> {
-            HexOverlaySeedInstaller.installFromAssets(this);
-            List<HexParcel> parcels = IberiaHexOverlayStore.getParcels(this);
-            hexFloraRepository.seedAllParcelsBlocking(parcels);
-            IberiaHexOverlayStore.getParcels(this, PlayableMapRegion.SOUTH_AFRICA);
-        }, "map-assets-preload").start();
+        GameStartupWarmup.start(this);
     }
 
     public AuthRepository getAuthRepository() {
@@ -194,8 +208,12 @@ public class ApicultureApp extends Application {
         return adminGameResetRepository;
     }
 
+    public PollinationContractRepository getPollinationContractRepository() {
+        return pollinationContractRepository;
+    }
+
     /**
-     * Reinicia la partida local+nube del jugador al estado inicial.
+     * Reinicia la partida local+nube: vacío, con 20.000 beecoins.
      * Si {@code markGeneration} &gt; 0, marca esa generación de reset admin como aplicada.
      */
     public void resetPlayerToStarterState(@Nullable String uid, long markGeneration,

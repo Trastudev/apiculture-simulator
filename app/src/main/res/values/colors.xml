@@ -35,6 +35,8 @@
     <color name="event_gold_stroke">#E8D5A3</color>
     <color name="event_ink">#4A2E10</color>
     <color name="event_ink_muted">#8A6A42</color>
+    <color name="map_cluster_order">#2A6F8F</color>
+    <color name="map_cluster_contract">#2F7A45</color>
 
     <!-- Relleno de hexágonos en el mapa -->
     <color name="hex_own_lilac">#BA68C8</color>
@@ -52,4 +54,13 @@
     <color name="climate_highveld">#EBD4A017</color>
     <color name="climate_subtropical">#EB1B8A7A</color>
     <color name="climate_bushveld">#EB5A7A38</color>
+    <color name="climate_mdg_equatorial">#EB107A48</color>
+    <color name="climate_mdg_highlands">#EB5C76B0</color>
+    <color name="climate_mdg_tropical">#EBD46024</color>
+    <color name="climate_mdg_desert">#EBC48430</color>
+
+    <color name="road_autopista">#C81976D2</color>
+    <color name="road_nacional">#C8D32F2F</color>
+    <color name="road_comarcal">#C8F9A825</color>
+    <color name="road_other">#C89E9E9E</color>
 </resources>

@@ -2,7 +2,8 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:clipChildren="false">
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/map_container"
@@ -10,23 +11,27 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
+    <LinearLayout
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="top"
-        android:layout_margin="12dp"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp">
+        android:layout_gravity="top|center_horizontal"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="10dp">
+            app:cardBackgroundColor="@color/dash_card_bg"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="6dp"
+            app:contentPadding="6dp">
 
             <com.google.android.material.button.MaterialButtonToggleGroup
                 android:id="@+id/map_region_toggle"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:checkedButton="@id/btn_map_iberia"
                 app:selectionRequired="true"
@@ -34,107 +39,118 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_map_iberia"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minHeight="40dp"
+                    style="@style/Widget.Apisim.MapRegionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:backgroundTint="@color/map_region_btn_bg"
                     android:text="@string/map_region_iberia"
-                    android:textSize="13sp" />
+                    app:backgroundTint="@color/map_region_btn_bg" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_map_mdg"
+                    style="@style/Widget.Apisim.MapRegionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4dp"
+                    android:backgroundTint="@color/map_region_btn_bg"
+                    android:text="@string/map_region_madagascar"
+                    app:backgroundTint="@color/map_region_btn_bg" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_map_za"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minHeight="40dp"
+                    style="@style/Widget.Apisim.MapRegionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4dp"
+                    android:backgroundTint="@color/map_region_btn_bg"
+                    android:paddingEnd="12dp"
                     android:text="@string/map_region_south_africa"
-                    android:textSize="13sp" />
+                    app:backgroundTint="@color/map_region_btn_bg"
+                    app:icon="@drawable/ic_lock_padlock"
+                    app:iconGravity="textEnd"
+                    app:iconPadding="6dp"
+                    app:iconSize="16dp"
+                    app:iconTint="@null" />
             </com.google.android.material.button.MaterialButtonToggleGroup>
+        </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                android:id="@+id/tv_map_help"
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            app:cardBackgroundColor="@color/dash_card_bg"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="6dp">
+
+            <ImageButton
+                android:id="@+id/btn_map_help"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/map_help_text"
-                android:textSize="12sp" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+                android:layout_height="match_parent"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/map_cd_help"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_map_help" />
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
-    <com.google.android.material.card.MaterialCardView
+    <com.apiculture.simulator.presentation.map.DraggableMapHudCard
         android:id="@+id/card_hex_toggles"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end|center_vertical"
         android:layout_margin="12dp"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp">
+        android:clickable="true"
+        android:focusable="true"
+        app:cardBackgroundColor="@color/dash_card_bg"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="6dp">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minWidth="156dp"
             android:orientation="vertical"
-            android:padding="4dp">
+            android:padding="10dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_map_hex_mesh"
-                style="@style/Widget.Material3.Button.IconButton.Outlined"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:checkable="true"
-                android:contentDescription="@string/map_toggle_hex_mesh"
-                app:icon="@drawable/ic_hex_mesh"
-                app:iconSize="24dp"
-                app:iconTint="@color/login_text_dark"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_map_hex_own"
-                style="@style/Widget.Material3.Button.IconButton.Outlined"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:checkable="true"
-                android:contentDescription="@string/map_toggle_hex_own"
-                app:icon="@drawable/ic_hex_own"
-                app:iconSize="24dp"
-                app:iconTint="@color/hex_own_lilac"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:letterSpacing="0.08"
+                    android:text="@string/map_flora_filter_title"
+                    android:textAllCaps="true"
+                    android:textColor="@color/black"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_map_hex_other"
-                style="@style/Widget.Material3.Button.IconButton.Outlined"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:checkable="true"
-                android:contentDescription="@string/map_toggle_hex_other"
-                app:icon="@drawable/ic_hex_other"
-                app:iconSize="24dp"
-                app:iconTint="@color/hex_other_blue"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp" />
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@string/map_cd_move_flora_filter"
+                    android:src="@drawable/ic_map_drag_handle" />
+            </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_map_hex_buy"
-                style="@style/Widget.Material3.Button.IconButton.Outlined"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:checkable="true"
-                android:contentDescription="@string/map_toggle_hex_buy"
-                app:icon="@drawable/ic_hex_buyable"
-                app:iconSize="24dp"
-                app:iconTint="@color/hex_buyable_green"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp" />
+            <Spinner
+                android:id="@+id/spinner_map_flora"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_map_flora_spinner"
+                android:dropDownVerticalOffset="4dp"
+                android:overlapAnchor="false"
+                android:paddingStart="12dp"
+                android:paddingEnd="34dp"
+                android:popupBackground="@color/dash_card_bg"
+                android:spinnerMode="dropdown" />
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+    </com.apiculture.simulator.presentation.map.DraggableMapHudCard>
 
     <ProgressBar
         android:id="@+id/progress_map_region"
@@ -144,103 +160,538 @@
         android:visibility="gone" />
 
     <com.google.android.material.card.MaterialCardView
-        android:id="@+id/card_climate_legend"
-        android:layout_width="match_parent"
+        android:id="@+id/card_map_legend"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:layout_margin="12dp"
+        android:layout_gravity="start|bottom"
+        android:layout_marginStart="12dp"
+        android:layout_marginBottom="12dp"
+        app:cardBackgroundColor="@color/dash_card_bg"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp">
+
+        <HorizontalScrollView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="4dp">
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_fleet_shop"
+                        android:contentDescription="@null" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/map_legend_shop"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="4dp">
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_venta"
+                        android:contentDescription="@null" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/map_legend_market"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="4dp">
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_compracolmena"
+                        android:contentDescription="@null" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/map_legend_apiary"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="4dp">
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_almacen_miel"
+                        android:contentDescription="@null" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/map_legend_warehouse"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="4dp">
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:background="@drawable/bg_dash_avatar_ring"
+                        android:padding="1dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/npc_face_00"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Apisim.Circle"
+                        android:contentDescription="@null" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/map_legend_order"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="4dp">
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_flora_badge_romero"
+                        android:contentDescription="@null" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/map_legend_contract"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="4dp">
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_fleet_port"
+                        android:contentDescription="@null" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/map_legend_port"
+                        android:textColor="@color/dash_text_card"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </HorizontalScrollView>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_climate_legend"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|bottom"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="64dp"
         android:visibility="gone"
+        app:cardBackgroundColor="@color/dash_card_bg"
         app:cardCornerRadius="12dp"
         app:cardElevation="4dp">
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="10dp">
+            android:padding="8dp">
+
+            <TextView
+                android:id="@+id/tv_climate_legend"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:text="@string/map_climate_legend"
+                android:textColor="@color/black"
+                android:textSize="10sp"
+                android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/legend_iberia"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_weight="1"
-                    android:background="@color/climate_atlantic" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_weight="1"
-                    android:background="@color/climate_mountain" />
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_atlantic" />
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_weight="1"
-                    android:background="@color/climate_mediterranean" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_atlantic"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_weight="1"
-                    android:background="@color/climate_south" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_weight="1"
-                    android:background="@color/climate_continental" />
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_mountain" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_mountain"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_mediterranean" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_mediterranean"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_south" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_south"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_continental" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_continental"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/legend_za"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:visibility="gone">
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_weight="1"
-                    android:background="@color/climate_fynbos" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_weight="1"
-                    android:background="@color/climate_karoo" />
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_fynbos" />
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_weight="1"
-                    android:background="@color/climate_highveld" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_fynbos"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_weight="1"
-                    android:background="@color/climate_subtropical" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_weight="1"
-                    android:background="@color/climate_bushveld" />
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_karoo" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_karoo"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_highveld" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_highveld"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_subtropical" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_subtropical"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_bushveld" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_bushveld"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/tv_climate_legend"
-                android:layout_width="match_parent"
+            <LinearLayout
+                android:id="@+id/legend_mdg"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="@string/map_climate_legend"
-                android:textSize="11sp" />
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_mdg_equatorial" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_mdg_equatorial"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_mdg_highlands" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_mdg_highlands"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_mdg_tropical" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_mdg_tropical"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="22dp"
+                        android:layout_height="6dp"
+                        android:background="@color/climate_mdg_desert" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:text="@string/map_climate_mdg_desert"
+                        android:textColor="@color/black"
+                        android:textSize="9sp" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 </FrameLayout>

@@ -31,13 +31,13 @@ public final class HiveHoneyRules {
     /**
      * Capacidad máxima de miel en colmena según alzas: 0 → 8 kg, 1 → 30 kg, 2 → 60 kg.
      */
+    /** Una sola capacidad: las alzas ya no existen. El argumento se ignora. */
     public static double maxHoneyKgForSuperCount(int superCount) {
         double[] caps = SUPER_CAP_KG;
         if (caps == null || caps.length == 0) {
-            return 8.0;
+            return 60.0;
         }
-        int s = Math.max(0, Math.min(caps.length - 1, superCount));
-        return caps[s];
+        return caps[caps.length - 1];
     }
 
     /** 1 si hay miel suficiente; interpola hacia {@code floor} al acercarse a 0 kg. */
@@ -55,8 +55,7 @@ public final class HiveHoneyRules {
         if (h == null) {
             return;
         }
-        double cap = maxHoneyKgForSuperCount(h.superCount);
-        h.honeyProduction = Math.max(0.0, Math.min(cap, h.honeyProduction));
+        HiveHoneyStocks.clampToCap(h);
     }
 
     /**

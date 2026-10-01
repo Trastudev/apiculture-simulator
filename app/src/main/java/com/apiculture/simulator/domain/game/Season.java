@@ -1,23 +1,29 @@
 package com.apiculture.simulator.domain.game;
 
+import android.content.Context;
+
+import androidx.annotation.NonNull;
+
+import com.apiculture.simulator.R;
+
 public enum Season {
     SPRING,
     SUMMER,
     AUTUMN,
     WINTER;
 
-    /** Etiqueta corta en español para la UI. */
-    public String labelEs() {
+    @NonNull
+    public String label(@NonNull Context context) {
         switch (this) {
             case SPRING:
-                return "Primavera";
+                return context.getString(R.string.season_spring);
             case SUMMER:
-                return "Verano";
+                return context.getString(R.string.season_summer);
             case AUTUMN:
-                return "Otoño";
+                return context.getString(R.string.season_autumn);
             case WINTER:
             default:
-                return "Invierno";
+                return context.getString(R.string.season_winter);
         }
     }
 

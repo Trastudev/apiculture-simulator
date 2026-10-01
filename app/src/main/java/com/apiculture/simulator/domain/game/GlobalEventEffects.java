@@ -71,15 +71,18 @@ public final class GlobalEventEffects {
             return snap;
         }
         Map<String, Double> demand = new LinkedHashMap<>();
+        Map<String, Double> turnover = new LinkedHashMap<>();
         Map<String, Double> prices = new LinkedHashMap<>();
         double total = 0.0;
         for (String flora : HexFlora.FLORA_TYPES) {
             String k = HoneyMarketEngine.canonicalFloraKey(flora);
-            double d = snap.demandKgByFlora.getOrDefault(k, 0.0)
-                    * st.demandMultByFlora.getOrDefault(k, 1.0);
+            double multiplier = st.demandMultByFlora.getOrDefault(k, 1.0);
+            double d = snap.demandKgByFlora.getOrDefault(k, 0.0) * multiplier;
             d = Math.round(d * 100.0) / 100.0;
             demand.put(k, d);
             total += d;
+            double target = snap.turnoverTargetKgByFlora.getOrDefault(k, 0.0) * multiplier;
+            turnover.put(k, Math.round(target * 100.0) / 100.0);
             double p = snap.priceEurPerKgByFlora.getOrDefault(k, HoneyMarketEngine.MIN_PRICE_EUR_PER_KG)
                     * st.priceMultByFlora.getOrDefault(k, 1.0);
             prices.put(k, Math.round(p * 100.0) / 100.0);
@@ -91,7 +94,8 @@ public final class GlobalEventEffects {
                 snap.dailyNoiseMultiplier,
                 snap.priceTension01,
                 demand,
+                turnover,
                 prices,
-                snap.playerCount);
+                snap.playerCount, snap.activityUnits);
     }
 }

@@ -72,7 +72,8 @@ async function handle(pool, body, ownerId) {
       hive.feed_brood_bonus_multiplier = 1;
       hive.feed_brood_bonus_end_day_key_exclusive = 0;
     } else {
-      hive.varroa_treatment_days_remaining = TREAT_DAYS;
+      const current = Math.max(0, Math.round(Number(hive.varroa_treatment_days_remaining) || 0));
+      hive.varroa_treatment_days_remaining = current + TREAT_DAYS;
       hive.varroa_rebound_days_remaining = 0;
     }
     await saveCare(client, hive);

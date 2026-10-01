@@ -6,18 +6,25 @@ public final class MarketSellResult {
     public final boolean success;
     public final double unitPriceEurPerKg;
     public final String errorMessage;
+    public final boolean truckDispatched;
 
-    private MarketSellResult(boolean success, double unitPriceEurPerKg, String errorMessage) {
+    private MarketSellResult(boolean success, double unitPriceEurPerKg, String errorMessage,
+            boolean truckDispatched) {
         this.success = success;
         this.unitPriceEurPerKg = unitPriceEurPerKg;
         this.errorMessage = errorMessage;
+        this.truckDispatched = truckDispatched;
     }
 
     public static MarketSellResult ok(double unitPriceEurPerKg) {
-        return new MarketSellResult(true, unitPriceEurPerKg, null);
+        return new MarketSellResult(true, unitPriceEurPerKg, null, false);
+    }
+
+    public MarketSellResult withDispatched(boolean dispatched) {
+        return new MarketSellResult(success, unitPriceEurPerKg, errorMessage, dispatched);
     }
 
     public static MarketSellResult fail(String message) {
-        return new MarketSellResult(false, 0.0, message);
+        return new MarketSellResult(false, 0.0, message, false);
     }
 }

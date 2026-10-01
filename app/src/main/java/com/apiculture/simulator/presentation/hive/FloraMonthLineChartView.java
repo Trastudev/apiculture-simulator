@@ -13,13 +13,29 @@ import androidx.core.content.ContextCompat;
 
 import com.apiculture.simulator.R;
 
+import java.time.LocalDate;
+
 /**
- * Néctar del mes (0–100 % de mielada plena) como línea, con eje Y de rango y eje X de días.
+ * Néctar del año (0–100 % de mielada plena) como línea, eje Y en porcentaje y eje X en meses.
  */
 public class FloraMonthLineChartView extends View {
 
-    private double[] values = new double[0];
-    private int todayIndex = -1;
+    private String[] monthLabels() {
+        return new String[] {
+                getContext().getString(R.string.month_jan),
+                getContext().getString(R.string.month_feb),
+                getContext().getString(R.string.month_mar),
+                getContext().getString(R.string.month_apr),
+                getContext().getString(R.string.month_may),
+                getContext().getString(R.string.month_jun),
+                getContext().getString(R.string.month_jul),
+                getContext().getString(R.string.month_aug),
+                getContext().getString(R.string.month_sep),
+                getContext().getString(R.string.month_oct),
+                getContext().getString(R.string.month_nov),
+                getContext().getString(R.string.month_dec)
+        };
+    }
 
     private final Paint axisPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -30,6 +46,8 @@ public class FloraMonthLineChartView extends View {
     private final Paint todayLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path linePath = new Path();
     private final Path fillPath = new Path();
+    private double[] values = new double[0];
+    private int todayIndex = -1;
 
     public FloraMonthLineChartView(Context context) {
         super(context);
@@ -84,6 +102,7 @@ public class FloraMonthLineChartView extends View {
         todayLinePaint.setPathEffect(new DashPathEffect(new float[]{6f * d, 4f * d}, 0f));
     }
 
+    /** Una muestra por día del año; {@code todayIndex} es 0-based (día del año − 1). */
     public void setSeries(double[] values01, int todayIndex) {
         this.values = values01 != null ? values01 : new double[0];
         this.todayIndex = todayIndex;
@@ -97,12 +116,13 @@ public class FloraMonthLineChartView extends View {
         float left = 36f * d;
         float right = getWidth() - 8f * d;
         float top = 8f * d;
-        float bottom = getHeight() - 18f * d;
+        float bottom = getHeight() - 22f * d;
         if (right <= left || bottom <= top) {
             return;
         }
 
         labelPaint.setTextAlign(Paint.Align.RIGHT);
+        labelPaint.setTextSize(10f * d);
         labelPaint.setColor(ContextCompat.getColor(getContext(), R.color.dash_text_card));
         drawYTick(canvas, left, top, bottom, 1.0, "100 %");
         drawYTick(canvas, left, top, bottom, 0.5, "50 %");
@@ -142,14 +162,32 @@ public class FloraMonthLineChartView extends View {
             canvas.drawCircle(tx, ty, 4f * d, todayPaint);
         }
 
-        labelPaint.setTextAlign(Paint.Align.CENTER);
-        labelPaint.setColor(ContextCompat.getColor(getContext(), R.color.dash_muted));
-        canvas.drawText("1", left, getHeight() - 4f * d, labelPaint);
-        canvas.drawText(String.valueOf(n), right, getHeight() - 4f * d, labelPaint);
-        if (todayIndex > 0 && todayIndex < n - 1) {
-            float tx = left + span * (todayIndex / (float) (n - 1));
-            labelPaint.setColor(ContextCompat.getColor(getContext(), R.color.dash_text_card));
-            canvas.drawText(String.valueOf(todayIndex + 1), tx, getHeight() - 4f * d, labelPaint);
+        drawMonthAxis(canvas, left, span, n, d);
+    }
+
+    private void drawMonthAxis(Canvas canvas, float left, float span, int n, float d) {
+        labelPaint.setColor(ContextCompat.getColor(getContext(), R.color.dash_text_card));
+        labelPaint.setTextSize(9f * d);
+        int year = n >= 366 ? 2024 : 2025;
+        LocalDate jan1 = LocalDate.of(year, 1, 1);
+        float labelY = getHeight() - 4f * d;
+        for (int m = 1; m <= 12; m++) {
+            int idx = jan1.withMonth(m).getDayOfYear() - 1;
+            if (idx < 0) {
+                idx = 0;
+            }
+            if (idx > n - 1) {
+                idx = n - 1;
+            }
+            float x = left + span * (idx / (float) (n - 1));
+            if (m == 1) {
+                labelPaint.setTextAlign(Paint.Align.LEFT);
+            } else if (m == 12) {
+                labelPaint.setTextAlign(Paint.Align.RIGHT);
+            } else {
+                labelPaint.setTextAlign(Paint.Align.CENTER);
+            }
+            canvas.drawText(monthLabels()[m - 1], x, labelY, labelPaint);
         }
     }
 

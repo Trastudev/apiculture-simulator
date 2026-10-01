@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -52,6 +53,22 @@
                 android:textStyle="bold"
                 tools:text="Olivar norte" />
 
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/iv_yard_npc_face"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_npc_portrait_ring"
+                android:contentDescription="@string/apiary_card_contract"
+                android:padding="2dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Apisim.Circle"
+                app:strokeColor="@color/event_gold"
+                app:strokeWidth="1.5dp"
+                tools:src="@drawable/npc_face_00"
+                tools:visibility="visible" />
+
             <ImageView
                 android:id="@+id/iv_yard_weather"
                 android:layout_width="28dp"
@@ -76,12 +93,19 @@
         android:textSize="14sp"
         android:visibility="gone" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_yard_buy_hive"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="18dp"
-        android:text="@string/apiary_yard_buy_hive"
-        android:textAllCaps="false" />
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_yard_buy_hive"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/apiary_yard_buy_hive"
+            android:textAllCaps="false" />
+    </LinearLayout>
 </FrameLayout>

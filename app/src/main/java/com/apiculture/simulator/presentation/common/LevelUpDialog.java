@@ -18,10 +18,13 @@ import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.repository.EconomyRepository;
 import com.apiculture.simulator.data.repository.EventInventoryStore;
+import com.apiculture.simulator.domain.game.ClimateUnlock;
 import com.apiculture.simulator.domain.game.LevelUpRewards;
+import com.apiculture.simulator.domain.parcel.CropUnlock;
 import com.google.android.material.button.MaterialButton;
 
 import java.lang.ref.WeakReference;
+import java.util.List;
 
 /**
  * Ventana de subida de nivel con recompensas (BeeCoins, tratamiento, apialimento).
@@ -91,11 +94,11 @@ public final class LevelUpDialog {
         }
         final Context appCtx = activity.getApplicationContext();
         final int levelsGained = newLevel - prevLevel;
-        activity.runOnUiThread(() -> present(activity, appCtx, newLevel, levelsGained, coins, treat, feed));
+        activity.runOnUiThread(() -> present(activity, appCtx, prevLevel, newLevel, levelsGained, coins, treat, feed));
     }
 
     private static void present(@NonNull Activity activity, @NonNull Context appCtx,
-                                int newLevel, int levelsGained, int coins, int treat, int feed) {
+                                int prevLevel, int newLevel, int levelsGained, int coins, int treat, int feed) {
         if (activity.isFinishing() || activity.isDestroyed()) {
             grant(appCtx, coins, treat, feed);
             return;
@@ -120,6 +123,7 @@ public final class LevelUpDialog {
         TextView tvCoins = dialog.findViewById(R.id.tv_reward_coins);
         TextView tvTreat = dialog.findViewById(R.id.tv_reward_treat);
         TextView tvFeed = dialog.findViewById(R.id.tv_reward_feed);
+        TextView tvClimate = dialog.findViewById(R.id.tv_level_up_climate);
         MaterialButton btnClaim = dialog.findViewById(R.id.btn_level_up_claim);
 
         tvTitle.setText(activity.getString(R.string.level_up_title, newLevel));
@@ -128,7 +132,43 @@ public final class LevelUpDialog {
         } else {
             tvSubtitle.setText(activity.getString(R.string.level_up_subtitle_many, levelsGained, newLevel));
         }
-        tvCoins.setText(activity.getString(R.string.level_up_reward_coins, coins));
+        List<ClimateUnlock.Unlock> unlocked = ClimateUnlock.newlyUnlocked(prevLevel, newLevel);
+        List<String> newCrops = CropUnlock.newlyUnlocked(prevLevel, newLevel);
+        if (tvClimate != null) {
+            if (unlocked.isEmpty()) {
+                tvClimate.setVisibility(android.view.View.GONE);
+            } else {
+                tvClimate.setVisibility(android.view.View.VISIBLE);
+                if (unlocked.size() == 1) {
+                    tvClimate.setText(activity.getString(R.string.level_up_climate_one, unlocked.get(0).labelEs));
+                } else {
+                    StringBuilder names = new StringBuilder();
+                    for (int i = 0; i < unlocked.size(); i++) {
+                        if (i > 0) {
+                            names.append(" · ");
+                        }
+                        names.append(unlocked.get(i).labelEs);
+                    }
+                    tvClimate.setText(activity.getString(R.string.level_up_climate_many, names.toString()));
+                }
+            }
+        }
+        final String climateNames;
+        if (unlocked.isEmpty()) {
+            climateNames = null;
+        } else if (unlocked.size() == 1) {
+            climateNames = unlocked.get(0).labelEs;
+        } else {
+            StringBuilder names = new StringBuilder();
+            for (int i = 0; i < unlocked.size(); i++) {
+                if (i > 0) {
+                    names.append(" · ");
+                }
+                names.append(unlocked.get(i).labelEs);
+            }
+            climateNames = names.toString();
+        }
+        tvCoins.setText(activity.getString(R.string.level_up_reward_coins, (double) coins));
         tvTreat.setText(treat == 1
                 ? activity.getString(R.string.level_up_reward_treat_one)
                 : activity.getString(R.string.level_up_reward_treat_many, treat));
@@ -144,6 +184,33 @@ public final class LevelUpDialog {
             claimed[0] = true;
             grant(appCtx, coins, treat, feed);
             dialog.dismiss();
+            if (climateNames != null) {
+                // Capítulo 7. Clima nuevo.
+                com.apiculture.simulator.presentation.tutorial.TutorialBus.emit(
+                        com.apiculture.simulator.presentation.tutorial.TutorialEvent.CLIMATE, climateNames);
+            }
+            if (activity.isFinishing() || activity.isDestroyed()) {
+                return;
+            }
+            Runnable openContracts = () -> {
+                if (prevLevel < 2 && newLevel >= 2 && !activity.isFinishing() && !activity.isDestroyed()) {
+                    // Capítulo 5. Cuando ya se han visto los desbloqueos.
+                    com.apiculture.simulator.presentation.tutorial.TutorialBus.emit(
+                            com.apiculture.simulator.presentation.tutorial.TutorialEvent.CONTRACTS_OFFER);
+                }
+            };
+            Runnable afterUnlocks = () -> {
+                if (!unlocked.isEmpty() && !activity.isFinishing() && !activity.isDestroyed()) {
+                    ClimateJourneyDialog.show(activity, unlocked, openContracts);
+                } else {
+                    openContracts.run();
+                }
+            };
+            if (!newCrops.isEmpty()) {
+                CropUnlockDialog.show(activity, newCrops, afterUnlocks);
+            } else {
+                afterUnlocks.run();
+            }
         });
         dialog.setOnDismissListener(d -> {
             if (!claimed[0]) {
@@ -167,7 +234,7 @@ public final class LevelUpDialog {
             ApicultureApp app = (ApicultureApp) appCtx;
             EconomyRepository economy = app.getEconomyRepository();
             if (economy != null && coins > 0) {
-                economy.addToBalance(coins);
+                economy.addToBalance(coins, "Premio de nivel");
             }
         } catch (ClassCastException ignored) {
         }

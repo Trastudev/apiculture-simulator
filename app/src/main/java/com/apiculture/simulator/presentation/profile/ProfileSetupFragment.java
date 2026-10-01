@@ -18,8 +18,8 @@ import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.repository.ProfileRepository;
 import com.apiculture.simulator.databinding.FragmentProfileSetupBinding;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+import com.apiculture.simulator.data.session.PlayerAuth;
+import com.apiculture.simulator.data.session.SignedInUser;
 
 public class ProfileSetupFragment extends Fragment {
 
@@ -53,7 +53,7 @@ public class ProfileSetupFragment extends Fragment {
     }
 
     private void submit() {
-        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        SignedInUser u = PlayerAuth.getInstance().getCurrentUser();
         if (u == null) {
             GameNotice.show(requireContext(), R.string.profile_setup_need_login);
             return;

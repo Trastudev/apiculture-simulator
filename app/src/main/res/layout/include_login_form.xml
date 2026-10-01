@@ -27,6 +27,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
+            android:visibility="gone"
             android:text="@string/login_label_email"
             android:textAppearance="@style/TextAppearance.Apisim.LoginFieldLabel" />
 
@@ -35,7 +36,8 @@
             style="@style/Widget.Apisim.Login.TextInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp">
+            android:layout_marginTop="6dp"
+            android:visibility="gone">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/et_email"
@@ -53,6 +55,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:visibility="gone"
             android:text="@string/login_label_password"
             android:textAppearance="@style/TextAppearance.Apisim.LoginFieldLabel" />
 
@@ -62,6 +65,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
+            android:visibility="gone"
             app:endIconMode="password_toggle">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -79,6 +83,7 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginTop="22dp"
+            android:visibility="gone"
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:text="@string/login_enter_apiary"
@@ -98,7 +103,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:visibility="gone">
 
             <View
                 android:layout_width="0dp"
@@ -138,12 +144,40 @@
             app:strokeColor="@color/login_input_stroke"
             app:strokeWidth="1dp" />
 
+        <TextView
+            android:id="@+id/tv_privacy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="8dp"
+            android:text="@string/privacy_policy"
+            android:textColor="@color/login_primary_orange"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_delete_account_web"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="8dp"
+            android:text="@string/account_delete_web"
+            android:textColor="@color/login_text_muted"
+            android:textSize="13sp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:visibility="gone">
 
             <TextView
                 android:layout_width="wrap_content"

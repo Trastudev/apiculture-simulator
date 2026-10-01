@@ -42,18 +42,23 @@ public class ShopViewModel extends AndroidViewModel {
     }
 
     public void buyTreatment(@Nullable String uid, Consumer<String> onMain) {
-        buy(uid, HiveCareRules.TREAT_EUR, () -> EventInventoryStore.addTreatments(getApplication(), 1), onMain);
+        buy(uid, HiveCareRules.TREAT_EUR, "Compra de tratamiento",
+                () -> EventInventoryStore.addTreatments(getApplication(), 1), onMain);
     }
 
     public void buyFeed(@Nullable String uid, Consumer<String> onMain) {
-        buy(uid, HiveCareRules.FEED_1_DAY_EUR, () -> EventInventoryStore.addFeed(getApplication(), 1), onMain);
+        buy(uid, HiveCareRules.FEED_7_DAYS_EUR, "Compra de apialimento",
+                () -> EventInventoryStore.addFeed(getApplication(), 1), onMain);
     }
 
     public void buyQueen(@Nullable String uid, Consumer<String> onMain) {
-        buy(uid, HiveCareRules.QUEEN_EUR, () -> {
+        buy(uid, HiveCareRules.QUEEN_EUR, "Compra de reina", () -> {
             int q = HiveCareRules.randomCommercialQueenQuality();
-            EventInventoryStore.addQueen(getApplication(), q);
+            if (!EventInventoryStore.addQueen(getApplication(), q)) {
+                return false;
+            }
             lastQueenQuality = q;
+            return true;
         }, msg -> {
             if (msg == null) {
                 onMain.accept("QUEEN:" + lastQueenQuality);
@@ -65,19 +70,32 @@ public class ShopViewModel extends AndroidViewModel {
 
     private int lastQueenQuality = 0;
 
-    private void buy(@Nullable String uid, double price, Runnable grant, Consumer<String> onMain) {
-        if (!economy.trySpend(price)) {
-            if (onMain != null) {
-                onMain.accept("Saldo insuficiente (" + ((int) price) + " B).");
+    private void buy(@Nullable String uid, double price, String concept,
+            java.util.function.BooleanSupplier grant, Consumer<String> onMain) {
+        new Thread(() -> {
+            if (!economy.trySpend(price, concept)) {
+                if (onMain != null) {
+                    String reason = economy.blockedReason(price);
+                    new android.os.Handler(android.os.Looper.getMainLooper())
+                            .post(() -> onMain.accept(reason));
+                }
+                return;
             }
-            return;
-        }
-        grant.run();
-        EventInventoryStore.persistCloud(FirebaseFirestore.getInstance(), uid, getApplication());
-        refresh();
-        if (onMain != null) {
-            onMain.accept(null);
-        }
+            android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+            if (!grant.getAsBoolean()) {
+                economy.addToBalance(price, "Devolución de " + concept);
+                if (onMain != null) {
+                    main.post(() -> onMain.accept(EconomyRepository.OFFLINE_ACTION));
+                }
+                return;
+            }
+            main.post(() -> {
+                refresh();
+                if (onMain != null) {
+                    onMain.accept(null);
+                }
+            });
+        }, "shop-buy").start();
     }
 
     public static final class ShopStock {

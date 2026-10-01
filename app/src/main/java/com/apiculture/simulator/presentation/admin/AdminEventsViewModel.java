@@ -44,8 +44,8 @@ public class AdminEventsViewModel extends ViewModel {
                 isAdmin.postValue(AdminRoles.isAdminPlayerName(p.playerName)));
     }
 
-    public void activateSurge(String flora, int days, String uid, Consumer<String> cb) {
-        events.activateDemandSurge(flora, days, uid, cb);
+    public void activateSurge(String flora, int days, double demandMult, String uid, Consumer<String> cb) {
+        events.activateDemandSurge(flora, days, demandMult, uid, cb);
     }
 
     public void deactivateSurge(Consumer<String> cb) {

@@ -5,8 +5,10 @@ package com.apiculture.simulator.domain.game;
  */
 public final class HiveCareRules {
 
-    public static final double FEED_1_DAY_EUR = 8.0;
-    public static final double FEED_7_DAYS_EUR = 42.0;
+    public static final double FEED_1_DAY_EUR = 40.0;
+    public static final double FEED_7_DAYS_EUR = 40.0;
+    /** Una unidad de apialimento cubre este número de días. */
+    public static final int FEED_DAYS = 7;
     /** Multiplicador del consumo de miel mientras la colmena está alimentada. */
     public static final double FEED_CONSUMPTION_MULTIPLIER = 0.50;
 
@@ -26,6 +28,9 @@ public final class HiveCareRules {
 
     public static final double SPLIT_SPAWN_MIN = 0.30;
     public static final double SPLIT_SPAWN_MAX = 0.60;
+    /** Núcleo vacío al dividir: 100 € sin alza, +50 € por alza (máx. 2). */
+    public static final int EMPTY_NUC_BASE_EUR = 100;
+    public static final int EMPTY_NUC_PER_SUPER_EUR = 50;
 
     private HiveCareRules() {
     }
@@ -43,5 +48,9 @@ public final class HiveCareRules {
     /** Fracción de abejas (y miel/reservas) que se lleva la colmena nueva. */
     public static double randomSplitSpawnShare() {
         return SPLIT_SPAWN_MIN + Math.random() * (SPLIT_SPAWN_MAX - SPLIT_SPAWN_MIN);
+    }
+
+    public static int emptyNucPriceEuros(int superCount) {
+        return EMPTY_NUC_BASE_EUR;
     }
 }

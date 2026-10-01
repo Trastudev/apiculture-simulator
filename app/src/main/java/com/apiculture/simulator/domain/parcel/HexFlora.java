@@ -2,10 +2,14 @@ package com.apiculture.simulator.domain.parcel;
 
 import com.apiculture.simulator.domain.game.Hemispheres;
 import com.apiculture.simulator.domain.game.IberianClimateZone;
+import com.apiculture.simulator.domain.game.MadagascarClimateZone;
 import com.apiculture.simulator.domain.game.SouthernAfricanClimateZone;
+import com.apiculture.simulator.domain.map.PlayableMapRegion;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -27,6 +31,29 @@ public final class HexFlora {
     public static final String LITCHI = "Litchi";
     public static final String LUCERNA = "Lucerna";
     public static final String ACACIA = "Acacia";
+    public static final String BUCHU = "Buchu";
+    public static final String PROTEA = "Protea";
+    public static final String BOEKENHOUT = "Boekenhout";
+    public static final String AGUACATE = "Aguacate";
+    public static final String MARULA = "Marula";
+    public static final String LAVANDA_CAMPO = "Campo de lavanda";
+    public static final String MOSTAZA = "Campo de mostaza";
+    public static final String TREBOL = "Campo de trébol";
+    public static final String FACELIA = "Campo de facelia";
+    public static final String RABANIZA = "Campo de rabaniza";
+    public static final String GIROFLE = "Girofle";
+    public static final String RAVINTSARA = "Ravintsara";
+    public static final String LONGOSE = "Longose";
+    public static final String TAPIA = "Tapia";
+    public static final String CAFE = "Café";
+    public static final String NIAOULI = "Niaouli";
+    public static final String TAMARINDO = "Tamarindo";
+    public static final String BAOBAB = "Baobab";
+    public static final String MANGO = "Mango";
+    public static final String MANGLE = "Mangle";
+    public static final String RAKETA = "Raketa";
+    public static final String JUJUBE = "Jujube";
+    public static final String SISAL = "Sisal";
 
     public static final String[] FLORA_TYPES = {
             "Bosque",
@@ -42,6 +69,11 @@ public final class HexFlora {
             "Campo de cerezos",
             "Campo de perales",
             "Campo de almendros",
+            LAVANDA_CAMPO,
+            MOSTAZA,
+            TREBOL,
+            FACELIA,
+            RABANIZA,
             CASTANO,
             EUCALIPTO,
             MIELATO,
@@ -53,8 +85,27 @@ public final class HexFlora {
             LITCHI,
             LUCERNA,
             ACACIA,
+            BUCHU,
+            PROTEA,
+            BOEKENHOUT,
+            AGUACATE,
+            MARULA,
+            GIROFLE,
+            RAVINTSARA,
+            LONGOSE,
+            TAPIA,
+            CAFE,
+            NIAOULI,
+            TAMARINDO,
+            BAOBAB,
+            MANGO,
+            MANGLE,
+            RAKETA,
+            JUJUBE,
+            SISAL,
     };
 
+    /** Flora silvestre (nativa). Los cultivos no entran en el mix aleatorio del terreno. */
     private static final String[] ATLANTIC = {
             MIL_FLORES, CASTANO, "Brezo", EUCALIPTO, ARBOC, "Bosque"
     };
@@ -62,50 +113,163 @@ public final class HexFlora {
             MIL_FLORES, "Brezo", "Bosque", CASTANO, MIELATO, NERET, ARBOC
     };
     private static final String[] MEDITERRANEAN = {
-            MIL_FLORES, "Campo de naranjos", "Romero", "Tomillo",
-            "Campo de almendros", "Campo de manzanos", "Campo de cerezos", "Campo de perales"
+            MIL_FLORES, "Romero", "Tomillo", "Lavanda", ARBOC, EUCALIPTO, "Bosque"
     };
     private static final String[] SOUTH = {
-            MIL_FLORES, "Campo de naranjos", EUCALIPTO, "Campo de girasoles",
-            "Romero", "Tomillo", CASTANO, ARBOC, "Campo de almendros"
+            MIL_FLORES, EUCALIPTO, "Romero", "Tomillo", CASTANO, ARBOC
     };
     private static final String[] CONTINENTAL = {
-            MIL_FLORES, "Romero", "Tomillo", "Lavanda", "Campo de girasoles",
-            "Campo de Colza", MIELATO, "Campo de almendros", "Campo de cerezos"
+            MIL_FLORES, "Romero", "Tomillo", "Lavanda", MIELATO
     };
 
     private static final String[] ZA_FYNBOS = {
-            FYNBOS, ALOE, EUCALIPTO, "Campo de Colza", MIL_FLORES
+            FYNBOS, PROTEA, BUCHU, ALOE, EUCALIPTO, MIL_FLORES
     };
     private static final String[] ZA_KAROO = {
-            ALOE, LUCERNA, MIL_FLORES, EUCALIPTO, "Campo de Colza"
+            ALOE, MIL_FLORES, EUCALIPTO
     };
     private static final String[] ZA_HIGHVELD = {
-            "Campo de girasoles", EUCALIPTO, ACACIA, LUCERNA, ALOE, MIL_FLORES
+            EUCALIPTO, ACACIA, BOEKENHOUT, ALOE, MIL_FLORES
     };
     private static final String[] ZA_SUBTROPICAL = {
-            LITCHI, MACADAMIA, "Campo de naranjos", EUCALIPTO, MIL_FLORES
+            EUCALIPTO, MIL_FLORES, "Bosque", ACACIA
     };
     private static final String[] ZA_BUSHVELD = {
-            ALOE, ACACIA, EUCALIPTO, "Campo de girasoles", MIL_FLORES, "Bosque"
+            ALOE, ACACIA, MARULA, BOEKENHOUT, EUCALIPTO, MIL_FLORES, "Bosque"
+    };
+    private static final String[] MDG_EQUATORIAL = {
+            LITCHI, GIROFLE, RAVINTSARA, LONGOSE, MIL_FLORES
+    };
+    private static final String[] MDG_HIGHLANDS = {
+            EUCALIPTO, TAPIA, CAFE, NIAOULI, MIL_FLORES
+    };
+    private static final String[] MDG_TROPICAL = {
+            TAMARINDO, BAOBAB, MANGO, MANGLE, MIL_FLORES
+    };
+    private static final String[] MDG_DESERT = {
+            RAKETA, JUJUBE, SISAL, MIL_FLORES
+    };
+
+    private static final String[] PLANT_ATLANTIC = {
+            "Campo de manzanos", "Campo de perales", "Campo de Colza",
+            "Campo de girasoles", MOSTAZA, TREBOL, FACELIA, LAVANDA_CAMPO, RABANIZA
+    };
+    private static final String[] PLANT_MOUNTAIN = {
+            "Campo de cerezos", "Campo de manzanos", "Campo de perales",
+            LAVANDA_CAMPO, TREBOL, FACELIA, MOSTAZA, RABANIZA
+    };
+    private static final String[] PLANT_MEDITERRANEAN = {
+            "Campo de naranjos", "Campo de almendros", "Campo de cerezos",
+            "Campo de perales", "Campo de manzanos", "Campo de girasoles", "Campo de Colza",
+            LAVANDA_CAMPO, MOSTAZA, TREBOL, FACELIA, RABANIZA
+    };
+    private static final String[] PLANT_SOUTH = {
+            "Campo de naranjos", "Campo de almendros", "Campo de girasoles",
+            "Campo de Colza", "Campo de cerezos", LAVANDA_CAMPO, MOSTAZA, TREBOL, FACELIA, RABANIZA
+    };
+    private static final String[] PLANT_CONTINENTAL = {
+            "Campo de girasoles", "Campo de Colza", "Campo de almendros",
+            "Campo de cerezos", "Campo de manzanos", "Campo de perales",
+            LAVANDA_CAMPO, TREBOL, FACELIA, MOSTAZA, RABANIZA
+    };
+    private static final String[] PLANT_ZA_FYNBOS = {
+            "Campo de Colza", "Campo de naranjos", "Campo de girasoles",
+            LUCERNA, MOSTAZA, TREBOL, FACELIA, RABANIZA
+    };
+    private static final String[] PLANT_ZA_KAROO = {
+            LUCERNA, "Campo de girasoles", MOSTAZA, TREBOL, RABANIZA
+    };
+    private static final String[] PLANT_ZA_HIGHVELD = {
+            "Campo de girasoles", LUCERNA, "Campo de Colza", TREBOL, MOSTAZA, FACELIA, RABANIZA
+    };
+    private static final String[] PLANT_ZA_SUBTROPICAL = {
+            LITCHI, MACADAMIA, AGUACATE, "Campo de naranjos", FACELIA, TREBOL, RABANIZA
+    };
+    private static final String[] PLANT_ZA_BUSHVELD = {
+            "Campo de girasoles", LUCERNA, "Campo de Colza", TREBOL, MOSTAZA, RABANIZA
+    };
+    private static final String[] PLANT_MDG_EQUATORIAL = {
+            LITCHI, "Campo de naranjos", FACELIA, TREBOL
+    };
+    private static final String[] PLANT_MDG_HIGHLANDS = {
+            CAFE, "Campo de naranjos", TREBOL, FACELIA
+    };
+    private static final String[] PLANT_MDG_TROPICAL = {
+            MANGO, "Campo de naranjos", TREBOL, RABANIZA
+    };
+    private static final String[] PLANT_MDG_DESERT = {
+            SISAL, LUCERNA, MOSTAZA
     };
 
     private HexFlora() {
     }
 
     public static List<String> nativePoolForZone(IberianClimateZone zone) {
-        return Collections.unmodifiableList(Arrays.asList(pool(zone)));
+        return Collections.unmodifiableList(Arrays.asList(wildPool(zone)));
     }
 
     public static List<String> nativePoolForZone(SouthernAfricanClimateZone zone) {
-        return Collections.unmodifiableList(Arrays.asList(pool(zone)));
+        return Collections.unmodifiableList(Arrays.asList(wildPool(zone)));
+    }
+
+    public static List<String> plantationPoolForZone(IberianClimateZone zone) {
+        return Collections.unmodifiableList(Arrays.asList(plantationPool(zone)));
+    }
+
+    public static List<String> plantationPoolForZone(SouthernAfricanClimateZone zone) {
+        return Collections.unmodifiableList(Arrays.asList(plantationPool(zone)));
+    }
+
+    public static List<String> nativePoolForZone(MadagascarClimateZone zone) {
+        return Collections.unmodifiableList(Arrays.asList(wildPool(zone)));
+    }
+
+    public static List<String> plantationPoolForZone(MadagascarClimateZone zone) {
+        return Collections.unmodifiableList(Arrays.asList(plantationPool(zone)));
+    }
+
+    /** Cultivos que el jugador siembra; no salen en el mix silvestre inicial. */
+    public static boolean isPlantation(String floraKey) {
+        String k = canonicalKey(floraKey);
+        return k.startsWith("Campo de")
+                || MACADAMIA.equals(k)
+                || LITCHI.equals(k)
+                || AGUACATE.equals(k)
+                || LUCERNA.equals(k)
+                || CAFE.equals(k)
+                || MANGO.equals(k)
+                || SISAL.equals(k);
+    }
+
+    public static boolean isZaParcel(HexParcel parcel) {
+        if (parcel == null) {
+            return false;
+        }
+        if (parcel.id != null && (parcel.id.startsWith("hex_za_") || parcel.id.startsWith("za_"))) {
+            return true;
+        }
+        return PlayableMapRegion.fromHexId(parcel.id) == PlayableMapRegion.SOUTH_AFRICA
+                || PlayableMapRegion.containing(parcel.centroidLat, parcel.centroidLon)
+                == PlayableMapRegion.SOUTH_AFRICA;
+    }
+
+    public static boolean isMadagascarParcel(HexParcel parcel) {
+        if (parcel == null) {
+            return false;
+        }
+        if (parcel.id != null && (parcel.id.startsWith("hex_mdg_") || parcel.id.startsWith("mdg_"))) {
+            return true;
+        }
+        return PlayableMapRegion.fromHexId(parcel.id) == PlayableMapRegion.MADAGASCAR
+                || PlayableMapRegion.containing(parcel.centroidLat, parcel.centroidLon)
+                == PlayableMapRegion.MADAGASCAR;
     }
 
     public static boolean isSouthernParcel(HexParcel parcel) {
         if (parcel == null) {
             return false;
         }
-        if (parcel.id != null && parcel.id.startsWith("za_")) {
+        if (isZaParcel(parcel) || isMadagascarParcel(parcel)) {
             return true;
         }
         return Hemispheres.isSouthern(parcel.centroidLat);
@@ -118,43 +282,159 @@ public final class HexFlora {
     public static boolean usesSouthernCalendar(String floraKey) {
         String k = canonicalKey(floraKey);
         return FYNBOS.equals(k) || ALOE.equals(k) || MACADAMIA.equals(k)
-                || LITCHI.equals(k) || LUCERNA.equals(k) || ACACIA.equals(k);
+                || LITCHI.equals(k) || LUCERNA.equals(k) || ACACIA.equals(k)
+                || BUCHU.equals(k) || PROTEA.equals(k) || BOEKENHOUT.equals(k)
+                || AGUACATE.equals(k) || MARULA.equals(k)
+                || GIROFLE.equals(k) || RAVINTSARA.equals(k) || LONGOSE.equals(k)
+                || TAPIA.equals(k) || CAFE.equals(k) || NIAOULI.equals(k)
+                || TAMARINDO.equals(k) || BAOBAB.equals(k) || MANGO.equals(k)
+                || MANGLE.equals(k) || RAKETA.equals(k) || JUJUBE.equals(k)
+                || SISAL.equals(k);
     }
 
     public static boolean isAllowedInZone(String floraKey, IberianClimateZone zone) {
-        return containsKey(pool(zone), floraKey);
+        return containsKey(wildPool(zone), floraKey) || containsKey(plantationPool(zone), floraKey);
     }
 
     public static boolean isAllowedInZone(String floraKey, SouthernAfricanClimateZone zone) {
-        return containsKey(pool(zone), floraKey);
+        return containsKey(wildPool(zone), floraKey) || containsKey(plantationPool(zone), floraKey);
+    }
+
+    public static boolean isAllowedInZone(String floraKey, MadagascarClimateZone zone) {
+        return containsKey(wildPool(zone), floraKey) || containsKey(plantationPool(zone), floraKey);
     }
 
     public static boolean isAllowedOnParcel(String floraKey, HexParcel parcel) {
-        if (isSouthernParcel(parcel)) {
+        if (isMadagascarParcel(parcel)) {
+            return isAllowedInZone(floraKey, MadagascarClimateZone.forParcel(parcel));
+        }
+        if (isZaParcel(parcel)) {
             return isAllowedInZone(floraKey, SouthernAfricanClimateZone.forParcel(parcel));
         }
         return isAllowedInZone(floraKey, IberianClimateZone.forParcel(parcel));
     }
 
+    /** Floras silvestres posibles en Iberia o en Sudáfrica, sin cultivos. */
+    public static List<String> nativeKeysForRegion(boolean southern) {
+        return nativeKeysForRegion(southern ? PlayableMapRegion.SOUTH_AFRICA : PlayableMapRegion.IBERIA);
+    }
+
+    public static List<String> nativeKeysForRegion(PlayableMapRegion region) {
+        LinkedHashSet<String> keys = new LinkedHashSet<>();
+        if (region == PlayableMapRegion.SOUTH_AFRICA) {
+            for (SouthernAfricanClimateZone zone : SouthernAfricanClimateZone.values()) {
+                keys.addAll(nativePoolForZone(zone));
+            }
+        } else if (region == PlayableMapRegion.MADAGASCAR) {
+            for (MadagascarClimateZone zone : MadagascarClimateZone.values()) {
+                keys.addAll(nativePoolForZone(zone));
+            }
+        } else {
+            for (IberianClimateZone zone : IberianClimateZone.values()) {
+                keys.addAll(nativePoolForZone(zone));
+            }
+        }
+        return Collections.unmodifiableList(new ArrayList<>(keys));
+    }
+
     public static String nativeFloraForParcel(HexParcel parcel) {
+        List<String> mix = nativeMixForParcel(parcel);
+        for (int i = 0; i < mix.size(); i++) {
+            if (!MIL_FLORES.equals(mix.get(i))) {
+                return mix.get(i);
+            }
+        }
+        return mix.isEmpty() ? MIL_FLORES : mix.get(0);
+    }
+
+    /**
+     * Mix silvestre estable del hex: siempre incluye mil flores, más 2–4 especies del clima
+     * (total 3–5 si el pool lo permite). Sin cultivos.
+     */
+    public static List<String> nativeMixForParcel(HexParcel parcel) {
         if (parcel == null) {
-            return MIL_FLORES;
+            return Collections.singletonList(MIL_FLORES);
         }
-        if (isSouthernParcel(parcel)) {
-            return pickFromPool(parcel.id, pool(SouthernAfricanClimateZone.forParcel(parcel)));
+        if (isMadagascarParcel(parcel)) {
+            return nativeMixForZone(parcel.id, MadagascarClimateZone.forParcel(parcel));
         }
-        return pickFromPool(parcel.id, pool(IberianClimateZone.forParcel(parcel)));
+        if (isZaParcel(parcel)) {
+            return nativeMixForZone(parcel.id, SouthernAfricanClimateZone.forParcel(parcel));
+        }
+        return nativeMixForZone(parcel.id, IberianClimateZone.forParcel(parcel));
+    }
+
+    public static List<String> nativeMixForZone(String hexId, MadagascarClimateZone zone) {
+        return buildNativeMix(hexId, wildPool(zone));
+    }
+
+    public static List<String> nativeMixForZone(String hexId, IberianClimateZone zone) {
+        return buildNativeMix(hexId, wildPool(zone));
+    }
+
+    public static List<String> nativeMixForZone(String hexId, SouthernAfricanClimateZone zone) {
+        return buildNativeMix(hexId, wildPool(zone));
+    }
+
+    public static boolean nativeMixContains(HexParcel parcel, String floraKey) {
+        String want = canonicalKey(floraKey);
+        List<String> mix = nativeMixForParcel(parcel);
+        for (int i = 0; i < mix.size(); i++) {
+            if (want.equals(mix.get(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static List<String> plantationPoolForParcel(HexParcel parcel) {
+        if (parcel == null) {
+            return Collections.emptyList();
+        }
+        if (isMadagascarParcel(parcel)) {
+            return plantationPoolForZone(MadagascarClimateZone.forParcel(parcel));
+        }
+        if (isZaParcel(parcel)) {
+            return plantationPoolForZone(SouthernAfricanClimateZone.forParcel(parcel));
+        }
+        return plantationPoolForZone(IberianClimateZone.forParcel(parcel));
+    }
+
+    private static List<String> buildNativeMix(String hexId, String[] wild) {
+        LinkedHashSet<String> extras = new LinkedHashSet<>();
+        if (wild != null) {
+            for (int i = 0; i < wild.length; i++) {
+                String k = canonicalKey(wild[i]);
+                if (!MIL_FLORES.equals(k) && !isPlantation(k)) {
+                    extras.add(k);
+                }
+            }
+        }
+        List<String> extraList = new ArrayList<>(extras);
+        Random r = new Random(stableHash64("mix:" + (hexId != null ? hexId : "")));
+        Collections.shuffle(extraList, r);
+        int extraCount = extraList.isEmpty() ? 0 : Math.min(extraList.size(), 2 + r.nextInt(3));
+        LinkedHashSet<String> mix = new LinkedHashSet<>();
+        mix.add(MIL_FLORES);
+        for (int i = 0; i < extraCount; i++) {
+            mix.add(extraList.get(i));
+        }
+        return Collections.unmodifiableList(new ArrayList<>(mix));
     }
 
     /**
      * Índice pseudoaleatorio en el pool de la zona, reproducible para el mismo {@code hexId}.
      */
     public static String randomNativeForZone(String hexId, IberianClimateZone zone) {
-        return pickFromPool(hexId, pool(zone));
+        return pickFromPool(hexId, wildPool(zone));
     }
 
     public static String randomNativeForZone(String hexId, SouthernAfricanClimateZone zone) {
-        return pickFromPool(hexId, pool(zone));
+        return pickFromPool(hexId, wildPool(zone));
+    }
+
+    public static String randomNativeForZone(String hexId, MadagascarClimateZone zone) {
+        return pickFromPool(hexId, wildPool(zone));
     }
 
     /**
@@ -182,8 +462,9 @@ public final class HexFlora {
         }
         String t = floraType.trim();
         String lower = t.toLowerCase(Locale.ROOT);
-        if (lower.equals("arboç") || lower.equals("arboc") || lower.equals("madroño")
-                || lower.equals("madrono") || lower.equals("madroñer") || lower.equals("arboçer")) {
+        if (lower.equals("arboç") || lower.equals("arboc") || lower.equals("arbós") || lower.equals("arbos")
+                || lower.equals("madroño") || lower.equals("madrono") || lower.equals("madroñer")
+                || lower.equals("arboçer") || lower.equals("strawberry tree")) {
             return ARBOC;
         }
         if (lower.equals("neret") || lower.equals("rododendro") || lower.equals("rhododendron")) {
@@ -198,8 +479,24 @@ public final class HexFlora {
         if (lower.startsWith("eucalipt")) {
             return EUCALIPTO;
         }
-        if (lower.equals("fynbos") || lower.contains("protea") || lower.equals("cape flora")) {
+        if (lower.equals("protea") || lower.equals("protéa") || lower.contains("king protea")) {
+            return PROTEA;
+        }
+        if (lower.equals("fynbos") || lower.equals("cape flora")) {
             return FYNBOS;
+        }
+        if (lower.equals("buchu") || lower.equals("buchú") || lower.equals("agathosma")) {
+            return BUCHU;
+        }
+        if (lower.equals("boekenhout") || lower.equals("faurea")
+                || lower.equals("haya africana") || lower.equals("african beech")) {
+            return BOEKENHOUT;
+        }
+        if (lower.equals("aguacate") || lower.equals("avocado") || lower.equals("palta")) {
+            return AGUACATE;
+        }
+        if (lower.equals("marula") || lower.startsWith("sclerocarya")) {
+            return MARULA;
         }
         if (lower.startsWith("aloe") || lower.equals("áloe") || lower.equals("aloes")) {
             return ALOE;
@@ -213,8 +510,62 @@ public final class HexFlora {
         if (lower.equals("lucerna") || lower.equals("alfalfa") || lower.equals("medicago")) {
             return LUCERNA;
         }
+        if (lower.equals("campo de lavanda")) {
+            return LAVANDA_CAMPO;
+        }
+        if (lower.contains("mostaza") || lower.contains("mustard")) {
+            return MOSTAZA;
+        }
+        if (lower.contains("trébol") || lower.contains("trebol") || lower.contains("clover")) {
+            return TREBOL;
+        }
+        if (lower.contains("facelia") || lower.contains("phacelia")) {
+            return FACELIA;
+        }
+        if (lower.contains("rabaniza") || lower.contains("diplotaxis") || lower.contains("jaramago")) {
+            return RABANIZA;
+        }
         if (lower.equals("acacia") || lower.equals("wattle") || lower.startsWith("acacia")) {
             return ACACIA;
+        }
+        if (lower.equals("girofle") || lower.equals("clavo") || lower.contains("syzygium aromaticum")) {
+            return GIROFLE;
+        }
+        if (lower.equals("ravintsara") || lower.contains("cinnamomum camphora")) {
+            return RAVINTSARA;
+        }
+        if (lower.equals("longose") || lower.equals("longoze") || lower.contains("hedychium")) {
+            return LONGOSE;
+        }
+        if (lower.equals("tapia") || lower.contains("uapaca")) {
+            return TAPIA;
+        }
+        if (lower.equals("café") || lower.equals("cafe") || lower.equals("coffee")) {
+            return CAFE;
+        }
+        if (lower.equals("niaouli") || lower.contains("melaleuca")) {
+            return NIAOULI;
+        }
+        if (lower.equals("tamarindo") || lower.equals("tamarind") || lower.equals("kily")) {
+            return TAMARINDO;
+        }
+        if (lower.equals("baobab") || lower.contains("adansonia")) {
+            return BAOBAB;
+        }
+        if (lower.equals("mango") || lower.contains("mangifera")) {
+            return MANGO;
+        }
+        if (lower.equals("mangle") || lower.equals("manglar") || lower.equals("mangrove")) {
+            return MANGLE;
+        }
+        if (lower.equals("raketa") || lower.equals("higo chumbo") || lower.contains("opuntia")) {
+            return RAKETA;
+        }
+        if (lower.equals("jujube") || lower.equals("azufaifo") || lower.contains("ziziphus")) {
+            return JUJUBE;
+        }
+        if (lower.equals("sisal") || lower.contains("agave sisalana")) {
+            return SISAL;
         }
         for (String s : FLORA_TYPES) {
             if (s.equalsIgnoreCase(t)) {
@@ -245,7 +596,7 @@ public final class HexFlora {
         return p[r.nextInt(p.length)];
     }
 
-    private static String[] pool(IberianClimateZone zone) {
+    private static String[] wildPool(IberianClimateZone zone) {
         if (zone == null) {
             return CONTINENTAL;
         }
@@ -264,7 +615,7 @@ public final class HexFlora {
         }
     }
 
-    private static String[] pool(SouthernAfricanClimateZone zone) {
+    private static String[] wildPool(SouthernAfricanClimateZone zone) {
         if (zone == null) {
             return ZA_HIGHVELD;
         }
@@ -281,6 +632,93 @@ public final class HexFlora {
             default:
                 return ZA_HIGHVELD;
         }
+    }
+
+    private static String[] wildPool(MadagascarClimateZone zone) {
+        if (zone == null) {
+            return MDG_TROPICAL;
+        }
+        switch (zone) {
+            case EQUATORIAL:
+                return MDG_EQUATORIAL;
+            case HIGHLANDS:
+                return MDG_HIGHLANDS;
+            case DESERT:
+                return MDG_DESERT;
+            case TROPICAL:
+            default:
+                return MDG_TROPICAL;
+        }
+    }
+
+    private static String[] plantationPool(IberianClimateZone zone) {
+        if (zone == null) {
+            return PLANT_CONTINENTAL;
+        }
+        switch (zone) {
+            case ATLANTIC:
+                return PLANT_ATLANTIC;
+            case MOUNTAIN:
+                return PLANT_MOUNTAIN;
+            case MEDITERRANEAN:
+                return PLANT_MEDITERRANEAN;
+            case SOUTH:
+                return PLANT_SOUTH;
+            case CONTINENTAL:
+            default:
+                return PLANT_CONTINENTAL;
+        }
+    }
+
+    private static String[] plantationPool(SouthernAfricanClimateZone zone) {
+        if (zone == null) {
+            return PLANT_ZA_HIGHVELD;
+        }
+        switch (zone) {
+            case FYNBOS:
+                return PLANT_ZA_FYNBOS;
+            case KAROO:
+                return PLANT_ZA_KAROO;
+            case SUBTROPICAL:
+                return PLANT_ZA_SUBTROPICAL;
+            case BUSHVELD:
+                return PLANT_ZA_BUSHVELD;
+            case HIGHVELD:
+            default:
+                return PLANT_ZA_HIGHVELD;
+        }
+    }
+
+    private static String[] plantationPool(MadagascarClimateZone zone) {
+        if (zone == null) {
+            return PLANT_MDG_TROPICAL;
+        }
+        switch (zone) {
+            case EQUATORIAL:
+                return PLANT_MDG_EQUATORIAL;
+            case HIGHLANDS:
+                return PLANT_MDG_HIGHLANDS;
+            case DESERT:
+                return PLANT_MDG_DESERT;
+            case TROPICAL:
+            default:
+                return PLANT_MDG_TROPICAL;
+        }
+    }
+
+    private static String[] pool(IberianClimateZone zone) {
+        return concat(wildPool(zone), plantationPool(zone));
+    }
+
+    private static String[] pool(SouthernAfricanClimateZone zone) {
+        return concat(wildPool(zone), plantationPool(zone));
+    }
+
+    private static String[] concat(String[] a, String[] b) {
+        String[] out = new String[a.length + b.length];
+        System.arraycopy(a, 0, out, 0, a.length);
+        System.arraycopy(b, 0, out, a.length, b.length);
+        return out;
     }
 
     private static long stableHash64(String s) {

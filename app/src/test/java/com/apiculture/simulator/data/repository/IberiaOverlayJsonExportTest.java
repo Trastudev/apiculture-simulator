@@ -73,7 +73,8 @@ public class IberiaOverlayJsonExportTest {
                 MapHexOverlayConfig.MAP_HEX_MIN_LAND_FRACTION,
                 region.gridAnchorLat(),
                 region.gridAnchorLon());
-        List<HexParcel> parcels = generator.generate(IberiaBounds.BOX, "iberia", GENERATE_CAP);
+        List<HexParcel> parcels = IberiaBounds.keepPlayable(
+                generator.generate(IberiaBounds.BOX, "iberia", GENERATE_CAP));
 
         JSONObject root = IberiaHexOverlayStore.toOverlayJsonDocument(parcels, BuildConfig.VERSION_CODE);
         root.put("seed", true);

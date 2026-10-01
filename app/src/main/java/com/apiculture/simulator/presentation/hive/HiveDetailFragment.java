@@ -7,6 +7,8 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.text.InputType;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -15,6 +17,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -29,16 +32,22 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.Navigation;
 
+import com.apiculture.simulator.presentation.tutorial.TutorialBus;
+import com.apiculture.simulator.presentation.tutorial.TutorialEvent;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
 import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
+import com.apiculture.simulator.data.local.entity.TruckTripEntity;
 import com.apiculture.simulator.data.remote.OpenMeteoElevation;
 import com.apiculture.simulator.data.repository.EventInventoryStore;
+import com.apiculture.simulator.data.repository.HoneyLogistics;
 import com.apiculture.simulator.data.repository.HiveLast6DaysCharts;
 import com.apiculture.simulator.data.repository.HiveRepository;
+import com.apiculture.simulator.data.repository.TruckLiveTrips;
+import com.apiculture.simulator.data.repository.IberiaHexOverlayStore;
 import com.apiculture.simulator.data.repository.WeatherRepository;
 import com.apiculture.simulator.databinding.DialogSuperPurchaseBinding;
 import com.apiculture.simulator.databinding.FragmentHiveDetailBinding;
@@ -51,10 +60,16 @@ import com.apiculture.simulator.domain.game.Hemispheres;
 import com.apiculture.simulator.domain.game.IberianClimateZone;
 import com.apiculture.simulator.domain.game.SouthernAfricanClimateZone;
 import com.apiculture.simulator.domain.game.HiveCareRules;
-import com.apiculture.simulator.domain.game.HiveFeedType;
 import com.apiculture.simulator.domain.game.HiveFeedingBonuses;
 import com.apiculture.simulator.domain.game.HiveHoneyRules;
+import com.apiculture.simulator.domain.game.HiveHoneyStocks;
+import com.apiculture.simulator.domain.game.NpcContractCatalog;
+import com.apiculture.simulator.domain.game.TranshumanceRules;
+import com.apiculture.simulator.domain.game.TruckTripRules;
+import com.apiculture.simulator.domain.market.HoneyMarketEngine;
 import com.apiculture.simulator.domain.health.HiveHealthAlerts;
+import com.apiculture.simulator.domain.parcel.HexApiary;
+import com.apiculture.simulator.domain.parcel.HexParcel;
 import com.apiculture.simulator.domain.population.HivePopulationState;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -62,9 +77,16 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import com.apiculture.simulator.data.session.PlayerAuth;
+import com.apiculture.simulator.data.session.SignedInUser;
 
 public class HiveDetailFragment extends Fragment {
     private FragmentHiveDetailBinding binding;
@@ -74,6 +96,10 @@ public class HiveDetailFragment extends Fragment {
     private int weatherFetchSeq;
     private String lastChartsHiveId;
     private int lastChartsSummaryDayKey = Integer.MIN_VALUE;
+    private List<HiveEntity> yardHives = Collections.emptyList();
+    private HiveEntity lastBoundHive;
+    private final Handler tripHandler = new Handler(Looper.getMainLooper());
+    private final Runnable tripTick = this::refreshTravelBanner;
 
     @Nullable
     @Override
@@ -81,6 +107,13 @@ public class HiveDetailFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         binding = FragmentHiveDetailBinding.inflate(inflater, container, false);
         return binding.getRoot();
+    }
+
+    @Override
+    public void onDestroyView() {
+        tripHandler.removeCallbacks(tripTick);
+        binding = null;
+        super.onDestroyView();
     }
 
     @Override
@@ -98,14 +131,44 @@ public class HiveDetailFragment extends Fragment {
             return;
         }
 
-        hiveViewModel.hiveById(hiveId).observe(getViewLifecycleOwner(), hive -> {
+        binding.btnHivePrev.setOnClickListener(v -> stepYardHive(-1));
+        binding.btnHiveNext.setOnClickListener(v -> stepYardHive(1));
+
+        SignedInUser user = PlayerAuth.getInstance().getCurrentUser();
+        final String uid = user != null ? user.getUid() : "";
+        hiveViewModel.hives(uid).observe(getViewLifecycleOwner(), list -> {
+            yardHives = list != null ? list : Collections.emptyList();
+            bindYardNav(lastBoundHive);
+        });
+
+        TruckLiveTrips.observe(requireContext()).observe(getViewLifecycleOwner(), trips -> refreshTravelBanner());
+
+        hiveViewModel.setViewingHiveId(hiveId);
+        hiveViewModel.viewingHive().observe(getViewLifecycleOwner(), hive -> {
             if (hive == null) {
-                GameNotice.show(requireContext(), R.string.hive_not_found);
                 return;
             }
+            if (uid.isEmpty() || hive.ownerId == null || !uid.equals(hive.ownerId)) {
+                GameNotice.show(requireContext(), R.string.map_other_player_hive);
+                Navigation.findNavController(binding.getRoot()).popBackStack();
+                return;
+            }
+            if (!hive.id.equals(hiveId)) {
+                hiveId = hive.id;
+                weatherFetchSeq++;
+                lastChartsHiveId = null;
+                lastChartsSummaryDayKey = Integer.MIN_VALUE;
+                if (getArguments() != null) {
+                    getArguments().putString("hiveId", hiveId);
+                }
+                binding.getRoot().scrollTo(0, 0);
+            }
+            lastBoundHive = hive;
+            bindYardNav(hive);
+            bindPendingContractMove(hive);
 
             HivePopulationState pop = HivePopulationState.fromHiveEntityOrDefault(hive,
-                    com.apiculture.simulator.data.repository.HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
+                    HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
 
             // Cabecera
             binding.tvHiveName.setText(hive.name);
@@ -134,28 +197,20 @@ public class HiveDetailFragment extends Fragment {
                     getString(R.string.hive_detail_weather_icon_cd) + " (" + headerSky.emoji() + ")");
 
             String zoneLabel;
-            int shift;
             if (Hemispheres.isSouthern(hive.lat)) {
                 SouthernAfricanClimateZone za = SouthernAfricanClimateZone.forHive(
-                        hive.lat, hive.lng, elevForHeader);
-                zoneLabel = za.labelEs();
-                shift = za.bloomShiftDays();
+                        hive.lat, hive.lng,
+                        hive.elevationMeters >= 0 ? hive.elevationMeters : -1);
+                zoneLabel = za.label(requireContext());
             } else {
                 IberianClimateZone zone = IberianClimateZone.forHive(hive.lat, hive.lng, elevForHeader);
-                zoneLabel = zone.labelEs();
-                shift = zone.bloomShiftDays();
+                zoneLabel = zone.label(requireContext());
             }
             int year = GameCalendar.fromDayKey(productionDayKey).getYear();
             double vint = HexNectarRules.vintageFactor(hive.hexId, hive.floraType, year);
             int vintPct = (int) Math.round(vint * 100);
-            String shiftTxt = "";
-            if (shift < 0) {
-                shiftTxt = getString(R.string.hive_climate_bloom_early, -shift);
-            } else if (shift > 0) {
-                shiftTxt = getString(R.string.hive_climate_bloom_late, shift);
-            }
             binding.tvClimateLine.setText(getString(R.string.hive_climate_line,
-                    zoneLabel, HexNectarRules.vintageLabelEs(vint), vintPct, shiftTxt));
+                    zoneLabel, HexNectarRules.vintageLabel(requireContext(), vint), vintPct));
 
             LocalDate meanTempDay = GameCalendar.fromDayKey(productionDayKey).minusDays(1);
             boolean sameDayCharts = hive.id.equals(lastChartsHiveId)
@@ -214,14 +269,8 @@ public class HiveDetailFragment extends Fragment {
                     HiveCareRules.QUEEN_QUALITY_MAX));
             int todayKey = GameCalendar.toDayKey(LocalDate.now(GameCalendar.userTimeZone()));
             int feedLeft = HiveFeedingBonuses.feedingDaysRemaining(hive, todayKey);
-            if (feedLeft > 0) {
-                binding.tvFeedingBonusStatus.setVisibility(View.VISIBLE);
-                int pctOff = (int) Math.round((1.0 - HiveCareRules.FEED_CONSUMPTION_MULTIPLIER) * 100.0);
-                binding.tvFeedingBonusStatus.setText(
-                        getString(R.string.hive_feed_status_consumption, pctOff, feedLeft));
-            } else {
-                binding.tvFeedingBonusStatus.setVisibility(View.GONE);
-            }
+            binding.tvFeedingBonusStatus.setVisibility(View.GONE);
+            bindCareStatus(hive, feedLeft);
 
             int healthColor = healthBarColor(requireContext(), hive.health);
             binding.barHealth.setProgress(hive.health);
@@ -239,14 +288,10 @@ public class HiveDetailFragment extends Fragment {
             binding.tvHiveHeaderHealth.setTextColor(healthColor);
             binding.tvHiveHeaderVarroa.setText(HiveHealthAlerts.formatVarroaPct(hive));
             binding.tvHiveHeaderVarroa.setTextColor(varroaColor);
-            int superCount = Math.max(0, Math.min(2, hive.superCount));
-            binding.tvHiveHeaderSupers.setText(String.format(Locale.getDefault(), "%d", superCount));
+            binding.tvHiveHeaderSupers.setVisibility(View.GONE);
+            binding.btnBuySuperTop.setVisibility(View.GONE);
             binding.tvHiveName.setContentDescription(getString(R.string.hive_rename_title));
             binding.tvHiveName.setOnClickListener(v -> showRenameHiveDialog(hive));
-            boolean canBuySuper = superCount < 2;
-            binding.btnBuySuperTop.setEnabled(canBuySuper);
-            binding.btnBuySuperTop.setAlpha(canBuySuper ? 1f : 0.45f);
-            binding.btnBuySuperTop.setOnClickListener(v -> showBuySuperDialog(hive));
 
             binding.tvCompactLastEggs.setText(getString(R.string.hive_detail_compact_last_eggs,
                     popNf.format(pop.lastDayEggsLaid)));
@@ -299,12 +344,13 @@ public class HiveDetailFragment extends Fragment {
             } else {
                 binding.tvTreatStatus.setBackgroundColor(
                         ContextCompat.getColor(requireContext(), R.color.dash_soft_blue));
-                binding.tvTreatStatus.setText("Sin tratamiento antivarroa en curso");
+                binding.tvTreatStatus.setText(getString(R.string.hive_treat_none));
             }
 
-            List<HiveHealthAlerts.Tag> alertTags = HiveHealthAlerts.alertTags(hive, pop);
+            List<HiveHealthAlerts.Tag> alertTags = HiveHealthAlerts.alertTags(
+                    requireContext(), hive, pop, forage01(hive));
             if (alertTags.isEmpty()) {
-                binding.tvHealthAlerts.setText("Sin alertas");
+                binding.tvHealthAlerts.setText(getString(R.string.hive_alerts_none));
             } else {
                 StringBuilder sb = new StringBuilder();
                 for (int i = 0; i < alertTags.size(); i++) {
@@ -322,9 +368,11 @@ public class HiveDetailFragment extends Fragment {
                     : getString(R.string.hive_flora_unknown_label);
             setFloraHeroJar(HiveSiteSummaryUi.floraHoneyJarIcon(hive.floraType));
             binding.tvHoneyFloraTitle.setText(getString(R.string.hive_detail_miel_de, floraLabel));
+            bindForageBloom(hive);
+            binding.btnChangeForage.setOnClickListener(v -> showChangeForageDialog(hive));
+            bindHoneyPantry(hive);
             if (hive.elevationMeters >= 0) {
-                binding.tvElevationMeters.setText(String.format(Locale.getDefault(),
-                        "%,d m s.n.m.", hive.elevationMeters));
+                binding.tvElevationMeters.setText(getString(R.string.hive_elevation_meters, hive.elevationMeters));
             } else {
                 binding.tvElevationMeters.setText(R.string.hive_elevation_pending_meters);
             }
@@ -336,7 +384,7 @@ public class HiveDetailFragment extends Fragment {
             nf.setMinimumFractionDigits(1);
             nf.setMaximumFractionDigits(2);
             double stockKg = Math.max(0.0, hive.honeyProduction);
-            binding.tvHoneyStockInHive.setText("En colmena: " + nf.format(stockKg) + " kg");
+            binding.tvHoneyStockInHive.setText(getString(R.string.hive_honey_in_hive, nf.format(stockKg)));
 
             if (!sameDayCharts) {
             hiveViewModel.loadLast6DaysHiveCharts(hive.id, hive.ownerId, charts -> {
@@ -453,20 +501,26 @@ public class HiveDetailFragment extends Fragment {
             });
             }
 
-            Runnable doFeed = () -> showFeedHiveDialog(hive);
-            Runnable doTreat = () -> showTreatHiveDialog(hive);
-            Runnable doSplit = () -> hiveViewModel.splitHive(hive, msg -> {
-                if (!isAdded() || binding == null) {
-                    return;
-                }
-                if (msg != null) {
-                    GameNotice.show(requireContext(), msg);
-                } else {
-                    GameNotice.showSuccess(requireContext(), R.string.hive_split_ok);
-                }
-            });
-            Runnable doReplaceQueen = () -> showReplaceQueenDialog(hive);
-            Runnable doHarvest = () -> showHarvestHoneyDialog(hive);
+            Runnable doFeed = () -> {
+                // Capítulo 2. Alimentar.
+                TutorialBus.emit(
+                        TutorialEvent.CARE_FEED);
+                showFeedHiveDialog(hive);
+            };
+            Runnable doTreat = () -> {
+                // Capítulo 2. Tratar varroa.
+                TutorialBus.emit(
+                        TutorialEvent.CARE_TREAT);
+                showTreatHiveDialog(hive);
+            };
+            Runnable doSplit = () -> BuyHiveDialogs.showSplit(this, hiveViewModel, hive);
+            Runnable doReplaceQueen = () -> {
+                // Capítulo 2. Cambiar reina.
+                TutorialBus.emit(
+                        TutorialEvent.CARE_QUEEN);
+                showReplaceQueenDialog(hive);
+            };
+            Runnable doHarvest = () -> requireWarehouseThen(hive, () -> showHarvestHoneyDialog(hive));
 
             binding.btnFeed.setOnClickListener(v -> doFeed.run());
             binding.btnFeedTop.setOnClickListener(v -> doFeed.run());
@@ -484,6 +538,30 @@ public class HiveDetailFragment extends Fragment {
             bindQueenActionButtons(pop.needsQueenIntroduction());
             binding.btnHarvest.setOnClickListener(v -> doHarvest.run());
             binding.btnHarvestTop.setOnClickListener(v -> doHarvest.run());
+
+            int purchasePrice = HiveViewModel.hivePurchasePriceEuros(hive.superCount);
+            double sellPrice = 0.5 * purchasePrice;
+            binding.btnSellHive.setText(getString(R.string.hive_sell_button, sellPrice));
+            binding.btnSellHive.setOnClickListener(v -> {
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.hive_sell_title)
+                        .setMessage(getString(R.string.hive_sell_confirm_message, sellPrice))
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .setPositiveButton(R.string.hive_sell_confirm_positive, (dialog, which) -> {
+                            hiveViewModel.sellHive(hive, msg -> {
+                                if (!isAdded()) {
+                                    return;
+                                }
+                                if (msg == null) {
+                                    GameNotice.showSuccess(requireContext(), getString(R.string.hive_sold_ok, sellPrice));
+                                    Navigation.findNavController(requireView()).popBackStack();
+                                } else {
+                                    GameNotice.show(requireContext(), msg);
+                                }
+                            });
+                        })
+                        .show();
+            });
         });
     }
 
@@ -491,42 +569,47 @@ public class HiveDetailFragment extends Fragment {
         if (!isAdded()) {
             return;
         }
-        int owned = EventInventoryStore.feed(requireContext());
-        String[] items = new String[]{
-                getString(R.string.hive_feed_option_1_day_inv, owned),
-                getString(R.string.hive_feed_option_7_days_inv, owned)
-        };
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.hive_feed_title)
-                .setItems(items, (dialog, which) -> {
-                    HiveFeedType type = which == 1 ? HiveFeedType.DAYS_7 : HiveFeedType.DAYS_1;
-                    hiveViewModel.applyHiveFeeding(hive, type, msg -> handleCareResult(msg, R.string.hive_feed_ok));
-                })
-                .setNeutralButton(R.string.inventory_go_shop, (d, w) -> goShop())
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+        HiveCareDialogs.showFeed(this, hive, hiveViewModel, this::goShop);
     }
 
     private void showTreatHiveDialog(HiveEntity hive) {
         if (!isAdded()) {
             return;
         }
-        int owned = EventInventoryStore.treatments(requireContext());
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.hive_treat_title)
-                .setMessage(getString(R.string.hive_treat_message_inv, owned, HiveCareRules.TREAT_DAYS))
-                .setNegativeButton(android.R.string.cancel, null)
-                .setNeutralButton(R.string.inventory_go_shop, (d, w) -> goShop())
-                .setPositiveButton(R.string.hive_treat_confirm_inv,
-                        (d, w) -> hiveViewModel.treatDisease(hive,
-                                msg -> handleCareResult(msg, R.string.hive_treat_ok)))
-                .show();
+        HiveCareDialogs.showTreat(this, hive, hiveViewModel, this::goShop);
+    }
+
+    private void bindCareStatus(HiveEntity hive, int feedLeft) {
+        boolean treat = hive.varroaTreatmentDaysRemaining > 0;
+        boolean rebound = !treat && hive.varroaReboundDaysRemaining > 0;
+        boolean feed = feedLeft > 0;
+        binding.llHiveCareStatus.setVisibility(treat || rebound || feed ? View.VISIBLE : View.GONE);
+        binding.ivCareTreat.setVisibility(treat || rebound ? View.VISIBLE : View.GONE);
+        binding.tvCareTreat.setVisibility(treat || rebound ? View.VISIBLE : View.GONE);
+        if (treat) {
+            binding.ivCareTreat.setImageBitmap(
+                    IconBitmaps.decode(getResources(), R.drawable.ic_tratamiento, 128));
+            binding.tvCareTreat.setText(getString(R.string.hive_care_treat_chip,
+                    hive.varroaTreatmentDaysRemaining));
+        } else if (rebound) {
+            binding.ivCareTreat.setImageBitmap(
+                    IconBitmaps.decode(getResources(), R.drawable.ic_tratamiento, 128));
+            binding.tvCareTreat.setText(getString(R.string.hive_care_rebound_chip,
+                    hive.varroaReboundDaysRemaining));
+        }
+        binding.ivCareFeed.setVisibility(feed ? View.VISIBLE : View.GONE);
+        binding.tvCareFeed.setVisibility(feed ? View.VISIBLE : View.GONE);
+        if (feed) {
+            binding.ivCareFeed.setImageBitmap(
+                    IconBitmaps.decode(getResources(), R.drawable.ic_apialimento, 128));
+            binding.tvCareFeed.setText(getString(R.string.hive_care_feed_chip, feedLeft));
+        }
     }
 
     private void bindHiveAlertChips(@NonNull HiveEntity hive, @Nullable HivePopulationState pop) {
         ChipGroup group = binding.chipGroupHiveAlerts;
         group.removeAllViews();
-        List<HiveHealthAlerts.Tag> tags = HiveHealthAlerts.alertTags(hive, pop);
+        List<HiveHealthAlerts.Tag> tags = HiveHealthAlerts.alertTags(requireContext(), hive, pop, forage01(hive));
         if (tags.isEmpty()) {
             group.setVisibility(View.GONE);
             return;
@@ -568,30 +651,158 @@ public class HiveDetailFragment extends Fragment {
         binding.ivHiveHeaderQueen.setImageResource(R.drawable.ic_queen);
     }
 
+    private void bindForageBloom(HiveEntity hive) {
+        double n = forage01(hive);
+        int pct = (int) Math.round(Math.max(0.0, Math.min(1.0, n)) * 100.0);
+        if (pct < 20) {
+            binding.tvForageBloom.setText(getString(R.string.hive_forage_bloom_low, pct));
+            binding.tvForageBloom.setTextColor(ContextCompat.getColor(requireContext(), R.color.dash_warning));
+        } else {
+            binding.tvForageBloom.setText(getString(R.string.hive_forage_bloom_pct, pct));
+            binding.tvForageBloom.setTextColor(ContextCompat.getColor(requireContext(), R.color.dash_muted));
+        }
+    }
+
+    private static double forage01(HiveEntity hive) {
+        LocalDate day = LocalDate.now(GameCalendar.userTimeZone());
+        if (hive != null && hive.lastSummaryDayKey > 0) {
+            day = GameCalendar.fromDayKey(hive.lastSummaryDayKey);
+        }
+        return HexNectarRules.nectar01(hive, day, 1, java.util.Collections.emptyList());
+    }
+
+    private void bindHoneyPantry(HiveEntity hive) {
+        LinearLayout row = binding.llHoneyPantry;
+        row.removeAllViews();
+        HiveHoneyStocks.ensureSeeded(hive);
+        LinkedHashMap<String, Double> stocks = HiveHoneyStocks.parse(hive.honeyStocksJson);
+        LayoutInflater inflater = getLayoutInflater();
+        NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
+        nf.setMinimumFractionDigits(1);
+        nf.setMaximumFractionDigits(2);
+        if (stocks.isEmpty()) {
+            TextView empty = new TextView(requireContext());
+            empty.setText("—");
+            empty.setTextColor(ContextCompat.getColor(requireContext(), R.color.dash_muted));
+            empty.setTextSize(12);
+            row.addView(empty);
+            return;
+        }
+        for (Map.Entry<String, Double> e : stocks.entrySet()) {
+            View item = inflater.inflate(R.layout.item_hive_honey_type, row, false);
+            ImageView jar = item.findViewById(R.id.iv_honey_type_jar);
+            TextView name = item.findViewById(R.id.tv_honey_type_name);
+            TextView kg = item.findViewById(R.id.tv_honey_type_kg);
+            jar.setImageResource(HiveSiteSummaryUi.floraHoneyJarIcon(e.getKey()));
+            name.setText(e.getKey());
+            kg.setText(nf.format(e.getValue()) + " kg");
+            String flora = e.getKey();
+            item.setOnClickListener(v -> requireWarehouseThen(hive, () -> showHarvestHoneyDialog(hive, flora)));
+            row.addView(item);
+        }
+    }
+
+    private void showChangeForageDialog(HiveEntity hive) {
+        if (!isAdded() || hive == null || hive.hexId == null) {
+            return;
+        }
+        hiveViewModel.listReadyFlorasForHex(hive.hexId, floras -> {
+            if (!isAdded() || floras == null || floras.isEmpty()) {
+                GameNotice.show(requireContext(), R.string.hive_buy_no_flora_ready);
+                return;
+            }
+            String[] labels = floras.toArray(new String[0]);
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.hive_change_forage_title)
+                    .setItems(labels, (d, which) -> {
+                        String pick = floras.get(which);
+                        hiveViewModel.changeHiveForageFlora(hive.id, pick, msg -> {
+                            if (!isAdded()) {
+                                return;
+                            }
+                            if (msg == null) {
+                                hive.floraType = pick;
+                                GameNotice.showSuccess(requireContext(),
+                                        getString(R.string.hive_change_forage_ok, pick));
+                            } else {
+                                GameNotice.show(requireContext(), msg);
+                            }
+                        });
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+        });
+    }
+
+    private void requireWarehouseThen(@Nullable HiveEntity hive, @NonNull Runnable next) {
+        if (!isAdded() || hive == null) {
+            return;
+        }
+        HoneyLogistics.warehouseParcelNearAsync(requireContext(), hive.ownerId, hive, warehouse -> {
+            if (!isAdded()) {
+                return;
+            }
+            if (warehouse == null) {
+                WarehouseDialogs.showNeedWarehouse(this);
+                return;
+            }
+            next.run();
+        });
+    }
+
     private void showHarvestHoneyDialog(HiveEntity hive) {
         if (!isAdded() || hive == null) {
             return;
         }
-        double stock = Math.max(0.0, hive.honeyProduction);
+        HiveHoneyStocks.ensureSeeded(hive);
+        LinkedHashMap<String, Double> stocks = HiveHoneyStocks.parse(hive.honeyStocksJson);
+        if (stocks.isEmpty() || hive.honeyProduction <= 1e-9) {
+            GameNotice.show(requireContext(), R.string.hive_harvest_need_stock);
+            return;
+        }
+        if (stocks.size() == 1) {
+            showHarvestHoneyDialog(hive, stocks.keySet().iterator().next());
+            return;
+        }
+        ArrayList<String> keys = new ArrayList<>(stocks.keySet());
+        String[] rows = new String[keys.size()];
+        for (int i = 0; i < keys.size(); i++) {
+            String k = keys.get(i);
+            rows[i] = getString(R.string.hive_harvest_type_row, k, stocks.get(k));
+        }
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.hive_harvest_pick_type_title)
+                .setItems(rows, (d, which) -> showHarvestHoneyDialog(hive, keys.get(which)))
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showHarvestHoneyDialog(HiveEntity hive, String floraKey) {
+        if (!isAdded() || hive == null) {
+            return;
+        }
+        HiveHoneyStocks.ensureSeeded(hive);
+        String flora = HoneyMarketEngine.canonicalFloraKey(floraKey);
+        LinkedHashMap<String, Double> stocks = HiveHoneyStocks.parse(hive.honeyStocksJson);
+        double stock = stocks.getOrDefault(flora, 0.0);
         if (stock <= 1e-9) {
             GameNotice.show(requireContext(), R.string.hive_harvest_need_stock);
             return;
         }
-        double suggested = Math.max(0.0, stock - HiveHoneyRules.MIN_HIVE_STOCK_KG);
         EditText input = new EditText(requireContext());
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         input.setHint(R.string.hive_harvest_amount_hint);
         NumberFormat nf = NumberFormat.getNumberInstance(new Locale("es", "ES"));
         nf.setMaximumFractionDigits(2);
-        nf.setMinimumFractionDigits(suggested > 0 && suggested < 1 ? 2 : 1);
-        input.setText(nf.format(suggested > 1e-9 ? suggested : stock));
+        nf.setMinimumFractionDigits(stock > 0 && stock < 1 ? 2 : 1);
+        input.setText(nf.format(stock));
         input.setSelectAllOnFocus(true);
         int pad = (int) (20 * getResources().getDisplayMetrics().density);
         LinearLayout wrap = new LinearLayout(requireContext());
         wrap.setOrientation(LinearLayout.VERTICAL);
         wrap.setPadding(pad, pad / 2, pad, 0);
         TextView msg = new TextView(requireContext());
-        msg.setText(getString(R.string.hive_harvest_choose_message, stock, HiveHoneyRules.MIN_HIVE_STOCK_KG));
+        msg.setText(getString(R.string.hive_harvest_choose_message_type, flora, stock));
         wrap.addView(msg);
         wrap.addView(input);
         new MaterialAlertDialogBuilder(requireContext())
@@ -608,20 +819,60 @@ public class HiveDetailFragment extends Fragment {
                         GameNotice.show(requireContext(), getString(R.string.hive_harvest_too_much, stock));
                         return;
                     }
-                    double harvested = hiveViewModel.harvestHoney(hive, kg);
-                    if (harvested <= 0.0) {
-                        GameNotice.show(requireContext(), R.string.hive_harvest_need_stock);
-                        return;
-                    }
-                    String flora = hive.floraType != null && !hive.floraType.isEmpty()
-                            ? hive.floraType
-                            : "Mil flores";
-                    ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
-                    app.getEconomyRepository().addHoney(flora, harvested);
-                    GameNotice.showSuccess(requireContext(),
-                            getString(R.string.hive_harvest_ok_kg, harvested));
+                    java.util.Map<String, Double> cargo = new java.util.LinkedHashMap<>();
+                    cargo.put(flora, kg);
+                    HoneyLogistics.planCollectOptions(requireContext(), hive.ownerId, hive, cargo, options -> {
+                        if (!isAdded()) {
+                            return;
+                        }
+                        if (options == null || options.isEmpty()) {
+                            WarehouseDialogs.showNeedWarehouse(this);
+                            return;
+                        }
+                        if (options.get(0).warehouseFull) {
+                            GameNotice.show(requireContext(), R.string.harvest_warehouse_full);
+                            return;
+                        }
+                        if (options.get(0).noFleet) {
+                            GameNotice.show(requireContext(), R.string.harvest_no_truck);
+                            return;
+                        }
+                        HarvestCollectDialogs.showTrips(this, options, 0, 0, chosen -> {
+                            HoneyLogistics.CollectPreview pick = chosen.get(0);
+                            java.util.Map<String, Double> send = new java.util.LinkedHashMap<>(pick.cargo);
+                            dispatchHiveHarvest(hive, flora, pick.kg, send, pick.warehouse, pick.truckId);
+                        }, true);
+                    });
                 })
                 .show();
+    }
+
+    private void dispatchHiveHarvest(@NonNull HiveEntity hive, @NonNull String flora, double kg,
+            @NonNull java.util.Map<String, Double> cargo,
+            @Nullable com.apiculture.simulator.domain.parcel.HexParcel warehouse,
+            @Nullable String truckId) {
+        double harvested = hiveViewModel.harvestHoney(hive, flora, kg);
+        if (harvested <= 0.0) {
+            GameNotice.show(requireContext(), R.string.hive_harvest_need_stock);
+            return;
+        }
+        cargo.put(flora, harvested);
+        ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
+        HoneyLogistics.collectFromHive(
+                requireContext(), hive.ownerId, hive, cargo, app.getEconomyRepository(), warehouse, truckId, trip -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    if (trip == HoneyLogistics.Result.STARTED) {
+                        GameNotice.showSuccess(requireContext(),
+                                getString(R.string.hive_harvest_ok_truck, harvested));
+                    } else if (trip == HoneyLogistics.Result.NO_FLEET) {
+                        GameNotice.show(requireContext(), R.string.harvest_no_truck);
+                    } else {
+                        GameNotice.showSuccess(requireContext(),
+                                getString(R.string.hive_harvest_ok_kg, harvested));
+                    }
+                });
     }
 
     @Nullable
@@ -999,12 +1250,12 @@ public class HiveDetailFragment extends Fragment {
         }
     }
 
-    private void bindFloraMonthChart(HiveEntity hive, LocalDate monthDay) {
-        if (binding.floraMonthChart == null || hive == null || monthDay == null) {
+    private void bindFloraMonthChart(HiveEntity hive, LocalDate yearDay) {
+        if (binding.floraMonthChart == null || hive == null || yearDay == null) {
             return;
         }
-        LocalDate start = monthDay.withDayOfMonth(1);
-        int days = start.lengthOfMonth();
+        LocalDate start = yearDay.withDayOfYear(1);
+        int days = start.lengthOfYear();
         double[] nectars = new double[days];
         double sum = 0.0;
         double peak = 0.0;
@@ -1016,20 +1267,16 @@ public class HiveDetailFragment extends Fragment {
                 peak = nectars[i];
             }
         }
-        Locale es = new Locale("es", "ES");
-        String monthLabel = start.format(DateTimeFormatter.ofPattern("LLLL yyyy", es));
-        if (!monthLabel.isEmpty()) {
-            monthLabel = Character.toUpperCase(monthLabel.charAt(0)) + monthLabel.substring(1);
-        }
-        binding.tvFloraMonthTitle.setText(getString(R.string.hive_chart_flora_month_title, monthLabel));
+        binding.tvFloraMonthTitle.setText(getString(R.string.hive_chart_flora_year_title, start.getYear()));
         String floraLabel = hive.floraType != null && !hive.floraType.trim().isEmpty()
                 ? hive.floraType.trim()
                 : getString(R.string.hive_flora_unknown_label);
+        Locale es = new Locale("es", "ES");
         NumberFormat pctNf = NumberFormat.getPercentInstance(es);
         pctNf.setMaximumFractionDigits(0);
         binding.tvFloraMonthAvg.setText(getString(R.string.hive_chart_flora_month_avg,
                 floraLabel, pctNf.format(days > 0 ? sum / days : 0.0), pctNf.format(peak)));
-        binding.floraMonthChart.setSeries(nectars, monthDay.getDayOfMonth() - 1);
+        binding.floraMonthChart.setSeries(nectars, yearDay.getDayOfYear() - 1);
     }
 
     private void showRenameHiveDialog(HiveEntity hive) {
@@ -1082,8 +1329,8 @@ public class HiveDetailFragment extends Fragment {
                 hive.name != null ? hive.name : "",
                 current,
                 capKg));
-        f.rbSuperBuyOne.setText(getString(R.string.hive_super_purchase_one, price));
-        f.rbSuperBuyTwo.setText(getString(R.string.hive_super_purchase_two, price * 2));
+        f.rbSuperBuyOne.setText(getString(R.string.hive_super_purchase_one, (double) price));
+        f.rbSuperBuyTwo.setText(getString(R.string.hive_super_purchase_two, (double) (price * 2)));
         if (room < 2) {
             f.rbSuperBuyTwo.setVisibility(View.GONE);
             f.rbSuperBuyOne.setChecked(true);
@@ -1094,7 +1341,7 @@ public class HiveDetailFragment extends Fragment {
                 .setTitle(R.string.hive_super_purchase_title)
                 .setView(f.getRoot())
                 .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.hex_purchase_confirm_buy, null);
+                .setPositiveButton(R.string.hive_super_purchase_confirm, null);
         AlertDialog dialog = builder.create();
         dialog.setOnShowListener(di -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             int want = f.rbSuperBuyTwo.getVisibility() == View.VISIBLE && f.rbSuperBuyTwo.isChecked() ? 2 : 1;
@@ -1138,5 +1385,164 @@ public class HiveDetailFragment extends Fragment {
             return ContextCompat.getColor(ctx, R.color.dash_warning);
         }
         return ContextCompat.getColor(ctx, R.color.dash_bad);
+    }
+
+    private void stepYardHive(int direction) {
+        if (lastBoundHive == null) {
+            return;
+        }
+        List<HiveEntity> sibs = siblingsInYard(yardHives, lastBoundHive);
+        if (sibs.size() < 2) {
+            return;
+        }
+        int idx = indexOfHive(sibs, lastBoundHive.id);
+        if (idx < 0) {
+            return;
+        }
+        int n = sibs.size();
+        int next = (idx + direction % n + n) % n;
+        hiveViewModel.setViewingHiveId(sibs.get(next).id);
+    }
+
+    private void bindYardNav(@Nullable HiveEntity hive) {
+        if (binding == null) {
+            return;
+        }
+        List<HiveEntity> sibs = siblingsInYard(yardHives, hive);
+        boolean show = sibs.size() >= 2;
+        binding.btnHivePrev.setVisibility(show ? View.VISIBLE : View.GONE);
+        binding.btnHiveNext.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show && hive != null) {
+            int idx = indexOfHive(sibs, hive.id);
+            binding.tvHiveYardIndex.setVisibility(View.VISIBLE);
+            binding.tvHiveYardIndex.setText(getString(R.string.hive_detail_yard_index,
+                    Math.max(1, idx + 1), sibs.size()));
+        } else {
+            binding.tvHiveYardIndex.setVisibility(View.GONE);
+        }
+    }
+
+    private void refreshTravelBanner() {
+        bindPendingContractMove(lastBoundHive);
+    }
+
+    private void bindPendingContractMove(@Nullable HiveEntity hive) {
+        if (binding == null) {
+            return;
+        }
+        tripHandler.removeCallbacks(tripTick);
+        if (hive != null && hive.id != null) {
+            TruckTripEntity trip = TruckLiveTrips.get(requireContext(), hive.id);
+            if (trip != null && !TruckTripRules.wallClockDone(trip, System.currentTimeMillis())) {
+                String remain = TruckTripUi.remainingLabel(requireContext(), trip);
+                boolean homebound = TruckTripRules.isHeadingHome(trip, hive);
+                String line;
+                if (homebound) {
+                    line = getString(R.string.hive_trip_returning, remain);
+                } else {
+                    String dest = PendingContractMoveUi.destLabel(requireContext(), trip.destHexId);
+                    line = dest == null || dest.isEmpty()
+                            ? getString(R.string.hive_trip_detail, remain)
+                            : getString(R.string.hive_trip_detail_to, dest, remain);
+                }
+                binding.llHivePendingContract.setVisibility(View.VISIBLE);
+                binding.tvHivePendingContract.setText(line);
+                HexParcel destParcel = IberiaHexOverlayStore.findById(requireContext(), trip.destHexId);
+                boolean contractDest = !homebound && NpcContractCatalog.isNpcFarm(destParcel);
+                binding.btnHivePendingYard.setVisibility(contractDest ? View.VISIBLE : View.GONE);
+                binding.btnHivePendingYard.setOnClickListener(contractDest
+                        ? v -> openLiveTripYard(hive, trip.destHexId)
+                        : null);
+                binding.btnHiveTripCancel.setVisibility(homebound ? View.GONE : View.VISIBLE);
+                binding.btnHiveTripCancel.setOnClickListener(homebound
+                        ? null
+                        : v -> TruckTripUi.confirmCancelLiveTrip(requireContext(), hive.id,
+                                this::refreshTravelBanner));
+                tripHandler.postDelayed(tripTick, 1_000L);
+                return;
+            }
+        }
+        String line = PendingContractMoveUi.hiveDetail(requireContext(), hive);
+        if (line == null || line.isEmpty()) {
+            binding.llHivePendingContract.setVisibility(View.GONE);
+            binding.btnHivePendingYard.setOnClickListener(null);
+            binding.btnHiveTripCancel.setVisibility(View.GONE);
+            binding.btnHiveTripCancel.setOnClickListener(null);
+            return;
+        }
+        binding.llHivePendingContract.setVisibility(View.VISIBLE);
+        binding.tvHivePendingContract.setText(line);
+        binding.btnHivePendingYard.setVisibility(View.VISIBLE);
+        binding.btnHivePendingYard.setOnClickListener(v -> openPendingContractYard(hive));
+        binding.btnHiveTripCancel.setVisibility(View.GONE);
+        binding.btnHiveTripCancel.setOnClickListener(null);
+    }
+
+    private void openLiveTripYard(@Nullable HiveEntity hive, @Nullable String destHex) {
+        if (!isAdded() || destHex == null || destHex.isEmpty()) {
+            return;
+        }
+        HexParcel parcel = IberiaHexOverlayStore.findById(requireContext(), destHex);
+        String npc = NpcContractCatalog.npcNameFor(parcel);
+        String estate = PendingContractMoveUi.destLabel(requireContext(), destHex);
+        Bundle args = new Bundle();
+        args.putString("hexId", destHex);
+        args.putString("parcelName", estate);
+        args.putBoolean("contractYard", true);
+        args.putString("npcName", npc);
+        args.putInt("portraitIndex", NpcContractCatalog.portraitIndexFor(npc));
+        Navigation.findNavController(requireView()).navigate(R.id.action_hive_detail_to_apiary_yard, args);
+    }
+
+    private void openPendingContractYard(@Nullable HiveEntity hive) {
+        if (!isAdded() || hive == null || !TranshumanceRules.hasPendingContractMove(hive)) {
+            return;
+        }
+        String destHex = hive.pendingContractHexId;
+        HexParcel parcel = IberiaHexOverlayStore.findById(requireContext(), destHex);
+        String npc = NpcContractCatalog.npcNameFor(parcel);
+        String estate = PendingContractMoveUi.destLabel(requireContext(), destHex);
+        Bundle args = new Bundle();
+        args.putString("hexId", destHex);
+        args.putString("parcelName", estate);
+        args.putBoolean("contractYard", true);
+        args.putString("npcName", npc);
+        args.putInt("portraitIndex", NpcContractCatalog.portraitIndexFor(npc));
+        Navigation.findNavController(requireView()).navigate(R.id.action_hive_detail_to_apiary_yard, args);
+    }
+
+    private static List<HiveEntity> siblingsInYard(List<HiveEntity> all, @Nullable HiveEntity current) {
+        if (all == null || all.isEmpty() || current == null) {
+            return Collections.emptyList();
+        }
+        String yard = yardKey(current.hexId);
+        List<HiveEntity> out = new ArrayList<>();
+        for (HiveEntity h : all) {
+            if (h != null && yardKey(h.hexId).equals(yard)
+                    && HexApiary.sameSite(current.siteId, h.siteId)) {
+                out.add(h);
+            }
+        }
+        Collections.sort(out, Comparator
+                .comparing((HiveEntity h) -> h.name == null ? "" : h.name, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(h -> h.id));
+        return out;
+    }
+
+    private static int indexOfHive(List<HiveEntity> list, String hiveId) {
+        if (list == null || hiveId == null) {
+            return -1;
+        }
+        for (int i = 0; i < list.size(); i++) {
+            HiveEntity h = list.get(i);
+            if (h != null && hiveId.equals(h.id)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static String yardKey(@Nullable String hexId) {
+        return hexId == null ? "" : hexId;
     }
 }

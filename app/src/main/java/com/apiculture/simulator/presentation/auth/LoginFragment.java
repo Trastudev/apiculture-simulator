@@ -3,10 +3,11 @@ package com.apiculture.simulator.presentation.auth;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import com.apiculture.simulator.data.session.PlayerAuth;
+import com.apiculture.simulator.data.session.SignedInUser;
 import com.apiculture.simulator.presentation.common.GameNotice;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -19,13 +20,13 @@ import androidx.navigation.fragment.NavHostFragment;
 
 import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
+import com.apiculture.simulator.data.repository.LegalLinks;
+import com.apiculture.simulator.data.repository.ProfileRepository;
 import com.apiculture.simulator.databinding.FragmentLoginBinding;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.common.api.ApiException;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 
 public class LoginFragment extends Fragment {
 
@@ -37,9 +38,6 @@ public class LoginFragment extends Fragment {
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 googleSignInInFlight = false;
                 setGoogleBusy(false);
-                if (result.getResultCode() != Activity.RESULT_OK) {
-                    return;
-                }
                 try {
                     GoogleSignInAccount account = GoogleSignIn.getSignedInAccountFromIntent(result.getData())
                             .getResult(ApiException.class);
@@ -47,7 +45,7 @@ public class LoginFragment extends Fragment {
                         GameNotice.show(requireContext(), R.string.login_google_no_token);
                         return;
                     }
-                    viewModel.loginWithGoogleIdToken(account.getIdToken());
+                    viewModel.loginWithGoogle(account);
                 } catch (ApiException e) {
                     if (e.getStatusCode() == 12501) {
                         return;
@@ -84,9 +82,18 @@ public class LoginFragment extends Fragment {
             }
         });
 
-        binding.loginForm.btnLogin.setOnClickListener(v -> submit(false));
-        binding.loginForm.tvRegisterLink.setOnClickListener(v -> submit(true));
         binding.loginForm.btnGoogle.setOnClickListener(v -> startGoogleSignIn());
+        bindLegalLink(binding.loginForm.tvPrivacy, LegalLinks.privacyPolicyUrl());
+        bindLegalLink(binding.loginForm.tvDeleteAccountWeb, LegalLinks.accountDeletionUrl());
+    }
+
+    private void bindLegalLink(@NonNull android.widget.TextView view, @NonNull String url) {
+        if (url.isEmpty()) {
+            view.setVisibility(View.GONE);
+            return;
+        }
+        view.setVisibility(View.VISIBLE);
+        view.setOnClickListener(v -> LegalLinks.open(requireContext(), url));
     }
 
     private void startGoogleSignIn() {
@@ -112,29 +119,33 @@ public class LoginFragment extends Fragment {
 
     private void navigateAfterAuth() {
         ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
-        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        SignedInUser u = PlayerAuth.getInstance().getCurrentUser();
         if (u == null) {
             NavHostFragment.findNavController(LoginFragment.this).navigate(R.id.action_login_to_dashboard);
             return;
         }
-        app.getProfileRepository().fetchProfileComplete(u.getUid(), complete -> requireActivity().runOnUiThread(() -> {
-            if (Boolean.TRUE.equals(complete)) {
-                NavHostFragment.findNavController(LoginFragment.this).navigate(R.id.action_login_to_dashboard);
+        app.getProfileRepository().fetchProfileComplete(u.getUid(), gate -> requireActivity().runOnUiThread(() -> {
+            if (!isAdded()) {
+                return;
+            }
+            setGoogleBusy(false);
+            if (gate == ProfileRepository.PROFILE_UNAUTHORIZED) {
+                GameNotice.show(requireContext(), R.string.login_session_rejected);
+                return;
+            }
+            if (gate == ProfileRepository.PROFILE_OFFLINE) {
+                GameNotice.show(requireContext(), R.string.server_unavailable_title,
+                        getString(R.string.server_unavailable_message));
+                return;
+            }
+            if (gate == ProfileRepository.PROFILE_NEEDED) {
+                NavHostFragment.findNavController(LoginFragment.this)
+                        .navigate(R.id.action_login_to_profileSetup);
             } else {
-                NavHostFragment.findNavController(LoginFragment.this).navigate(R.id.action_login_to_profileSetup);
+                NavHostFragment.findNavController(LoginFragment.this)
+                        .navigate(R.id.action_login_to_dashboard);
             }
         }));
-    }
-
-    private void submit(boolean register) {
-        String email = binding.loginForm.etEmail.getText().toString().trim();
-        String password = binding.loginForm.etPassword.getText().toString().trim();
-        if (TextUtils.isEmpty(email) || TextUtils.isEmpty(password)) {
-            GameNotice.show(requireContext(), R.string.login_need_email_password);
-            return;
-        }
-        if (register) viewModel.register(email, password);
-        else viewModel.login(email, password);
     }
 
     @Override

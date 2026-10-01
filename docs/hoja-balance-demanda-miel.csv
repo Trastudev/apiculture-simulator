@@ -1,0 +1,25 @@
+Bloque,Parámetro,Clave JSON,Valor,Unidad,Fórmula o uso,Efecto al cambiar
+Jugadores,Multiplicador por nivel,levelDemandFactor,0.03,por nivel,1 + factor × min(nivel;100),Aumenta la demanda de jugadores de mayor nivel
+Jugadores,Tope de nivel,levelDemandCap,100,nivel,min(nivel;tope),Evita crecimiento infinito
+Jugadores,Actividad mínima,minActivityPerPlayerRegion,1,actividad,max(colmenas;mínimo),Una cuenta nueva sigue creando mercado
+Jugadores,Vigencia de actividad,activePlayerDays,30,días,updatedAt >= ahora - días,Excluye cuentas inactivas
+Cupo,Colmenas típicas de referencia,typicalHivesPerPlayer,6,actividad,Equivalencia para pruebas y fallback,Escala la demanda cuando no hay datos por región
+Cupo,Fracción de producción típica,typicalOutputFraction,0.40,0-1,Parte de la producción pico utilizada,Cambia el cupo y el objetivo de rotación
+Cupo,Absorción de clientes,customerAbsorptionFraction,0.75,0-1,Fracción absorbida a precio neutro,0.50 reduce la demanda; 1.00 la aumenta
+Cupo,Reserva de capacidad,capacityDaysBuffer,20,días,Multiplica el cupo regional,Valores bajos pueden volver a fragmentar el mercado
+Cupo,Multiplicador extra,capacityExtraMultiplier,2.0,veces,max(1; buffer × extra = 40),Actualmente hace el cupo 40 veces el objetivo antes del suelo
+Cupo,Suelo por miel,minFloraDemandVsTop,0.35,0-1,max(suelo;cuota/máxCuota),Impide que una miel rarísima tenga peso cero
+Rotación,Producción pico,game_balance.honey,6.937812,kg/día/colmena,adultos × recolectoras × kg × impulsos,Línea base derivada de la biología
+Rotación,Objetivo de rotación,interno,demanda/40,kg/día,max(1; actividad × pico × 0.40 × 0.75 × peso),Determina el precio neutro
+Precio,Respuesta de oferta,supplyPriceSpan,0.25,0-1,precio = base × [1 + span × (1 - limitar(vendido/objetivo;0;2))],Un valor mayor produce cambios de precio mayores
+Estacionalidad,Invierno,demandWinter,1.12,multiplicador,Demanda más alta en invierno,Modifica cupo y rotación
+Estacionalidad,Otoño,demandAutumn,1.06,multiplicador,Demanda ligeramente alta,Modifica cupo y rotación
+Estacionalidad,Primavera,demandSpring,0.93,multiplicador,Demanda ligeramente baja,Modifica cupo y rotación
+Estacionalidad,Verano,demandSummer,0.87,multiplicador,Demanda baja,Modifica cupo y rotación
+Ruido,Mínimo diario,dailyNoiseMin,0.90,multiplicador,mínimo + hash × (máximo - mínimo),Determina el menor ruido diario
+Ruido,Máximo diario,dailyNoiseMax,1.10,multiplicador,mínimo + hash × (máximo - mínimo),Determina el mayor ruido diario
+Competencia,Peso población,competitionPopulationWeight,0.60,peso,Puntuación ponderada del mercado,Prioriza capitales o pueblos por tamaño
+Competencia,Peso miel,competitionFloraWeight,0.40,peso,Puntuación ponderada de la miel,Prioriza la miel por popularidad regional
+Competencia,Penalización máxima,competitionPricePenaltyMax,0.10,precio,precio × (1 - penalización),Un valor mayor reduce más el precio en mercados competidos
+Competencia,Prima local mínima,localMarkupMin,0.15,precio,Marca baja para pueblo grande,Reduce el premio de pueblos grandes
+Competencia,Prima local máxima,localMarkupMax,0.20,precio,Marca alta para pueblo pequeño,Aumenta el premio de pueblos pequeños

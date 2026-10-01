@@ -1,47 +1,42 @@
 package com.apiculture.simulator.domain.game;
 
 /**
- * XP por acciones de apicultor. La venta de miel y el paso de día no dan XP.
+ * XP por acciones de apicultor. Cosechar, alimentar, varroa, terreno y el día no dan XP.
+ * La miel vendida da 0,2 XP por cada 0,2 kg (menos de 0,2 kg = 0).
  */
 public final class XpAwards {
 
-    public static final int XP_PER_HARVEST_KG = 8;
-    public static final int BUY_HIVE_BASE = 40;
-    public static final int BUY_HIVE_PER_SUPER = 10;
-    public static final int BUY_TERRAIN_BASE = 80;
-    public static final int BUY_TERRAIN_PER_1000_PREMIUM = 10;
-    public static final int PLANT_FLORA_BASE = 50;
-    public static final int PLANT_FLORA_PER_SLOT = 15;
-    public static final int BUY_SUPER = 15;
-    public static final int TRANSHUMANCE = 25;
-    public static final int FEED = 10;
+    public static final double HONEY_STEP_KG = 0.2;
+    public static final double HONEY_STEP_XP = 0.2;
+    public static final double BUY_HIVE = 2.0;
+    public static final double PLACE_APIARY = 15.0;
+    public static final double BUY_WAREHOUSE = 10.0;
+    public static final double PLANT_FLORA = 10.0;
+    public static final double TRANSHUMANCE_PER_HIVE = 4.0;
+    public static final double REPLACE_QUEEN = 4.0;
+    public static final double ORDER_FLAT = 2.0;
 
     private XpAwards() {
     }
 
-    public static int harvest(double kg) {
-        if (kg <= 1e-6) {
-            return 0;
+    /** 0,2 XP por cada 0,2 kg completos; por debajo de 0,2 kg no hay XP. */
+    public static double honeySold(double kg) {
+        if (kg + 1e-9 < HONEY_STEP_KG) {
+            return 0.0;
         }
-        return Math.max(XP_PER_HARVEST_KG, (int) Math.round(kg * XP_PER_HARVEST_KG));
+        int chunks = (int) Math.floor((kg + 1e-9) / HONEY_STEP_KG);
+        return chunks * HONEY_STEP_XP;
     }
 
-    public static int buyHive(int superCount) {
-        int s = Math.max(0, Math.min(2, superCount));
-        return BUY_HIVE_BASE + BUY_HIVE_PER_SUPER * s;
+    public static double marketSold(double kg) {
+        return honeySold(kg);
     }
 
-    public static int buyTerrain(int totalPriceEuros) {
-        int premiumThousands = Math.max(0, (totalPriceEuros - 1000) / 1000);
-        return BUY_TERRAIN_BASE + BUY_TERRAIN_PER_1000_PREMIUM * premiumThousands;
+    public static double orderDelivered(double kg) {
+        return ORDER_FLAT + honeySold(kg);
     }
 
-    /** {@code florasAlreadyOnHex} = tipos presentes justo antes de sembrar. */
-    public static int plantFlora(int florasAlreadyOnHex) {
-        return PLANT_FLORA_BASE + PLANT_FLORA_PER_SLOT * Math.max(0, florasAlreadyOnHex);
-    }
-
-    public static int buySupers(int count) {
-        return BUY_SUPER * Math.max(0, count);
+    public static double transhumance(int hiveCount) {
+        return TRANSHUMANCE_PER_HIVE * Math.max(0, hiveCount);
     }
 }

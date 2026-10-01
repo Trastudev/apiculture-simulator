@@ -10,6 +10,8 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
 import com.google.firebase.firestore.Transaction;
 
+import org.json.JSONObject;
+
 import java.text.Normalizer;
 import java.util.HashMap;
 import java.util.Locale;
@@ -41,43 +43,67 @@ public class ProfileRepository {
         io.shutdown();
     }
 
-    /** Si no hay Firestore o falla la lectura, se asume perfil completo para no bloquear el juego. */
-    public void fetchProfileComplete(@Nullable String uid, @NonNull Consumer<Boolean> callback) {
-        if (firestore == null || uid == null || uid.isEmpty()) {
-            callback.accept(true);
+    public static final int PROFILE_READY = 1;
+    /** No hay ficha, o la hay pero falta marca y nombre. */
+    public static final int PROFILE_NEEDED = 0;
+    /** El servidor no respondió: no se puede saber si el perfil existe. */
+    public static final int PROFILE_OFFLINE = -1;
+    /** El servidor respondió, pero no acepta el token de Google. */
+    public static final int PROFILE_UNAUTHORIZED = -2;
+
+    /**
+     * {@link #PROFILE_READY} si el perfil está completo, {@link #PROFILE_NEEDED} solo con 404
+     * o ficha incompleta, {@link #PROFILE_OFFLINE} si la red falla.
+     */
+    public void fetchProfileComplete(@Nullable String uid, @NonNull Consumer<Integer> callback) {
+        if (!GameServer.enabled() || uid == null || uid.isEmpty()) {
+            callback.accept(PROFILE_READY);
             return;
         }
         io.execute(() -> {
             try {
-                DocumentSnapshot doc = Tasks.await(
-                        firestore.collection(USERS).document(uid).get());
-                Boolean c = doc != null && doc.exists() ? doc.getBoolean("profileComplete") : null;
-                boolean done = Boolean.TRUE.equals(c);
-                runOnMain(callback, done);
+                GameServer.PlayerLoad load = GameServer.loadPlayerStatus(uid);
+                if (load.status == 404) {
+                    runOnMain(callback, PROFILE_NEEDED);
+                    return;
+                }
+                if (load.status == 401 || load.status == 403) {
+                    runOnMain(callback, PROFILE_UNAUTHORIZED);
+                    return;
+                }
+                if (load.status == 0 || load.status >= 500 || load.body == null) {
+                    runOnMain(callback, PROFILE_OFFLINE);
+                    return;
+                }
+                boolean done = load.body.optBoolean("profileComplete", false);
+                runOnMain(callback, done ? PROFILE_READY : PROFILE_NEEDED);
             } catch (Exception e) {
-                runOnMain(callback, true);
+                runOnMain(callback, PROFILE_OFFLINE);
             }
         });
     }
 
     public void fetchDisplayProfile(@Nullable String uid, @NonNull Consumer<ProfileDisplay> callback) {
-        if (firestore == null || uid == null || uid.isEmpty()) {
+        if (!GameServer.enabled() || uid == null || uid.isEmpty()) {
             callback.accept(ProfileDisplay.empty());
             return;
         }
         io.execute(() -> {
             try {
-                DocumentSnapshot doc = Tasks.await(
-                        firestore.collection(USERS).document(uid).get());
-                if (doc == null || !doc.exists()) {
+                JSONObject doc = GameServer.loadPlayer(uid);
+                if (doc == null) {
+                    doc = GameServer.loadPlayerCard(uid);
+                }
+                if (doc == null) {
                     runOnMain(callback, ProfileDisplay.empty());
                     return;
                 }
-                String name = doc.getString("playerName");
-                String brand = doc.getString("honeyBrand");
+                JSONObject photoStore = GameServer.loadStore(uid, "photo");
+                String photo = photoStore != null ? photoStore.optString("photoBase64", "") : "";
                 runOnMain(callback, new ProfileDisplay(
-                        name != null ? name : "",
-                        brand != null ? brand : ""));
+                        doc.optString("playerName", ""),
+                        doc.optString("honeyBrand", ""),
+                        photo));
             } catch (Exception e) {
                 runOnMain(callback, ProfileDisplay.empty());
             }
@@ -86,8 +112,8 @@ public class ProfileRepository {
 
     public void saveProfile(@NonNull String uid, @NonNull String honeyBrandRaw, @NonNull String playerNameRaw,
             @NonNull Runnable onSuccess, @NonNull Consumer<String> onError) {
-        if (firestore == null) {
-            onError.accept("Sin conexión a la nube.");
+        if (!GameServer.enabled()) {
+            onError.accept("Sin conexión al servidor.");
             return;
         }
         String honeyBrand = honeyBrandRaw.trim();
@@ -103,48 +129,33 @@ public class ProfileRepository {
             return;
         }
 
-        DocumentReference userRef = firestore.collection(USERS).document(uid);
-        DocumentReference brandRef = firestore.collection(UNIQUE_BRANDS).document(brandKey);
-        DocumentReference nameRef = firestore.collection(UNIQUE_NAMES).document(nameKey);
-
         io.execute(() -> {
+            int brand = GameServer.claimUnique("brand", brandKey, uid);
+            if (brand == 403) {
+                runOnMain(() -> onError.accept(ERR_BRAND_TAKEN));
+                return;
+            }
+            int name = GameServer.claimUnique("name", nameKey, uid);
+            if (name == 403) {
+                runOnMain(() -> onError.accept(ERR_NAME_TAKEN));
+                return;
+            }
+            if (brand / 100 != 2 || name / 100 != 2) {
+                runOnMain(() -> onError.accept("SAVE_FAIL"));
+                return;
+            }
             try {
-                Tasks.await(firestore.runTransaction((Transaction transaction) -> {
-                    DocumentSnapshot bSnap = transaction.get(brandRef);
-                    if (bSnap.exists()) {
-                        String ou = bSnap.getString("ownerUid");
-                        if (ou != null && !ou.equals(uid)) {
-                            throw new RuntimeException(ERR_BRAND_TAKEN);
-                        }
-                    }
-                    DocumentSnapshot nSnap = transaction.get(nameRef);
-                    if (nSnap.exists()) {
-                        String ou = nSnap.getString("ownerUid");
-                        if (ou != null && !ou.equals(uid)) {
-                            throw new RuntimeException(ERR_NAME_TAKEN);
-                        }
-                    }
-                    Map<String, Object> u = new HashMap<>();
-                    u.put("honeyBrand", honeyBrand);
-                    u.put("playerName", playerName);
-                    u.put("profileComplete", true);
-                    transaction.set(userRef, u, SetOptions.merge());
-                    Map<String, Object> claim = new HashMap<>();
-                    claim.put("ownerUid", uid);
-                    transaction.set(brandRef, claim);
-                    transaction.set(nameRef, claim);
-                    return null;
-                }));
+                JSONObject body = new JSONObject();
+                body.put("honeyBrand", honeyBrand);
+                body.put("playerName", playerName);
+                body.put("profileComplete", true);
+                if (!GameServer.savePlayer(uid, body)) {
+                    runOnMain(() -> onError.accept("SAVE_FAIL"));
+                    return;
+                }
                 runOnMain(onSuccess);
             } catch (Exception e) {
-                String code = findCode(e);
-                if (ERR_BRAND_TAKEN.equals(code)) {
-                    runOnMain(() -> onError.accept(ERR_BRAND_TAKEN));
-                } else if (ERR_NAME_TAKEN.equals(code)) {
-                    runOnMain(() -> onError.accept(ERR_NAME_TAKEN));
-                } else {
-                    runOnMain(() -> onError.accept(e.getMessage() != null ? e.getMessage() : "SAVE_FAIL"));
-                }
+                runOnMain(() -> onError.accept(e.getMessage() != null ? e.getMessage() : "SAVE_FAIL"));
             }
         });
     }
@@ -154,7 +165,7 @@ public class ProfileRepository {
         main.post(r);
     }
 
-    private void runOnMain(@NonNull Consumer<Boolean> c, boolean v) {
+    private void runOnMain(@NonNull Consumer<Integer> c, int v) {
         runOnMain(() -> c.accept(v));
     }
 
@@ -193,17 +204,179 @@ public class ProfileRepository {
         return n;
     }
 
+    public void updatePlayerName(
+            @NonNull String uid,
+            @NonNull String playerNameRaw,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError) {
+        if (!GameServer.enabled()) {
+            onError.accept("Sin conexión al servidor.");
+            return;
+        }
+        String playerName = playerNameRaw.trim();
+        if (playerName.length() < 2) {
+            onError.accept("SHORT");
+            return;
+        }
+        String nameKey = docIdForLookup(playerName);
+        if (nameKey.isEmpty()) {
+            onError.accept("INVALID");
+            return;
+        }
+        io.execute(() -> {
+            try {
+                JSONObject current = GameServer.loadPlayer(uid);
+                String oldName = current != null ? current.optString("playerName", "") : "";
+                String oldKey = docIdForLookup(oldName);
+                if (!nameKey.equals(oldKey)) {
+                    int claimed = GameServer.claimUnique("name", nameKey, uid);
+                    if (claimed == 403) {
+                        runOnMain(() -> onError.accept(ERR_NAME_TAKEN));
+                        return;
+                    }
+                    if (claimed / 100 != 2) {
+                        runOnMain(() -> onError.accept("SAVE_FAIL"));
+                        return;
+                    }
+                    if (!oldKey.isEmpty()) {
+                        GameServer.deletePath("/unique-names/" + oldKeyPath(oldKey));
+                    }
+                }
+                JSONObject body = new JSONObject();
+                body.put("playerName", playerName);
+                if (!GameServer.savePlayer(uid, body)) {
+                    runOnMain(() -> onError.accept("SAVE_FAIL"));
+                    return;
+                }
+                runOnMain(onSuccess);
+            } catch (Exception e) {
+                runOnMain(() -> onError.accept(e.getMessage() != null ? e.getMessage() : "SAVE_FAIL"));
+            }
+        });
+    }
+
+    public void saveGameLocale(
+            @NonNull String uid,
+            @NonNull String tag,
+            @NonNull Runnable onSuccess,
+            @NonNull Runnable onError) {
+        if (!GameServer.enabled()) {
+            onError.run();
+            return;
+        }
+        io.execute(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("gameLocale", tag);
+                if (!GameServer.savePlayer(uid, body)) {
+                    runOnMain(onError);
+                    return;
+                }
+                runOnMain(onSuccess);
+            } catch (Exception e) {
+                runOnMain(onError);
+            }
+        });
+    }
+
+    public void savePhotoBase64(
+            @NonNull String uid,
+            @NonNull String photoBase64,
+            @NonNull Runnable onSuccess,
+            @NonNull Consumer<String> onError) {
+        if (!GameServer.enabled()) {
+            onError.accept("Sin conexión al servidor.");
+            return;
+        }
+        io.execute(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("photoBase64", photoBase64);
+                GameServer.saveStore(uid, "photo", body);
+                runOnMain(onSuccess);
+            } catch (Exception e) {
+                runOnMain(() -> onError.accept(e.getMessage() != null ? e.getMessage() : "SAVE_FAIL"));
+            }
+        });
+    }
+
+    @NonNull
+    private static String oldKeyPath(@NonNull String key) {
+        String id = "name_" + key;
+        if (id.length() > 200) {
+            id = id.substring(0, 200);
+        }
+        try {
+            return java.net.URLEncoder.encode(id, "UTF-8");
+        } catch (Exception e) {
+            return id;
+        }
+    }
+
     public static final class ProfileDisplay {
         public final String playerName;
         public final String honeyBrand;
+        public final String photoBase64;
 
         public ProfileDisplay(String playerName, String honeyBrand) {
+            this(playerName, honeyBrand, "");
+        }
+
+        public ProfileDisplay(String playerName, String honeyBrand, String photoBase64) {
             this.playerName = playerName;
             this.honeyBrand = honeyBrand;
+            this.photoBase64 = photoBase64 != null ? photoBase64 : "";
         }
 
         public static ProfileDisplay empty() {
-            return new ProfileDisplay("", "");
+            return new ProfileDisplay("", "", "");
         }
+    }
+
+    public static final class PlayerOption {
+        public final String uid;
+        public final String playerName;
+        public final String honeyBrand;
+
+        public PlayerOption(String uid, String playerName, String honeyBrand) {
+            this.uid = uid != null ? uid : "";
+            this.playerName = playerName != null ? playerName : "";
+            this.honeyBrand = honeyBrand != null ? honeyBrand : "";
+        }
+
+        public String label() {
+            String name = playerName.isEmpty() ? "Sin nombre" : playerName;
+            if (honeyBrand.isEmpty()) {
+                return name;
+            }
+            return name + " · " + honeyBrand;
+        }
+    }
+
+    public void listPlayers(@NonNull Consumer<java.util.List<PlayerOption>> callback) {
+        if (!GameServer.enabled()) {
+            callback.accept(java.util.Collections.emptyList());
+            return;
+        }
+        io.execute(() -> {
+            java.util.List<PlayerOption> out = new java.util.ArrayList<>();
+            try {
+                org.json.JSONArray snap = GameServer.fetchArray("/players");
+                if (snap != null) {
+                    for (int i = 0; i < snap.length(); i++) {
+                        JSONObject d = snap.optJSONObject(i);
+                        if (d == null) {
+                            continue;
+                        }
+                        out.add(new PlayerOption(d.optString("id", ""),
+                                d.optString("playerName", ""),
+                                d.optString("honeyBrand", "")));
+                    }
+                }
+                out.sort((a, b) -> a.label().compareToIgnoreCase(b.label()));
+            } catch (Exception ignored) {
+            }
+            runOnMain(() -> callback.accept(out));
+        });
     }
 }

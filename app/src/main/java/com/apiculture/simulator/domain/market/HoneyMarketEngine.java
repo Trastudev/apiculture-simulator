@@ -1,41 +1,51 @@
 package com.apiculture.simulator.domain.market;
 
-import com.apiculture.simulator.domain.game.ColonyGameRules;
-import com.apiculture.simulator.domain.game.HiveDailyBiology;
+import androidx.annotation.NonNull;
+
+import com.apiculture.simulator.domain.game.ClimateUnlock;
+import com.apiculture.simulator.domain.game.GameBalanceConfig;
+import com.apiculture.simulator.domain.game.GameCalendar;
 import com.apiculture.simulator.domain.game.HoneyDailyProduction;
+import com.apiculture.simulator.domain.game.IberianClimateZone;
 import com.apiculture.simulator.domain.game.Season;
+import com.apiculture.simulator.domain.game.MadagascarClimateZone;
+import com.apiculture.simulator.domain.game.SouthernAfricanClimateZone;
+import com.apiculture.simulator.domain.map.PlayableMapRegion;
+import com.apiculture.simulator.domain.parcel.CropUnlock;
 import com.apiculture.simulator.domain.parcel.HexFlora;
 
+import java.time.LocalDate;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Mercado global: los clientes crecen con el número de jugadores reales.
- * Cada jugador representa un bolsillo de demanda local (apiario típico);
- * a más jugadores, más kg se pueden absorber antes de que baje el precio.
- * El precio de temporada se modula ±25 % según la oferta vendida ese día.
+ * Mercado por territorio. La actividad regional suma colmenas × multiplicador de nivel.
+ * Cada tipo tiene un cupo regional amplio y un objetivo de rotación más pequeño para el precio.
+ * El precio del día se fija con las ventas del objetivo del día UTC anterior.
  */
 public final class HoneyMarketEngine {
 
-    public static final double MIN_PRICE_EUR_PER_KG = 8.0;
-    /** Tope del recargo/descuento por oferta respecto al precio de temporada. */
-    public static final double SUPPLY_PRICE_SPAN = 0.25;
+    public static final double MIN_PRICE_EUR_PER_KG = 12.0;
+    /** Precio base (neutro) de la miel más cara, antes del ±25 % de mercado. */
+    public static final double MAX_PRICE_EUR_PER_KG = 18.0;
+    /** Tope configurado del recargo/descuento por oferta. */
+    public static double supplyPriceSpan() {
+        return Math.max(0.0, GameBalanceConfig.honeyMarketSupplyPriceSpan);
+    }
 
-    /**
-     * Apiario medio por jugador (no el potencial del mapa entero).
-     * La demanda diaria de clientes ≈ esta producción típica.
-     */
-    public static final int TYPICAL_HIVES_PER_PLAYER = 6;
-    /** Las colmenas reales no están siempre en pico de mielada. */
-    public static final double TYPICAL_OUTPUT_FRACTION = 0.40;
-    /** Fracción de esa producción que los clientes locales absorberían a precio neutro. */
-    public static final double CUSTOMER_ABSORPTION_FRACTION = 0.75;
-    /** Días de producción típica que el mercado de cada tipo absorbe a precio neutro. */
-    public static final double MARKET_DAYS_BUFFER = 10.0;
-    /** Un tipo raro no baja de este % del bolsillo del tipo más demandado. */
-    public static final double MIN_FLORA_DEMAND_VS_TOP = 0.35;
+    private static final Object ACCESS_LOCK = new Object();
+    private static volatile boolean accessCacheReady;
+    private static int cachedMaxAccessLevel = 1;
+    private static final Map<String, Integer> ACCESS_BY_FLORA = new LinkedHashMap<>();
+    private static final Map<String, Double> BASE_PRICE_BY_FLORA = new LinkedHashMap<>();
+    private static final Map<String, Double> DEMAND_SHARES = buildDemandShares();
 
     private HoneyMarketEngine() {
+    }
+
+    public static int typicalHivesPerPlayer() {
+        return Math.max(1, GameBalanceConfig.honeyMarketTypicalHivesPerPlayer);
     }
 
     public static HoneyMarketSnapshot computeSnapshot(int dayKey, int dayOfYear) {
@@ -44,21 +54,25 @@ public final class HoneyMarketEngine {
 
     public static HoneyMarketSnapshot computeSnapshot(int dayKey, int dayOfYear, int playerCount) {
         int players = Math.max(1, playerCount);
-        Season season = Season.fromDayOfYear(dayOfYear);
-        double peakKg = Math.max(1.0, HiveDailyBiology.maxChartDailyKgForAdults(
-                ColonyGameRules.MAX_ADULT_WORKERS_PER_HIVE));
-        double pocketKg = TYPICAL_HIVES_PER_PLAYER
-                * peakKg
-                * TYPICAL_OUTPUT_FRACTION
-                * CUSTOMER_ABSORPTION_FRACTION
-                * MARKET_DAYS_BUFFER;
+        return computeSnapshot(dayKey, dayOfYear, PlayableMapRegion.IBERIA,
+                (double) players * typicalHivesPerPlayer(), players);
+    }
 
+    public static HoneyMarketSnapshot computeSnapshot(int dayKey, int dayOfYear,
+            @NonNull PlayableMapRegion region, int activityUnits, int playerCount) {
+        return computeSnapshot(dayKey, dayOfYear, region, (double) activityUnits, playerCount);
+    }
+
+    public static HoneyMarketSnapshot computeSnapshot(int dayKey, int dayOfYear,
+            @NonNull PlayableMapRegion region, double activityUnits, int playerCount) {
+        int players = Math.max(1, playerCount);
+        double activity = Math.max(1.0, activityUnits);
+        Season season = TerritorialMarketRules.seasonFor(dayOfYear, region);
         double demandSeason = demandSeasonFactor(season);
         double noise = dailyNoiseMultiplier(dayKey);
-
         double priceTension = clamp01(priceSeasonTension01(season) * noise);
 
-        Map<String, Double> shares = demandSharesByFlora();
+        Map<String, Double> shares = TerritorialMarketRules.demandShares(region);
         double maxShare = 0.0;
         for (double sh : shares.values()) {
             maxShare = Math.max(maxShare, sh);
@@ -68,42 +82,49 @@ public final class HoneyMarketEngine {
         }
 
         Map<String, Double> demandByFlora = new LinkedHashMap<>();
+        Map<String, Double> turnoverByFlora = new LinkedHashMap<>();
         double totalDemandKg = 0.0;
         for (String flora : HexFlora.FLORA_TYPES) {
-            double sh = shares.getOrDefault(flora, 0.0);
-            double relative = Math.max(MIN_FLORA_DEMAND_VS_TOP, sh / maxShare);
-            double kg = Math.max(1.0, players * pocketKg * relative * demandSeason * noise);
-            kg = round2(kg);
-            demandByFlora.put(flora, kg);
+            String k = canonicalFloraKey(flora);
+            double sh = shares.getOrDefault(k, 0.0);
+            double relative = Math.max(
+                    Math.max(0.0, GameBalanceConfig.honeyMarketMinFloraDemandVsTop),
+                    sh / maxShare);
+            double capacity = activity
+                    * HoneyMarketDemandRules.capacityKgPerActivityUnit(relative)
+                    * demandSeason * noise;
+            double turnover = activity
+                    * HoneyMarketDemandRules.turnoverKgPerActivityUnit(relative)
+                    * demandSeason * noise;
+            double kg = round2(Math.max(1.0, capacity));
+            double target = round2(Math.max(1.0, turnover));
+            demandByFlora.put(k, kg);
+            turnoverByFlora.put(k, target);
             totalDemandKg += kg;
         }
 
-        Map<String, Double> ceilings = priceCeilingsEurPerKg();
         Map<String, Double> prices = new LinkedHashMap<>();
         for (String flora : HexFlora.FLORA_TYPES) {
-            double maxType = ceilings.getOrDefault(flora, 15.50);
-            maxType = Math.max(maxType, MIN_PRICE_EUR_PER_KG + 0.01);
-            double p = MIN_PRICE_EUR_PER_KG + (maxType - MIN_PRICE_EUR_PER_KG) * priceTension;
-            prices.put(flora, round2(p));
+            prices.put(flora, priceCeilingEurPerKgForFlora(flora));
         }
 
         return new HoneyMarketSnapshot(
                 dayKey, round2(totalDemandKg), demandSeason, noise, priceTension,
-                demandByFlora, prices, players);
+                demandByFlora, turnoverByFlora, prices, players, activity);
     }
 
     /** Modula la demanda base: &gt;1 en frío, &lt;1 en primavera–verano. */
     public static double demandSeasonFactor(Season season) {
         switch (season) {
             case WINTER:
-                return 1.12;
+                return GameBalanceConfig.honeyMarketDemandWinter;
             case AUTUMN:
-                return 1.06;
+                return GameBalanceConfig.honeyMarketDemandAutumn;
             case SPRING:
-                return 0.93;
+                return GameBalanceConfig.honeyMarketDemandSpring;
             case SUMMER:
             default:
-                return 0.87;
+                return GameBalanceConfig.honeyMarketDemandSummer;
         }
     }
 
@@ -125,11 +146,124 @@ public final class HoneyMarketEngine {
     /** Ruido diario determinista ~ ±10% respecto a 1. */
     public static double dailyNoiseMultiplier(int dayKey) {
         double u = HoneyDailyProduction.deterministicUniform01("globalHoneyMarketNoise", dayKey);
-        return 0.90 + u * 0.20;
+        double min = Math.max(0.0, GameBalanceConfig.honeyMarketDailyNoiseMin);
+        double max = Math.max(min, GameBalanceConfig.honeyMarketDailyNoiseMax);
+        return min + u * (max - min);
     }
 
     public static String canonicalFloraKey(String floraType) {
         return HexFlora.canonicalKey(floraType);
+    }
+
+    /**
+     * Precio publicado ese día: base de temporada de {@code daySnap} × oferta/demanda
+     * del día anterior ({@code previousDaySnap} + kg vendidos ayer).
+     */
+    public static double postedDailyPriceEurPerKg(
+            String floraType,
+            HoneyMarketSnapshot daySnap,
+            HoneyMarketSnapshot previousDaySnap,
+            double previousDaySoldKg) {
+        String k = canonicalFloraKey(floraType);
+        double base = 12.0;
+        if (daySnap != null) {
+            base = daySnap.priceForFloraOrDefault(k, 12.0);
+        }
+        double turnoverTargetPrev = 0.0;
+        if (previousDaySnap != null) {
+            turnoverTargetPrev = previousDaySnap.turnoverTargetForFloraOrDefault(k, 0.0);
+        }
+        return priceEurPerKgFromSupply(k, turnoverTargetPrev, previousDaySoldKg, base);
+    }
+
+    /**
+     * Serie de 7 días (el último es hoy UTC): cada punto usa la venta del día anterior.
+     *
+     * @param soldKgByDay kg vendidos ese {@code dayKey} para este tipo; ausencia = 0.
+     */
+    public static double[] last7PostedPricesEurPerKg(
+            String floraType,
+            int todayKey,
+            int playerCount,
+            Map<Integer, Double> soldKgByDay) {
+        String k = canonicalFloraKey(floraType);
+        Map<Integer, Map<String, Double>> nested = new LinkedHashMap<>();
+        if (soldKgByDay != null) {
+            for (Map.Entry<Integer, Double> e : soldKgByDay.entrySet()) {
+                if (e.getKey() == null || e.getValue() == null) {
+                    continue;
+                }
+                Map<String, Double> one = new LinkedHashMap<>();
+                one.put(k, e.getValue());
+                nested.put(e.getKey(), one);
+            }
+        }
+        Map<String, double[]> all = last7PostedPricesByFlora(todayKey, playerCount, nested);
+        double[] series = all.get(k);
+        return series != null ? series : new double[7];
+    }
+
+    /**
+     * Un cálculo para todas las mieles: 8 snapshots (hoy y 7 días atrás) reutilizados.
+     */
+    public static Map<String, double[]> last7PostedPricesByFlora(
+            int todayKey,
+            int playerCount,
+            Map<Integer, Map<String, Double>> soldKgByDayAndFlora) {
+        int players = Math.max(1, playerCount);
+        return last7PostedPricesByFlora(todayKey, PlayableMapRegion.IBERIA,
+                (double) players * typicalHivesPerPlayer(), players, soldKgByDayAndFlora);
+    }
+
+    public static Map<String, double[]> last7PostedPricesByFlora(
+            int todayKey,
+            @NonNull PlayableMapRegion region,
+            int activityUnits,
+            int playerCount,
+            Map<Integer, Map<String, Double>> soldKgByDayAndFlora) {
+        return last7PostedPricesByFlora(todayKey, region,
+                (double) activityUnits, playerCount, soldKgByDayAndFlora);
+    }
+
+    public static Map<String, double[]> last7PostedPricesByFlora(
+            int todayKey,
+            @NonNull PlayableMapRegion region,
+            double activityUnits,
+            int playerCount,
+            Map<Integer, Map<String, Double>> soldKgByDayAndFlora) {
+        int players = Math.max(1, playerCount);
+        double activity = Math.max(1.0, activityUnits);
+        LocalDate today = GameCalendar.fromDayKey(todayKey);
+        Map<Integer, HoneyMarketSnapshot> snaps = new LinkedHashMap<>();
+        for (int i = 0; i <= 7; i++) {
+            LocalDate d = today.minusDays(i);
+            int key = GameCalendar.toDayKey(d);
+            snaps.put(key, computeSnapshot(key, d.getDayOfYear(), region, activity, players));
+        }
+        Map<Integer, Map<String, Double>> sold =
+                soldKgByDayAndFlora != null ? soldKgByDayAndFlora : Collections.emptyMap();
+        Map<String, double[]> out = new LinkedHashMap<>();
+        for (String flora : HexFlora.FLORA_TYPES) {
+            String k = canonicalFloraKey(flora);
+            double[] series = new double[7];
+            for (int i = 0; i < 7; i++) {
+                LocalDate day = today.minusDays(6 - i);
+                LocalDate prev = day.minusDays(1);
+                int prevKey = GameCalendar.toDayKey(prev);
+                double soldPrev = 0.0;
+                Map<String, Double> daySold = sold.get(prevKey);
+                if (daySold != null) {
+                    soldPrev = daySold.getOrDefault(k, 0.0);
+                }
+                series[i] = postedDailyPriceEurPerKg(
+                        k,
+                        snaps.get(GameCalendar.toDayKey(day)),
+                        snaps.get(prevKey),
+                        soldPrev);
+            }
+            out.put(k, series);
+        }
+        return out;
     }
 
     /**
@@ -138,11 +272,11 @@ public final class HoneyMarketEngine {
      */
     public static double supplyPriceMultiplier(double demandKg, double soldKg) {
         if (demandKg <= 1e-6) {
-            return 1.0 + SUPPLY_PRICE_SPAN;
+            return 1.0 + supplyPriceSpan();
         }
         double ratio = soldKg / demandKg;
         double clamped = Math.max(0.0, Math.min(2.0, ratio));
-        return 1.0 + SUPPLY_PRICE_SPAN * (1.0 - clamped);
+        return 1.0 + supplyPriceSpan() * (1.0 - clamped);
     }
 
     public static int supplyPriceAdjustmentPercent(double demandKg, double soldKg) {
@@ -150,7 +284,7 @@ public final class HoneyMarketEngine {
     }
 
     /**
-     * Precio de temporada × multiplicador por oferta (tope {@link #SUPPLY_PRICE_SPAN}).
+     * Precio de temporada × multiplicador por oferta (tope configurable).
      */
     public static double priceEurPerKgFromSupply(
             String floraType, double demandKg, double soldKg, double seasonalBaseEurPerKg) {
@@ -170,7 +304,7 @@ public final class HoneyMarketEngine {
                 floraType, demandKg, soldKgGlobally, priceCeilingEurPerKgForFlora(floraType));
     }
 
-    private static Map<String, Double> demandSharesByFlora() {
+    private static Map<String, Double> buildDemandShares() {
         Map<String, Double> m = new LinkedHashMap<>();
         m.put("Mil flores", 0.14);
         m.put("Campo de naranjos", 0.08);
@@ -184,6 +318,11 @@ public final class HoneyMarketEngine {
         m.put("Mielato de encina y roble", 0.04);
         m.put("Campo de girasoles", 0.03);
         m.put("Campo de Colza", 0.03);
+        m.put("Campo de lavanda", 0.02);
+        m.put("Campo de mostaza", 0.015);
+        m.put("Campo de trébol", 0.02);
+        m.put("Campo de facelia", 0.015);
+        m.put("Campo de rabaniza", 0.015);
         m.put("Arboç", 0.03);
         m.put("Campo de manzanos", 0.025);
         m.put("Campo de cerezos", 0.025);
@@ -196,43 +335,103 @@ public final class HoneyMarketEngine {
         m.put("Litchi", 0.025);
         m.put("Lucerna", 0.02);
         m.put("Acacia", 0.02);
-        return m;
+        m.put("Buchu", 0.02);
+        m.put("Protea", 0.025);
+        m.put("Boekenhout", 0.015);
+        m.put("Aguacate", 0.025);
+        m.put("Marula", 0.02);
+        return Collections.unmodifiableMap(m);
     }
 
-    /** Techo €/kg de cada tipo (precio de temporada alto). */
+    /** Precio base €/kg: 12 en la miel más accesible, 18 en la de mayor nivel. */
     public static double priceCeilingEurPerKgForFlora(String floraType) {
+        ensureAccessCache();
         String k = canonicalFloraKey(floraType);
-        double c = priceCeilingsEurPerKg().getOrDefault(k, 15.50);
-        return Math.max(c, MIN_PRICE_EUR_PER_KG + 0.01);
+        Double p = BASE_PRICE_BY_FLORA.get(k);
+        return p != null ? p : MIN_PRICE_EUR_PER_KG;
     }
 
-    private static Map<String, Double> priceCeilingsEurPerKg() {
-        Map<String, Double> m = new LinkedHashMap<>();
-        m.put("Neret", 16.20);
-        m.put("Arboç", 16.12);
-        m.put("Fynbos", 16.25);
-        m.put("Litchi", 16.10);
-        m.put("Macadamia", 15.98);
-        m.put("Mielato de encina y roble", 16.08);
-        m.put("Lavanda", 16.00);
-        m.put("Romero", 15.96);
-        m.put("Tomillo", 15.93);
-        m.put("Campo de naranjos", 15.91);
-        m.put("Castaño", 15.90);
-        m.put("Bosque", 15.89);
-        m.put("Mil flores", 15.62);
-        m.put("Eucalipto", 15.55);
-        m.put("Aloe", 15.70);
-        m.put("Acacia", 15.50);
-        m.put("Lucerna", 15.42);
-        m.put("Brezo", 15.52);
-        m.put("Campo de girasoles", 15.46);
-        m.put("Campo de Colza", 15.43);
-        m.put("Campo de manzanos", 15.40);
-        m.put("Campo de cerezos", 15.38);
-        m.put("Campo de perales", 15.35);
-        m.put("Campo de almendros", 15.33);
-        return m;
+    /**
+     * Nivel mínimo para obtener esa miel: cultivo del catálogo o el clima más temprano
+     * donde aparece en silvestre.
+     */
+    public static int accessLevelForFlora(String floraType) {
+        ensureAccessCache();
+        String k = canonicalFloraKey(floraType);
+        Integer lvl = ACCESS_BY_FLORA.get(k);
+        return lvl != null ? lvl : 0;
+    }
+
+    /** Si el jugador ya puede producir / vender esa miel por nivel. */
+    public static boolean playerCanAccessFlora(String floraType, int playerLevel) {
+        return Math.max(0, playerLevel) >= accessLevelForFlora(floraType);
+    }
+
+    private static void ensureAccessCache() {
+        if (accessCacheReady) {
+            return;
+        }
+        synchronized (ACCESS_LOCK) {
+            if (accessCacheReady) {
+                return;
+            }
+            int max = 1;
+            ACCESS_BY_FLORA.clear();
+            BASE_PRICE_BY_FLORA.clear();
+            for (String flora : HexFlora.FLORA_TYPES) {
+                String k = canonicalFloraKey(flora);
+                int lvl = computeAccessLevelUncached(k);
+                ACCESS_BY_FLORA.put(k, lvl);
+                max = Math.max(max, lvl);
+            }
+            cachedMaxAccessLevel = Math.max(1, max);
+            for (String flora : HexFlora.FLORA_TYPES) {
+                String k = canonicalFloraKey(flora);
+                int lvl = ACCESS_BY_FLORA.getOrDefault(k, 0);
+                double t = Math.min(1.0, lvl / (double) cachedMaxAccessLevel);
+                BASE_PRICE_BY_FLORA.put(k,
+                        round2(MIN_PRICE_EUR_PER_KG + (MAX_PRICE_EUR_PER_KG - MIN_PRICE_EUR_PER_KG) * t));
+            }
+            accessCacheReady = true;
+        }
+    }
+
+    private static int computeAccessLevelUncached(String canonicalKey) {
+        if (canonicalKey == null || canonicalKey.isEmpty()) {
+            return 0;
+        }
+        int min = Integer.MAX_VALUE;
+        if (HexFlora.isPlantation(canonicalKey)) {
+            min = Math.min(min, Math.max(0, CropUnlock.requiredLevel(canonicalKey)));
+        }
+        for (IberianClimateZone zone : IberianClimateZone.values()) {
+            if (nativeContains(HexFlora.nativePoolForZone(zone), canonicalKey)) {
+                min = Math.min(min, ClimateUnlock.minLevel(zone));
+            }
+        }
+        for (SouthernAfricanClimateZone zone : SouthernAfricanClimateZone.values()) {
+            if (nativeContains(HexFlora.nativePoolForZone(zone), canonicalKey)) {
+                min = Math.min(min, ClimateUnlock.minLevel(zone));
+            }
+        }
+        for (MadagascarClimateZone zone : MadagascarClimateZone.values()) {
+            if (nativeContains(HexFlora.nativePoolForZone(zone), canonicalKey)) {
+                min = Math.min(min, ClimateUnlock.minLevel(zone));
+            }
+        }
+        return min == Integer.MAX_VALUE ? 0 : min;
+    }
+
+    private static boolean nativeContains(java.util.List<String> pool, String canonical) {
+        if (pool == null) {
+            return false;
+        }
+        for (String s : pool) {
+            if (canonical.equals(canonicalFloraKey(s))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static double clamp01(double x) {

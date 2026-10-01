@@ -7,5 +7,7 @@
     <dimen name="dash_header_padding_v">10dp</dimen>
     <dimen name="dash_header_brand_text">16sp</dimen>
     <dimen name="dash_section_spacing">10dp</dimen>
+    <!-- Unas seis filas de viaje; el resto se desplaza dentro de la tarjeta. -->
+    <dimen name="dash_trips_viewport">560dp</dimen>
     <dimen name="dash_content_padding_h">12dp</dimen>
 </resources>

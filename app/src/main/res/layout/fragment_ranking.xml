@@ -17,8 +17,8 @@
         android:paddingBottom="8dp">
 
         <ImageView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
             android:contentDescription="@string/cd_app_logo"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_logo" />
@@ -79,6 +79,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/ranking_region_za" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_region_mdg"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ranking_region_mdg" />
         </com.google.android.material.chip.ChipGroup>
     </HorizontalScrollView>
 
@@ -118,6 +125,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/ranking_tab_hives" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_orders"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ranking_tab_orders" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chip_bees"

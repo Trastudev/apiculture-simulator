@@ -4,6 +4,8 @@ import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
+import com.google.firebase.firestore.Exclude;
+
 @Entity(tableName = "hives")
 public class HiveEntity {
     @PrimaryKey
@@ -26,11 +28,18 @@ public class HiveEntity {
      */
     public String hexId;
     /**
+     * Apiario dentro del hex ({@link com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity#siteId}).
+     * Vacío en legado: se infiere por el pin más cercano y se rellena al guardar.
+     */
+    public String siteId;
+    /**
      * Altitud (m s.n.m.) en las coordenadas de la colmena, obtenida con Open-Meteo al crear o tras transhumancia.
      * {@code -1} = pendiente (legado o error); la producción diaria la rellena con API o {@link com.apiculture.simulator.data.remote.OpenMeteoElevation#FALLBACK_METERS}.
      */
     public int elevationMeters = -1;
     public String floraType;
+    /** JSON de kg por tipo de flora en la colmena; {@link #honeyProduction} es el total. */
+    public String honeyStocksJson;
     /** Alzas de ampliación (0–2): limitan el máximo de miel almacenable en colmena. */
     public int superCount;
     /** JSON {@link com.apiculture.simulator.domain.population.HivePopulationState}; null en datos antiguos hasta primera sincronización. */
@@ -43,6 +52,11 @@ public class HiveEntity {
     public int varroaReboundDaysRemaining;
     /** Último {@code dayKey} aplicado por {@link com.apiculture.simulator.domain.health.HiveDailyHealthSimulator}. */
     public int lastHealthSimDayKey;
+    /**
+     * Primer {@code dayKey} en el que esta colmena puede producir (día siguiente a la compra).
+     * {@code 0} = legado, sin restricción.
+     */
+    public int firstProductionDayKey;
     /**
      * Resumen del último tick diario aplicado a esta colmena ({@code dayKey} del calendario del juego).
      * Salud/varroa: diferencia respecto al inicio del día. {@link #lastSummaryDeltaBees}: solo emergencias.
@@ -69,4 +83,31 @@ public class HiveEntity {
     public double feedBroodBonusMultiplier = 1.0;
     /** Primer {@code dayKey} en el que la colmena ya está instalada tras transhumancia (0 = no viaja). */
     public int transhumanceArrivesDayKey = 0;
+    /** Destino de transhumancia a finca de contrato, pendiente del cálculo diario. */
+    public String pendingContractHexId;
+    public int pendingContractDayKey;
+    /** Convenio de polinización activo; null si no está en una finca NPC. */
+    public String contractId;
+    public String contractOriginHexId;
+    public String contractOriginFlora;
+    public double contractOriginLat;
+    public double contractOriginLng;
+    /**
+     * Colmena en el almacén del terreno principal: no sale en mapa ni en el apiario.
+     */
+    public boolean inWarehouse;
+    /** Comprada para un contrato: al liquidar pasa al almacén en vez de volver al origen. */
+    public boolean returnToWarehouse;
+
+    /** Calculado; no persistir (Firestore lo interpretaría como campo {@code onYard}). */
+    @Exclude
+    public boolean isOnYard() {
+        return !inWarehouse;
+    }
+
+    /** Convenio real. El texto "null" llega de JSON y no cuenta. */
+    @Exclude
+    public boolean linkedToContract() {
+        return contractId != null && !contractId.isEmpty() && !"null".equals(contractId);
+    }
 }

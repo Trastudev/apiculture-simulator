@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.apiculture.simulator.presentation.tutorial.TutorialOverlay xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:elevation="24dp"
+    android:visibility="gone">
+
+    <com.apiculture.simulator.presentation.tutorial.TutorialScrimView
+        android:id="@+id/tutorial_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/tutorial_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="76dp"
+        android:background="@drawable/bg_tutorial_card"
+        android:elevation="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
+
+        <ImageView
+            android:id="@+id/tutorial_portrait"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/tutorial_speaker"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_apicultor" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tutorial_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tutorial_speaker"
+                android:textColor="@color/event_gold_dark"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tutorial_body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxLines="12"
+                android:textColor="@color/dash_text_card"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:id="@+id/tutorial_weather"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:contentDescription="@string/tutorial_weather_clear"
+                    android:src="@drawable/ic_weather_sun" />
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_marginStart="10dp"
+                    android:contentDescription="@string/tutorial_weather_cloud"
+                    android:src="@drawable/ic_weather_cloud" />
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_marginStart="10dp"
+                    android:contentDescription="@string/tutorial_weather_rain"
+                    android:src="@drawable/ic_weather_rain" />
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_marginStart="10dp"
+                    android:contentDescription="@string/tutorial_weather_wind"
+                    android:src="@drawable/ic_weather_wind" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="end|center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/tutorial_skip"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="40dp"
+                    android:text="@string/tutorial_skip"
+                    android:textAllCaps="false"
+                    android:textColor="@color/dash_muted" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/tutorial_next"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:minHeight="40dp"
+                    android:text="@string/tutorial_next"
+                    android:textAllCaps="false"
+                    app:backgroundTint="@color/login_primary_orange" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</com.apiculture.simulator.presentation.tutorial.TutorialOverlay>

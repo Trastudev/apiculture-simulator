@@ -20,4 +20,10 @@ public class HexParcelFloraEntity {
 
     /** Cuando {@code System.currentTimeMillis() >= readyAtEpochMs}, la flora está disponible. */
     public long readyAtEpochMs;
+
+    /** Día civil (yyyymmdd) en que se retira un cultivo anual. 0 = no caduca. */
+    public int expireAtDayKey;
+
+    /** Último año de calendario en que se pagó el mantenimiento del árbol. 0 = nunca. */
+    public int lastMaintainedYear;
 }

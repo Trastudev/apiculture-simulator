@@ -11,6 +11,8 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
 
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -71,24 +73,38 @@ public final class EventInventoryStore {
         }
     }
 
-    public static void addTreatments(Context ctx, int n) {
+    public static boolean addTreatments(Context ctx, int n) {
         if (n <= 0) {
-            return;
+            return false;
         }
-        prefs(ctx).edit().putInt(KEY_TREAT, treatments(ctx) + n).apply();
+        int next = treatments(ctx) + n;
+        if (!confirm(ctx, next, feed(ctx), queens(ctx))) {
+            return false;
+        }
+        prefs(ctx).edit().putInt(KEY_TREAT, next).apply();
+        return true;
     }
 
-    public static void addFeed(Context ctx, int n) {
+    public static boolean addFeed(Context ctx, int n) {
         if (n <= 0) {
-            return;
+            return false;
         }
-        prefs(ctx).edit().putInt(KEY_FEED, feed(ctx) + n).apply();
+        int next = feed(ctx) + n;
+        if (!confirm(ctx, treatments(ctx), next, queens(ctx))) {
+            return false;
+        }
+        prefs(ctx).edit().putInt(KEY_FEED, next).apply();
+        return true;
     }
 
-    public static void addQueen(Context ctx, int quality) {
+    public static boolean addQueen(Context ctx, int quality) {
         List<Integer> list = queens(ctx);
         list.add(QueenInventoryCodec.clamp(quality));
+        if (!confirm(ctx, treatments(ctx), feed(ctx), list)) {
+            return false;
+        }
         saveQueens(ctx, list);
+        return true;
     }
 
     public static boolean tryConsumeTreatment(Context ctx) {
@@ -143,7 +159,13 @@ public final class EventInventoryStore {
     }
 
     public static void persistCloud(@Nullable FirebaseFirestore firestore, @Nullable String uid, Context ctx) {
-        if (firestore == null || uid == null || uid.isEmpty() || ctx == null) {
+        if (uid == null || uid.isEmpty() || ctx == null) {
+            return;
+        }
+        if (GameServer.enabled()) {
+            persistToServer(uid, ctx);
+        }
+        if (firestore == null) {
             return;
         }
         Map<String, Object> m = new HashMap<>();
@@ -153,6 +175,76 @@ public final class EventInventoryStore {
         m.put("invQueensJson", QueenInventoryCodec.toJson(qs));
         m.put("invQueens100", qs.size());
         firestore.collection("users").document(uid).set(m, SetOptions.merge());
+    }
+
+    public static boolean persistToServer(@Nullable String uid, @Nullable Context ctx) {
+        if (uid == null || uid.isEmpty() || ctx == null || !GameServer.enabled()) {
+            return !GameServer.enabled();
+        }
+        if (android.os.Looper.getMainLooper().isCurrentThread()) {
+            return false;
+        }
+        try {
+            JSONObject body = new JSONObject();
+            body.put("invTreatments", treatments(ctx));
+            body.put("invFeed", feed(ctx));
+            List<Integer> qs = queens(ctx);
+            body.put("invQueensJson", QueenInventoryCodec.toJson(qs));
+            body.put("invQueens100", qs.size());
+            return GameServer.saveStore(uid, "inventory", body);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static boolean confirm(Context ctx, int treatments, int feed, List<Integer> queens) {
+        if (!GameServer.enabled()) {
+            return true;
+        }
+        if (android.os.Looper.getMainLooper().isCurrentThread()) {
+            return false;
+        }
+        com.apiculture.simulator.data.session.SignedInUser user =
+                com.apiculture.simulator.data.session.PlayerAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            return false;
+        }
+        try {
+            JSONObject body = new JSONObject();
+            body.put("invTreatments", treatments);
+            body.put("invFeed", feed);
+            body.put("invQueensJson", QueenInventoryCodec.toJson(queens));
+            body.put("invQueens100", queens.size());
+            return GameServer.saveStore(user.getUid(), "inventory", body);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    public static void applyFromServer(@Nullable JSONObject body, Context ctx) {
+        if (body == null || ctx == null) {
+            return;
+        }
+        int t = Math.max(0, body.optInt("invTreatments", 0));
+        int f = Math.max(0, body.optInt("invFeed", 0));
+        prefs(ctx).edit()
+                .putInt(KEY_TREAT, Math.max(treatments(ctx), t))
+                .putInt(KEY_FEED, Math.max(feed(ctx), f))
+                .apply();
+        String cloudJson = body.optString("invQueensJson", "");
+        List<Integer> local = queens(ctx);
+        List<Integer> cloud = QueenInventoryCodec.parse(cloudJson);
+        if (cloud.isEmpty()) {
+            int legacyCloud = Math.max(0, body.optInt("invQueens100", 0));
+            if (legacyCloud > local.size()) {
+                saveQueens(ctx, QueenInventoryCodec.fromLegacyCount(
+                        legacyCloud, DemandSurgeMilestones.QUEEN_QUALITY));
+            }
+            return;
+        }
+        if (cloud.size() > local.size()) {
+            saveQueens(ctx, cloud);
+        }
     }
 
     public static void applyFromCloudIfHigher(@Nullable DocumentSnapshot snap, Context ctx) {

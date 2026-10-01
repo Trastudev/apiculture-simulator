@@ -13,14 +13,16 @@ import com.apiculture.simulator.domain.game.DailyWeather;
 import com.apiculture.simulator.domain.game.GameCalendar;
 import com.apiculture.simulator.domain.game.HexNectarRules;
 import com.apiculture.simulator.domain.game.IberianClimateZone;
+import com.apiculture.simulator.domain.game.MadagascarClimateZone;
 import com.apiculture.simulator.domain.game.SouthernAfricanClimateZone;
+import com.apiculture.simulator.domain.parcel.HexFlora;
 import com.apiculture.simulator.domain.map.PlayableMapRegion;
 import com.apiculture.simulator.domain.parcel.HexParcel;
 
 import java.time.LocalDate;
 
 /**
- * Paisaje del apiario: clima ibérico o sudafricano, independiente del tiempo (sol, nubes, lluvia).
+ * Paisaje del apiario: clima ibérico, sudafricano o de Madagascar.
  */
 public enum YardClimate {
     ATLANTIC,
@@ -32,7 +34,45 @@ public enum YardClimate {
     KAROO,
     HIGHVELD,
     SUBTROPICAL,
-    BUSHVELD;
+    BUSHVELD,
+    MDG_EQUATORIAL,
+    MDG_HIGHLANDS,
+    MDG_TROPICAL,
+    MDG_DESERT;
+
+    public String label(Context context) {
+        switch (this) {
+            case ATLANTIC:
+                return context.getString(R.string.map_climate_atlantic);
+            case MOUNTAIN:
+                return context.getString(R.string.map_climate_mountain);
+            case MEDITERRANEAN:
+                return context.getString(R.string.map_climate_mediterranean);
+            case SOUTH:
+                return context.getString(R.string.map_climate_south);
+            case FYNBOS:
+                return context.getString(R.string.map_climate_fynbos);
+            case KAROO:
+                return context.getString(R.string.map_climate_karoo);
+            case HIGHVELD:
+                return context.getString(R.string.map_climate_highveld);
+            case SUBTROPICAL:
+                return context.getString(R.string.map_climate_subtropical);
+            case BUSHVELD:
+                return context.getString(R.string.map_climate_bushveld);
+            case MDG_EQUATORIAL:
+                return context.getString(R.string.map_climate_mdg_equatorial);
+            case MDG_HIGHLANDS:
+                return context.getString(R.string.map_climate_mdg_highlands);
+            case MDG_TROPICAL:
+                return context.getString(R.string.map_climate_mdg_tropical);
+            case MDG_DESERT:
+                return context.getString(R.string.map_climate_mdg_desert);
+            case CONTINENTAL:
+            default:
+                return context.getString(R.string.map_climate_continental);
+        }
+    }
 
     public String labelEs() {
         switch (this) {
@@ -54,6 +94,14 @@ public enum YardClimate {
                 return "Subtropical";
             case BUSHVELD:
                 return "Bushveld";
+            case MDG_EQUATORIAL:
+                return "Ecuatorial";
+            case MDG_HIGHLANDS:
+                return "Altiplano";
+            case MDG_TROPICAL:
+                return "Tropical";
+            case MDG_DESERT:
+                return "Desierto";
             case CONTINENTAL:
             default:
                 return "Continental";
@@ -81,6 +129,14 @@ public enum YardClimate {
                 return R.drawable.bg_yard_subtropical;
             case BUSHVELD:
                 return R.drawable.bg_yard_bushveld;
+            case MDG_EQUATORIAL:
+                return R.drawable.bg_yard_mdg_equatorial;
+            case MDG_HIGHLANDS:
+                return R.drawable.bg_yard_mdg_highlands;
+            case MDG_TROPICAL:
+                return R.drawable.bg_yard_mdg_tropical;
+            case MDG_DESERT:
+                return R.drawable.bg_yard_mdg_desert;
             case CONTINENTAL:
             default:
                 return R.drawable.bg_yard_continental;
@@ -106,6 +162,23 @@ public enum YardClimate {
         }
     }
 
+    public static YardClimate fromMdg(@Nullable MadagascarClimateZone zone) {
+        if (zone == null) {
+            return MDG_TROPICAL;
+        }
+        switch (zone) {
+            case EQUATORIAL:
+                return MDG_EQUATORIAL;
+            case HIGHLANDS:
+                return MDG_HIGHLANDS;
+            case DESERT:
+                return MDG_DESERT;
+            case TROPICAL:
+            default:
+                return MDG_TROPICAL;
+        }
+    }
+
     public static YardClimate fromZa(@Nullable SouthernAfricanClimateZone zone) {
         if (zone == null) {
             return HIGHVELD;
@@ -127,12 +200,22 @@ public enum YardClimate {
 
     public static YardClimate resolve(@Nullable Context context, @Nullable String hexId,
                                       @Nullable HiveEntity sample) {
-        boolean southern = PlayableMapRegion.fromHexId(hexId) == PlayableMapRegion.SOUTH_AFRICA
-                || HexNectarRules.isSouthernHive(sample);
         HexParcel parcel = null;
         if (context != null && hexId != null && !hexId.isEmpty()) {
             parcel = IberiaHexOverlayStore.findById(context.getApplicationContext(), hexId);
         }
+        PlayableMapRegion region = PlayableMapRegion.fromHexId(hexId);
+        if (region == PlayableMapRegion.MADAGASCAR || (parcel != null && HexFlora.isMadagascarParcel(parcel))) {
+            MadagascarClimateZone z = parcel != null
+                    ? MadagascarClimateZone.forParcel(parcel)
+                    : MadagascarClimateZone.forHive(
+                    sample != null ? sample.lat : null,
+                    sample != null ? sample.lng : null,
+                    sample != null ? sample.elevationMeters : 400);
+            return fromMdg(z);
+        }
+        boolean southern = region == PlayableMapRegion.SOUTH_AFRICA
+                || HexNectarRules.isSouthernHive(sample);
         if (southern) {
             if (parcel != null) {
                 return fromZa(SouthernAfricanClimateZone.forParcel(parcel));

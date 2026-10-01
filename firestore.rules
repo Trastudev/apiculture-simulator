@@ -131,6 +131,108 @@ service cloud.firestore {
           && (resource.data.ownerId == request.auth.uid || isGameAdmin());
     }
 
+    match /pollinationContracts/{contractId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+          && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if request.auth != null
+          && (resource.data.ownerId == request.auth.uid || isGameAdmin());
+    }
+
+    /**
+     * Comandas globales (Iberia / ZA / Madagascar). El primer cliente del día las crea;
+     * el resto solo puede reclamar o liberar la suya.
+     */
+    match /honeyOrders/{orderId} {
+      function honeyOrderKeys() {
+        return ['npcName', 'portraitIndex', 'floraKey', 'kg', 'unitPrice',
+            'destHexId', 'destLat', 'destLng', 'destLabel', 'region',
+            'createdDayKey', 'expireEpochMs', 'taken', 'claimedBy', 'band'];
+      }
+      function validHoneyOrder(d) {
+        return d.keys().hasOnly(honeyOrderKeys())
+            && d.npcName is string && d.npcName.size() > 0 && d.npcName.size() <= 80
+            && d.portraitIndex is int && d.portraitIndex >= 0 && d.portraitIndex <= 64
+            && d.floraKey is string && d.floraKey.size() > 0 && d.floraKey.size() <= 40
+            && d.kg is number && d.kg >= 0.4 && d.kg <= 40
+            && d.unitPrice is number && d.unitPrice >= 0 && d.unitPrice <= 1000
+            && d.destHexId is string && d.destHexId.size() > 0 && d.destHexId.size() <= 80
+            && d.destLat is number && d.destLng is number
+            && d.destLabel is string && d.destLabel.size() <= 200
+            && d.region in ['iberia', 'za', 'mdg']
+            && d.createdDayKey is int
+            && d.expireEpochMs is number
+            && d.expireEpochMs > 0
+            && d.taken is bool
+            && d.claimedBy is string && d.claimedBy.size() <= 128
+            && d.band is int && d.band >= 0 && d.band <= 9;
+      }
+
+      allow read: if request.auth != null
+          && (resource.data.taken == false
+              || resource.data.claimedBy == request.auth.uid
+              || isGameAdmin());
+      allow create: if request.auth != null
+          && validHoneyOrder(request.resource.data)
+          && request.resource.data.taken == false
+          && request.resource.data.claimedBy == '';
+      allow update: if request.auth != null
+          && validHoneyOrder(request.resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['taken', 'claimedBy'])
+          && (
+            (resource.data.taken == false
+                && request.resource.data.taken == true
+                && request.resource.data.claimedBy == request.auth.uid)
+            || (resource.data.taken == true
+                && resource.data.claimedBy == request.auth.uid
+                && request.resource.data.taken == false
+                && request.resource.data.claimedBy == '')
+          );
+      allow delete: if request.auth != null
+          && (isGameAdmin()
+              || resource.data.claimedBy == request.auth.uid
+              || (resource.data.expireEpochMs is int
+                  && resource.data.expireEpochMs <= request.time.toMillis()));
+    }
+
+    match /pollinationOffers/{offerId} {
+      function pollinationOfferKeys() {
+        return ['hexId', 'flora', 'startDoy', 'endDoy', 'band', 'region',
+            'createdDayKey', 'expireEpochMs', 'destLat', 'destLng',
+            'npcName', 'portraitIndex', 'taken'];
+      }
+      function validPollinationOffer(d) {
+        return d.keys().hasOnly(pollinationOfferKeys())
+            && d.hexId is string && d.hexId.size() > 0 && d.hexId.size() <= 80
+            && d.flora is string && d.flora.size() > 0 && d.flora.size() <= 40
+            && d.startDoy is int && d.endDoy is int
+            && d.band is int && d.band >= 0 && d.band <= 9
+            && d.region in ['iberia', 'za', 'mdg']
+            && d.createdDayKey is int
+            && d.expireEpochMs is number && d.expireEpochMs > 0
+            && d.destLat is number && d.destLng is number
+            && d.npcName is string && d.npcName.size() <= 80
+            && d.portraitIndex is int && d.portraitIndex >= 0 && d.portraitIndex <= 64
+            && d.taken is bool;
+      }
+      allow read: if request.auth != null
+          && (resource.data.taken == false || isGameAdmin());
+      allow create: if request.auth != null
+          && validPollinationOffer(request.resource.data)
+          && request.resource.data.taken == false;
+      allow update: if request.auth != null
+          && validPollinationOffer(request.resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['taken'])
+          && resource.data.taken == false
+          && request.resource.data.taken == true;
+      allow delete: if request.auth != null
+          && (isGameAdmin()
+              || resource.data.taken == true
+              || (resource.data.expireEpochMs is int
+                  && resource.data.expireEpochMs <= request.time.toMillis()));
+    }
+
     match /globalGameEvents/{eventId} {
       allow read: if request.auth != null;
       allow write: if isGameAdmin();

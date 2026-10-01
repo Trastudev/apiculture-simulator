@@ -17,6 +17,7 @@ public class PlayerProgressRepository {
     private static final String PREFS = "player_progress_v1";
     private static final String KEY_LEVEL = "level_";
     private static final String KEY_XP = "xp_";
+    private static final String KEY_XP_BITS = "xp_bits_";
 
     private final SharedPreferences prefs;
     private final Context appContext;
@@ -47,9 +48,13 @@ public class PlayerProgressRepository {
         return prefs.getInt(KEY_LEVEL + uid, 0);
     }
 
-    public int getXp(@Nullable String uid) {
+    public double getXp(@Nullable String uid) {
         if (uid == null || uid.isEmpty()) {
-            return 0;
+            return 0.0;
+        }
+        String bitsKey = KEY_XP_BITS + uid;
+        if (prefs.contains(bitsKey)) {
+            return Double.longBitsToDouble(prefs.getLong(bitsKey, 0L));
         }
         return prefs.getInt(KEY_XP + uid, 0);
     }
@@ -57,11 +62,11 @@ public class PlayerProgressRepository {
     /**
      * Suma XP, sube de nivel si toca y persiste. Devuelve el estado resultante (o el actual si no hay uid/XP).
      */
-    public LevelSystem.Result addXp(@Nullable String uid, int amount) {
+    public LevelSystem.Result addXp(@Nullable String uid, double amount) {
         int level = getLevel(uid);
-        int xp = getXp(uid);
+        double xp = getXp(uid);
         LevelSystem.Result result = LevelSystem.addXp(level, xp, amount);
-        if (uid != null && !uid.isEmpty() && amount > 0) {
+        if (uid != null && !uid.isEmpty() && amount > 1e-12) {
             save(uid, result.level, result.xp);
             final int prevLevel = level;
             if (result.level > prevLevel) {
@@ -71,13 +76,14 @@ public class PlayerProgressRepository {
         return result;
     }
 
-    public void save(@Nullable String uid, int level, int xp) {
+    public void save(@Nullable String uid, int level, double xp) {
         if (uid == null || uid.isEmpty()) {
             return;
         }
         prefs.edit()
                 .putInt(KEY_LEVEL + uid, Math.max(0, level))
-                .putInt(KEY_XP + uid, Math.max(0, xp))
+                .putLong(KEY_XP_BITS + uid, Double.doubleToRawLongBits(Math.max(0.0, xp)))
+                .remove(KEY_XP + uid)
                 .apply();
         notifyProgressChanged();
     }
@@ -89,19 +95,21 @@ public class PlayerProgressRepository {
         }
         prefs.edit()
                 .putInt(KEY_LEVEL + uid, 0)
-                .putInt(KEY_XP + uid, 0)
+                .putLong(KEY_XP_BITS + uid, Double.doubleToRawLongBits(0.0))
+                .remove(KEY_XP + uid)
                 .commit();
         notifyProgressChanged();
     }
 
     /** Aplica nivel/XP desde Firestore sin disparar el callback de push. */
-    public void applyFromCloud(@Nullable String uid, int level, int xp) {
+    public void applyFromCloud(@Nullable String uid, int level, double xp) {
         if (uid == null || uid.isEmpty()) {
             return;
         }
         prefs.edit()
                 .putInt(KEY_LEVEL + uid, Math.max(0, level))
-                .putInt(KEY_XP + uid, Math.max(0, xp))
+                .putLong(KEY_XP_BITS + uid, Double.doubleToRawLongBits(Math.max(0.0, xp)))
+                .remove(KEY_XP + uid)
                 .apply();
     }
 }

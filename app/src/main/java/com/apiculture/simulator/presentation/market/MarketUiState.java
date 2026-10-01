@@ -22,4 +22,28 @@ public final class MarketUiState {
         this.playerCount = Math.max(1, playerCount);
         this.pills = Collections.unmodifiableList(pills);
     }
+
+    boolean sameVisual(MarketUiState other) {
+        if (other == null) {
+            return false;
+        }
+        if (playerCount != other.playerCount) {
+            return false;
+        }
+        if (Math.abs(balanceEur - other.balanceEur) > 1e-6) {
+            return false;
+        }
+        if (Math.abs(totalHoneyKg - other.totalHoneyKg) > 1e-6) {
+            return false;
+        }
+        if (pills.size() != other.pills.size()) {
+            return false;
+        }
+        for (int i = 0; i < pills.size(); i++) {
+            if (!pills.get(i).sameVisual(other.pills.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

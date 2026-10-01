@@ -58,7 +58,8 @@ const RULES = {
   XP_BUY_TERRAIN_PER_1000: 10,
   XP_BUY_SUPER: 15,
   WAREHOUSE_COST: 300,
-  CLIMATE_ZA_LEVEL: 25,
+  WAREHOUSE_UPGRADE: 250,
+  LAND_BASE: 1000,
 };
 
 function unlockIndex(flora) {
@@ -66,8 +67,57 @@ function unlockIndex(flora) {
   return i < 0 ? 0 : i;
 }
 
+/** Silvestre en Iberia o Madagascar. Sudáfrica no cuenta: los bots no entran. */
+const WILD_BY_LEVEL = [
+  [0, ["Mil flores", "Romero", "Tomillo", "Lavanda", "Arboç", "Eucalipto", "Bosque",
+    "Litchi", "Girofle", "Ravintsara", "Longose"]],
+  [5, ["Mielato de encina y roble"]],
+  [10, ["Tapia", "Café", "Niaouli"]],
+  [15, ["Castaño", "Brezo"]],
+  [20, ["Tamarindo", "Baobab", "Mango", "Mangle"]],
+  [25, ["Neret"]],
+  [30, ["Raketa", "Jujube", "Sisal"]],
+];
+
+/**
+ * Cultivo y nivel del clima más bajo (Iberia o Madagascar) donde se puede sembrar.
+ * Lo que solo se planta en Sudáfrica no se desbloquea.
+ */
+const CROP_ACCESS = {
+  "Campo de naranjos": 2,
+  "Campo de almendros": 4,
+  "Campo de cerezos": 6,
+  "Campo de perales": 8,
+  "Campo de mostaza": 9,
+  "Campo de rabaniza": 10,
+  "Campo de manzanos": 11,
+  "Campo de trébol": 13,
+  "Campo de girasoles": 14,
+  "Campo de lavanda": 16,
+  Café: 16,
+  "Campo de Colza": 17,
+  "Campo de facelia": 20,
+  Mango: 20,
+  Lucerna: 30,
+  Sisal: 30,
+};
+
+function accessLevelForFlora(flora) {
+  const name = String(flora || "");
+  let level = Number.POSITIVE_INFINITY;
+  for (const [need, list] of WILD_BY_LEVEL) {
+    if (list.includes(name)) level = Math.min(level, need);
+  }
+  if (Object.prototype.hasOwnProperty.call(CROP_ACCESS, name)) {
+    level = Math.min(level, CROP_ACCESS[name]);
+  }
+  return Number.isFinite(level) ? level : null;
+}
+
 function isFloraUnlocked(flora, level) {
-  return unlockIndex(flora) <= Math.max(0, level | 0);
+  const need = accessLevelForFlora(flora);
+  if (need == null) return false;
+  return Math.max(0, level | 0) >= need;
 }
 
 function terrainPrice(flora) {
@@ -127,10 +177,45 @@ function isZaHex(hexId) {
   return id.includes("_za_") || id.startsWith("za_") || id.startsWith("hex_za_");
 }
 
+function isMdgHex(hexId) {
+  const id = String(hexId || "");
+  return id.includes("_mdg_") || id.startsWith("mdg_") || id.startsWith("hex_mdg_");
+}
+
 function canUseHex(bot, hexId) {
-  if (!isZaHex(hexId)) return true;
-  if (bot && bot.timeZoneId && String(bot.timeZoneId).startsWith("Africa")) return true;
-  return (bot.level || 0) >= RULES.CLIMATE_ZA_LEVEL;
+  if (isZaHex(hexId)) return false;
+  return true;
+}
+
+function warehouseInvested(level) {
+  const lvl = Math.max(0, level | 0);
+  if (lvl <= 0) return 0;
+  let sum = RULES.WAREHOUSE_COST;
+  for (let from = 1; from < lvl; from++) sum += RULES.WAREHOUSE_UPGRADE * Math.max(1, from);
+  return sum;
+}
+
+/** Precio de compra al 100 % de lo que el bot tiene: terreno, almacén y colmenas. */
+function netWorthB(bot) {
+  let worth = 0;
+  const seen = new Set();
+  for (const hexId of (bot && bot.ownedHexIds) || []) {
+    if (!hexId || seen.has(hexId) || isZaHex(hexId)) continue;
+    seen.add(hexId);
+    const flora = bot.hexFlora && bot.hexFlora[hexId];
+    worth += terrainPrice(flora || "Mil flores");
+  }
+  const warehouses = new Set();
+  for (const hexId of (bot && bot.warehouseHexIds) || []) {
+    if (!hexId || isZaHex(hexId) || warehouses.has(hexId)) continue;
+    warehouses.add(hexId);
+    worth += warehouseInvested(1);
+  }
+  for (const hive of (bot && bot.hives) || []) {
+    if (!hive || isZaHex(hive.hexId)) continue;
+    worth += hivePrice(hive.superCount);
+  }
+  return worth;
 }
 
 function affordableFloraForLevel(level, preferred) {
@@ -160,5 +245,9 @@ module.exports = {
   affordableFloraForLevel,
   floraValue,
   isZaHex,
+  isMdgHex,
   canUseHex,
+  accessLevelForFlora,
+  warehouseInvested,
+  netWorthB,
 };

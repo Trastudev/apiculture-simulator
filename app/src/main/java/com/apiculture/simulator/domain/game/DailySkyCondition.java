@@ -109,36 +109,26 @@ public enum DailySkyCondition {
         }
         double rain = w.precipitationMm != null ? w.precipitationMm : 0.0;
         double wind = w.windMaxKmh != null ? w.windMaxKmh : 0.0;
-        Integer code = w.weatherCode;
-        if (code != null) {
-            int c = code;
-            if ((c >= 61 && c <= 67) || (c >= 80 && c <= 82) || (c >= 95 && c <= 99)
-                    || (c >= 71 && c <= 77)) {
-                return RAINY;
-            }
-            if (c >= 51 && c <= 57) {
-                return rain >= 1.0 ? RAINY : CLOUDY;
-            }
-            if (c == 45 || c == 48) {
-                return CLOUDY;
-            }
-            if (c == 0 || c == 1) {
-                return wind >= 40.0 ? WINDY : SUN;
-            }
-            if (c == 2) {
-                return wind >= 45.0 ? WINDY : VARIABLE;
-            }
-            if (c == 3) {
-                return wind >= 45.0 ? WINDY : CLOUDY;
-            }
-        }
-        if (rain >= 1.5) {
+        if (rain >= 5.0) {
             return RAINY;
         }
         if (wind >= 40.0) {
             return WINDY;
         }
-        return CLOUDY;
+        if (w.coveredDaylightHours >= 0) {
+            int covered = w.coveredDaylightHours;
+            if (covered <= 4) {
+                return SUN;
+            }
+            if (covered <= 8) {
+                return VARIABLE;
+            }
+            return CLOUDY;
+        }
+        if (w.weatherCode != null && w.weatherCode <= 1) {
+            return SUN;
+        }
+        return VARIABLE;
     }
 
     public static DailySkyCondition forHiveDay(

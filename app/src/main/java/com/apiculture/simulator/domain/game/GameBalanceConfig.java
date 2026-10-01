@@ -73,14 +73,15 @@ public final class GameBalanceConfig {
     /** Suelo del multiplicador de puesta si el stock de miel está bajo el mínimo. */
     public static double eggsLowHoneyFactorFloor = 0.55;
 
-    public static int swarmBaseAdults = 60_000;
-    public static int swarmStepAdults = 5_000;
-    public static double swarmRiskPerStep = 0.008;
+    public static int swarmBaseAdults = 40_000;
+    public static int swarmCapAdults = 52_000;
+    public static int swarmStepAdults = 1_000;
+    public static double swarmRiskPerStep = 0.0291666667;
     public static double swarmDailyCap = 0.35;
     public static int swarmSeasonStartDoy = 90;
     public static int swarmSeasonEndDoy = 185;
 
-    public static int splitMinAdults = 50_000;
+    public static int splitMinAdults = 35_000;
     public static int splitRecommendAdults = 70_000;
 
     public static double foragerFraction = 0.24;
@@ -181,6 +182,65 @@ public final class GameBalanceConfig {
     public static double secondaryNectarShare = 0.28;
     /** Tope tras clima: la montaña en verano puede pasar de 1,20 (trashumancia). */
     public static double nectarIntensityCap = 1.50;
+    /** Néctar del hex a bloom 1,0 (flora nativa). Por tipo de flora. */
+    public static double baseDailyNectarKgNative = 20.0;
+    /** Néctar del hex a bloom 1,0 (cultivo plantado). Por tipo de flora. */
+    public static double baseDailyNectarKgPlanted = 20.0;
+    /** Obsoleto: ya no hay pecoreo entre hexes vecinos. */
+    public static double neighborForageSharePerHex = 0.0;
+
+    /** Floración importante de convenio: bloom01 ≥ este umbral. */
+    public static double pollinationBloomThreshold = 0.40;
+    public static int pollinationEurosPerHex = 15;
+    /** Viaje al contrato: Beecoins por km y por colmena. */
+    public static double pollinationBPerKmPerHive = 0.40;
+    /** Radio (hexes) de ofertas listadas junto al apiario. */
+    public static int pollinationOfferRadiusHex = 12;
+    public static int pollinationMaxOffers = 32;
+    /** % de fincas amarillas que empiezan en barbecho. */
+    public static int pollinationReservePct = 30;
+    public static double pollinationReserveOccupancy = 0.70;
+    public static double pollinationLayer2Occupancy = 0.90;
+    public static int pollinationMaxLayers = 1;
+    public static int pollinationMaxLayersSaturated = 2;
+    /** Pago diario del contrato: miel barata → mínimo; la más cara → máximo. */
+    public static double pollinationPayPerDayMin = 45.0;
+    public static double pollinationPayPerDayMax = 90.0;
+    /** Prima fija para que un tramo corto siga saliendo a cuenta cerca. */
+    public static int pollinationCalloutB = 250;
+    /** No listar contratos que empiezan más tarde. */
+    public static int pollinationHorizonDays = 21;
+    public static int pollinationSlotDaysMin = 5;
+    public static int pollinationSlotDaysMax = 21;
+
+    /** Flete de miel: Beecoins por kg y km (comandas y venta a mercado). */
+    public static double cargoFreightBPerKgKm = 0.016;
+    /** Parte de la tarifa de carretera que cobra el barco. Deja el mar a la mitad del flete anterior. */
+    public static double cargoSeaFreightRatio = 0.02734375;
+
+    // Mercado global: capacidad regional generosa y rotación económica independiente.
+    public static int honeyMarketTypicalHivesPerPlayer = 6;
+    public static double honeyMarketTypicalOutputFraction = 0.40;
+    public static double honeyMarketCustomerAbsorptionFraction = 0.75;
+    public static double honeyMarketCapacityDaysBuffer = 20.0;
+    public static double honeyMarketCapacityExtraMultiplier = 2.0;
+    public static double honeyMarketMinFloraDemandVsTop = 0.35;
+    public static double honeyMarketLevelDemandFactor = 0.03;
+    public static int honeyMarketLevelDemandCap = 100;
+    public static int honeyMarketMinActivityPerPlayerRegion = 1;
+    public static int honeyMarketActivePlayerDays = 30;
+    public static double honeyMarketDailyNoiseMin = 0.90;
+    public static double honeyMarketDailyNoiseMax = 1.10;
+    public static double honeyMarketSupplyPriceSpan = 0.25;
+    public static double honeyMarketDemandWinter = 1.12;
+    public static double honeyMarketDemandSpring = 0.93;
+    public static double honeyMarketDemandSummer = 0.87;
+    public static double honeyMarketDemandAutumn = 1.06;
+    public static double honeyMarketLocalMarkupMin = 0.15;
+    public static double honeyMarketLocalMarkupMax = 0.20;
+    public static double honeyMarketCompetitionPopulationWeight = 0.60;
+    public static double honeyMarketCompetitionFloraWeight = 0.40;
+    public static double honeyMarketCompetitionPricePenaltyMax = 0.10;
 
     private GameBalanceConfig() {
     }
@@ -207,7 +267,12 @@ public final class GameBalanceConfig {
         }
     }
 
+    private static boolean loaded;
+
     public static synchronized void load(Context context) {
+        if (loaded) {
+            return;
+        }
         if (context == null) {
             syncLegacyFields();
             return;
@@ -218,6 +283,7 @@ public final class GameBalanceConfig {
             Log.w(TAG, "No se pudo leer " + ASSET_NAME + "; se usan valores por defecto", e);
         }
         syncLegacyFields();
+        loaded = true;
     }
 
     /**
@@ -396,6 +462,7 @@ public final class GameBalanceConfig {
         JSONObject swarm = root.optJSONObject("swarm");
         if (swarm != null) {
             swarmBaseAdults = swarm.optInt("baseAdults", swarmBaseAdults);
+            swarmCapAdults = swarm.optInt("capAdults", swarmCapAdults);
             swarmStepAdults = swarm.optInt("stepAdults", swarmStepAdults);
             swarmRiskPerStep = swarm.optDouble("riskPerStep", swarmRiskPerStep);
             swarmDailyCap = swarm.optDouble("dailyCap", swarmDailyCap);
@@ -423,6 +490,46 @@ public final class GameBalanceConfig {
             superPurchasePriceEur = honey.optDouble("superPurchasePriceEur", superPurchasePriceEur);
             chartFloraBoost = honey.optDouble("chartFloraBoost", chartFloraBoost);
             chartTempBoost = honey.optDouble("chartTempBoost", chartTempBoost);
+        }
+        JSONObject market = root.optJSONObject("honeyMarket");
+        if (market != null) {
+            honeyMarketTypicalHivesPerPlayer =
+                    market.optInt("typicalHivesPerPlayer", honeyMarketTypicalHivesPerPlayer);
+            honeyMarketTypicalOutputFraction =
+                    market.optDouble("typicalOutputFraction", honeyMarketTypicalOutputFraction);
+            honeyMarketCustomerAbsorptionFraction = market.optDouble(
+                    "customerAbsorptionFraction", honeyMarketCustomerAbsorptionFraction);
+            honeyMarketCapacityDaysBuffer =
+                    market.optDouble("capacityDaysBuffer", honeyMarketCapacityDaysBuffer);
+            honeyMarketCapacityExtraMultiplier = market.optDouble(
+                    "capacityExtraMultiplier", honeyMarketCapacityExtraMultiplier);
+            honeyMarketMinFloraDemandVsTop = market.optDouble(
+                    "minFloraDemandVsTop", honeyMarketMinFloraDemandVsTop);
+            honeyMarketLevelDemandFactor =
+                    market.optDouble("levelDemandFactor", honeyMarketLevelDemandFactor);
+            honeyMarketLevelDemandCap = market.optInt("levelDemandCap", honeyMarketLevelDemandCap);
+            honeyMarketMinActivityPerPlayerRegion = market.optInt(
+                    "minActivityPerPlayerRegion", honeyMarketMinActivityPerPlayerRegion);
+            honeyMarketActivePlayerDays =
+                    market.optInt("activePlayerDays", honeyMarketActivePlayerDays);
+            honeyMarketDailyNoiseMin =
+                    market.optDouble("dailyNoiseMin", honeyMarketDailyNoiseMin);
+            honeyMarketDailyNoiseMax =
+                    market.optDouble("dailyNoiseMax", honeyMarketDailyNoiseMax);
+            honeyMarketSupplyPriceSpan =
+                    market.optDouble("supplyPriceSpan", honeyMarketSupplyPriceSpan);
+            honeyMarketDemandWinter = market.optDouble("demandWinter", honeyMarketDemandWinter);
+            honeyMarketDemandSpring = market.optDouble("demandSpring", honeyMarketDemandSpring);
+            honeyMarketDemandSummer = market.optDouble("demandSummer", honeyMarketDemandSummer);
+            honeyMarketDemandAutumn = market.optDouble("demandAutumn", honeyMarketDemandAutumn);
+            honeyMarketLocalMarkupMin = market.optDouble("localMarkupMin", honeyMarketLocalMarkupMin);
+            honeyMarketLocalMarkupMax = market.optDouble("localMarkupMax", honeyMarketLocalMarkupMax);
+            honeyMarketCompetitionPopulationWeight = market.optDouble(
+                    "competitionPopulationWeight", honeyMarketCompetitionPopulationWeight);
+            honeyMarketCompetitionFloraWeight = market.optDouble(
+                    "competitionFloraWeight", honeyMarketCompetitionFloraWeight);
+            honeyMarketCompetitionPricePenaltyMax = market.optDouble(
+                    "competitionPricePenaltyMax", honeyMarketCompetitionPricePenaltyMax);
         }
         JSONObject health = root.optJSONObject("health");
         if (health != null) {
@@ -564,12 +671,40 @@ public final class GameBalanceConfig {
             secondaryNectarTrigger = forage.optDouble("secondaryNectarTrigger", secondaryNectarTrigger);
             secondaryNectarShare = forage.optDouble("secondaryNectarShare", secondaryNectarShare);
             nectarIntensityCap = forage.optDouble("nectarIntensityCap", nectarIntensityCap);
+            baseDailyNectarKgNative = forage.optDouble("baseDailyNectarKgNative", baseDailyNectarKgNative);
+            baseDailyNectarKgPlanted = forage.optDouble("baseDailyNectarKgPlanted", baseDailyNectarKgPlanted);
+            neighborForageSharePerHex = forage.optDouble("neighborForageSharePerHex", neighborForageSharePerHex);
+        }
+        JSONObject pollination = root.optJSONObject("pollination");
+        if (pollination != null) {
+            pollinationBloomThreshold = pollination.optDouble("bloomThreshold", pollinationBloomThreshold);
+            pollinationEurosPerHex = pollination.optInt("eurosPerHex", pollinationEurosPerHex);
+            pollinationBPerKmPerHive = pollination.optDouble("bPerKmPerHive", pollinationBPerKmPerHive);
+            pollinationOfferRadiusHex = pollination.optInt("offerRadiusHex", pollinationOfferRadiusHex);
+            pollinationMaxOffers = pollination.optInt("maxOffers", pollinationMaxOffers);
+            pollinationReservePct = pollination.optInt("reservePct", pollinationReservePct);
+            pollinationReserveOccupancy = pollination.optDouble("reserveOccupancy", pollinationReserveOccupancy);
+            pollinationLayer2Occupancy = pollination.optDouble("layer2Occupancy", pollinationLayer2Occupancy);
+            pollinationMaxLayers = pollination.optInt("maxLayers", pollinationMaxLayers);
+            pollinationMaxLayersSaturated = pollination.optInt("maxLayersSaturated", pollinationMaxLayersSaturated);
+            pollinationPayPerDayMin = pollination.optDouble("payPerDayMin", pollinationPayPerDayMin);
+            pollinationPayPerDayMax = pollination.optDouble("payPerDayMax", pollinationPayPerDayMax);
+            pollinationCalloutB = pollination.optInt("calloutB", pollinationCalloutB);
+            pollinationHorizonDays = pollination.optInt("horizonDays", pollinationHorizonDays);
+            pollinationSlotDaysMin = pollination.optInt("slotDaysMin", pollinationSlotDaysMin);
+            pollinationSlotDaysMax = pollination.optInt("slotDaysMax", pollinationSlotDaysMax);
+        }
+        JSONObject logistics = root.optJSONObject("logistics");
+        if (logistics != null) {
+            cargoFreightBPerKgKm = Math.max(0.0, logistics.optDouble("freightBPerKgKm", cargoFreightBPerKgKm));
+            cargoSeaFreightRatio = Math.max(0.0, logistics.optDouble("seaFreightRatio", cargoSeaFreightRatio));
         }
     }
 
     static void syncLegacyFields() {
         ColonyGameRules.MAX_ADULT_WORKERS_PER_HIVE = maxAdultWorkersPerHive;
         ColonyGameRules.SWARM_RISK_BASE_BEES = swarmBaseAdults;
+        ColonyGameRules.SWARM_RISK_CAP_BEES = swarmCapAdults;
         ColonyGameRules.SWARM_RISK_STEP_BEES = swarmStepAdults;
         ColonyGameRules.SWARM_RISK_PER_STEP = swarmRiskPerStep;
         ColonyGameRules.SWARM_RISK_DAILY_CAP = swarmDailyCap;
@@ -640,6 +775,14 @@ public final class GameBalanceConfig {
         m.put("Tomillo", peaks(p(145, 28, 0.95)));
         m.put("Lavanda", peaks(p(178, 24, 1.10)));
         m.put("Campo de girasoles", peaks(p(200, 18, 1.05)));
+        m.put("Campo de lavanda", peaks(p(178, 24, 1.10)));
+        m.put("Campo de mostaza", peaks(p(62, 16, 1.00)));
+        m.put("Campo de trébol", peaks(p(160, 22, 1.02)));
+        m.put("Campo de facelia", peaks(p(255, 20, 1.05)));
+        m.put("Campo de rabaniza", peaks(p(1, 34, 1.02)));
+        m.put("Café", peaks(p(275, 22, 1.00)));
+        m.put("Mango", peaks(p(230, 24, 1.04)));
+        m.put("Sisal", peaks(p(10, 24, 0.90)));
         m.put("Bosque", peaks(p(188, 36, 0.80)));
         m.put("Brezo", peaks(p(258, 26, 1.00)));
         m.put("Castaño", peaks(p(185, 22, 1.05)));
@@ -653,6 +796,11 @@ public final class GameBalanceConfig {
         m.put("Litchi", peaks(p(350, 18, 1.08)));
         m.put("Lucerna", peaks(p(350, 26, 0.92), p(40, 20, 0.55)));
         m.put("Acacia", peaks(p(280, 24, 0.95)));
+        m.put("Buchu", peaks(p(245, 22, 1.00)));
+        m.put("Protea", peaks(p(172, 26, 1.08)));
+        m.put("Boekenhout", peaks(p(268, 20, 0.96)));
+        m.put("Aguacate", peaks(p(240, 22, 1.04)));
+        m.put("Marula", peaks(p(278, 22, 0.98)));
         m.put("Mil flores", peaks(p(112, 38, 0.72), p(227, 28, 0.88), p(319, 32, 0.92)));
         return m;
     }

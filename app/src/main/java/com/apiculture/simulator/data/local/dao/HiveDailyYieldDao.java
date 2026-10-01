@@ -18,4 +18,9 @@ public interface HiveDailyYieldDao {
 
     @Query("DELETE FROM hive_daily_yield WHERE hiveId = :hiveId")
     void deleteAllForHive(String hiveId);
+
+    @Query("SELECT dayKey, SUM(kg) AS kg FROM hive_daily_yield "
+            + "WHERE hiveId IN (SELECT id FROM hives WHERE ownerId = :ownerId) "
+            + "AND dayKey >= :fromKey AND dayKey <= :toKey GROUP BY dayKey")
+    java.util.List<DayHoneyTotal> sumHoneyByDay(String ownerId, int fromKey, int toKey);
 }

@@ -17,7 +17,7 @@ const fs = require("fs");
 const https = require("https");
 const path = require("path");
 
-const { RULES, canUseHex, terrainPrice } = require("./lib/rules");
+const { RULES, canUseHex, terrainPrice, netWorthB, isFloraUnlocked } = require("./lib/rules");
 const { PERSONAS, personaForBotId } = require("./lib/personas");
 const {
   ensureBotShape,
@@ -37,24 +37,24 @@ const PROJECT_ID = "apiculture-simulator";
 const ROSTER = [
   ["Inés del Valle", "Miel del Altiplano", "Europe/Madrid", ["Mil flores", "Romero"]],
   ["Marc Rovira", "Romería Dorada", "Europe/Madrid", ["Romero", "Tomillo"]],
-  ["Lila Mthethwa", "Fynbos Gold", "Africa/Johannesburg", ["Fynbos", "Aloe"]],
+  ["Lila Mthethwa", "Fynbos Gold", "Europe/Madrid", ["Lavanda", "Mil flores"]],
   ["João Ferreira", "Serra do Mel", "Europe/Lisbon", ["Eucalipto", "Mil flores"]],
-  ["Carmen Soto", "Azahar Vivo", "Europe/Madrid", ["Campo de naranjos", "Lavanda"]],
-  ["Pieter Botha", "Karoo Nectar", "Africa/Johannesburg", ["Lucerna", "Acacia"]],
-  ["Núria Casals", "Bruc i Mel", "Europe/Madrid", ["Brezo", "Arboç"]],
-  ["Ander Etxeberria", "Euskal Erlea", "Europe/Madrid", ["Bosque", "Castaño"]],
-  ["Thandi Nkosi", "Highveld Hive", "Africa/Johannesburg", ["Macadamia", "Litchi"]],
-  ["Hugo Belmonte", "Encina y Sol", "Europe/Madrid", ["Mielato de encina y roble", "Tomillo"]],
+  ["Carmen Soto", "Azahar Vivo", "Europe/Madrid", ["Mil flores", "Lavanda"]],
+  ["Pieter Botha", "Karoo Nectar", "Europe/Madrid", ["Tomillo", "Romero"]],
+  ["Núria Casals", "Bruc i Mel", "Europe/Madrid", ["Arboç", "Mil flores"]],
+  ["Ander Etxeberria", "Euskal Erlea", "Europe/Madrid", ["Bosque", "Eucalipto"]],
+  ["Thandi Nkosi", "Highveld Hive", "Europe/Madrid", ["Romero", "Bosque"]],
+  ["Hugo Belmonte", "Encina y Sol", "Europe/Madrid", ["Tomillo", "Mil flores"]],
   ["Ainhoa Larralde", "Itsasoko Ezti", "Europe/Madrid", ["Bosque", "Eucalipto"]],
-  ["Sipho Dlamini", "Drakensberg Mel", "Africa/Johannesburg", ["Fynbos", "Eucalipto"]],
-  ["Paloma Rivas", "Lavanda del Sur", "Europe/Madrid", ["Lavanda", "Campo de girasoles"]],
-  ["Gorka Mendizabal", "Gorbeia Eztiak", "Europe/Madrid", ["Brezo", "Neret"]],
-  ["Anika van Zyl", "Cape Blossom", "Africa/Johannesburg", ["Aloe", "Campo de Colza"]],
-  ["Tomás Quintero", "Dehesa Dulce", "Europe/Madrid", ["Campo de almendros", "Romero"]],
-  ["Elisa Moreira", "Mel do Minho", "Europe/Lisbon", ["Castaño", "Campo de manzanos"]],
-  ["Kwame Ndlovu", "Savanna Comb", "Africa/Johannesburg", ["Acacia", "Lucerna"]],
-  ["Beatriz Olmedo", "Tomillar Viejo", "Europe/Madrid", ["Tomillo", "Campo de cerezos"]],
-  ["Joris Steyn", "Cederberg Honey", "Africa/Johannesburg", ["Fynbos", "Macadamia"]],
+  ["Sipho Dlamini", "Drakensberg Mel", "Europe/Madrid", ["Eucalipto", "Lavanda"]],
+  ["Paloma Rivas", "Lavanda del Sur", "Europe/Madrid", ["Lavanda", "Romero"]],
+  ["Gorka Mendizabal", "Gorbeia Eztiak", "Europe/Madrid", ["Arboç", "Bosque"]],
+  ["Anika van Zyl", "Cape Blossom", "Europe/Madrid", ["Mil flores", "Tomillo"]],
+  ["Tomás Quintero", "Dehesa Dulce", "Europe/Madrid", ["Romero", "Eucalipto"]],
+  ["Elisa Moreira", "Mel do Minho", "Europe/Lisbon", ["Bosque", "Mil flores"]],
+  ["Kwame Ndlovu", "Savanna Comb", "Europe/Madrid", ["Lavanda", "Eucalipto"]],
+  ["Beatriz Olmedo", "Tomillar Viejo", "Europe/Madrid", ["Tomillo", "Arboç"]],
+  ["Joris Steyn", "Cederberg Honey", "Europe/Madrid", ["Romero", "Bosque"]],
 ];
 
 function loadApiKey() {
@@ -264,12 +264,10 @@ function coordsForHex(hexId, ownerId) {
 
 function hexCandidatesForBot(bot, expandSecondary) {
   const pool = hexPool();
-  const south = bot.timeZoneId && bot.timeZoneId.startsWith("Africa");
-  const primary = south ? pool.za : pool.iberia;
-  const secondary = south ? pool.iberia : pool.za;
+  const primary = pool.iberia || [];
   const start = (Number(bot.id) * 11) % Math.max(1, primary.length);
   const raw = primary.slice(start).concat(primary.slice(0, start));
-  const extra = expandSecondary ? secondary : [];
+  const extra = expandSecondary ? (pool.mdg || []) : [];
   return raw.concat(extra).filter((hexId) => canUseHex(bot, hexId));
 }
 
@@ -318,9 +316,12 @@ async function publishProfile(token, bot) {
 }
 
 async function publishPlayer(token, bot) {
-  const mapRegion =
-    bot.timeZoneId && String(bot.timeZoneId).startsWith("Africa") ? "za" : "iberia";
-  const soldByFlora = bot.honeySoldByFlora || {};
+  const sold = {};
+  for (const [flora, kg] of Object.entries(bot.honeySoldByFlora || {})) {
+    if (isFloraUnlocked(flora, bot.level)) sold[flora] = kg;
+  }
+  const day = new Date();
+  const dayKey = day.getUTCFullYear() * 10000 + (day.getUTCMonth() + 1) * 100 + day.getUTCDate();
   await fsPatch(
     token,
     {
@@ -334,8 +335,12 @@ async function publishPlayer(token, bot) {
       adultBeeCount: bot.adultBeeCount | 0,
       totalHoneyKg: round2(honeyStock(bot)),
       honeySoldKgTotal: round2(bot.honeySoldKgTotal || 0),
-      honeySoldKgByFlora: soldByFlora,
-      mapRegion,
+      honeySoldKgByFlora: sold,
+      netWorthB: netWorthB(bot),
+      netWorthDayKey: dayKey,
+      contractCount: 0,
+      orderCount: 0,
+      mapRegion: "iberia",
       isBot: true,
       botPersona: bot.persona || personaForBotId(bot.id).id,
     },

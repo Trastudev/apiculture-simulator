@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -15,13 +16,16 @@ import com.apiculture.simulator.domain.game.GlobalEventEffects;
 import com.apiculture.simulator.domain.market.HoneyMarketEngine;
 import com.apiculture.simulator.domain.market.HoneyMarketSnapshot;
 import com.apiculture.simulator.domain.parcel.HexFlora;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+import com.apiculture.simulator.data.session.PlayerAuth;
+import com.apiculture.simulator.data.session.SignedInUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.SetOptions;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -69,6 +73,10 @@ public class GlobalEventRepository {
     private ListenerRegistration myKgReg;
     @Nullable
     private String myKgUid;
+    private boolean endingSurgeForGoal;
+    @Nullable
+    private Runnable serverPoll;
+    private final java.util.concurrent.ExecutorService io = java.util.concurrent.Executors.newSingleThreadExecutor();
 
     public GlobalEventRepository(Context app, @Nullable FirebaseFirestore firestore) {
         this.app = app.getApplicationContext();
@@ -92,6 +100,17 @@ public class GlobalEventRepository {
     }
 
     public void startListening() {
+        if (GameServer.enabled()) {
+            if (serverPoll != null) {
+                return;
+            }
+            serverPoll = () -> {
+                pullServerEvents();
+                main.postDelayed(serverPoll, 20_000L);
+            };
+            main.post(serverPoll);
+            return;
+        }
         if (firestore == null || eventsReg != null) {
             return;
         }
@@ -128,8 +147,8 @@ public class GlobalEventRepository {
                     Snapshot prev = cached;
                     publish(new Snapshot(prev.surge, prev.shift, prev.velutina, kg, prev.myKgSold));
                 });
-        FirebaseAuth.getInstance().addAuthStateListener(auth -> {
-            FirebaseUser u = auth.getCurrentUser();
+        PlayerAuth.getInstance().addAuthStateListener(auth -> {
+            SignedInUser u = auth.getCurrentUser();
             attachMyKgListener(u != null ? u.getUid() : null);
         });
     }
@@ -170,6 +189,7 @@ public class GlobalEventRepository {
         cached = next;
         GlobalEventEffects.set(next.toEffects());
         live.postValue(next);
+        maybeEndSurgeWhenGoalReached(next);
         if (marketRepository != null) {
             int day = GameCalendar.currentGlobalMarketDayKey();
             marketRepository.refreshGlobalMarketForDay(day,
@@ -177,38 +197,48 @@ public class GlobalEventRepository {
         }
     }
 
+    /** Si el objetivo global llega al 100 %, el evento se da por terminado al momento. */
+    private void maybeEndSurgeWhenGoalReached(Snapshot s) {
+        if (endingSurgeForGoal || !GameServer.enabled() || s == null || !s.surge.exists()) {
+            return;
+        }
+        if (!STATUS_ACTIVE.equals(s.surge.status)) {
+            return;
+        }
+        if (s.surge.isEnded()) {
+            return;
+        }
+        if (DemandSurgeMilestones.highestReached(s.kgSoldTowardGoal, s.surge.targetDemandKg) < 100) {
+            return;
+        }
+        endingSurgeForGoal = true;
+        endEvent(DOC_SURGE, msg -> endingSurgeForGoal = false);
+    }
+
     public void recordSaleTowardSurge(String floraCanonical, double kg, String uid) {
-        if (firestore == null || kg <= 0 || uid == null) {
+        if (!GameServer.enabled() || kg <= 0 || uid == null) {
             return;
         }
         Snapshot s = cached;
-        if (!s.surge.isLive() || !s.surge.matchesFlora(floraCanonical)) {
+        if (!s.surge.isLiveForEffects(s.kgSoldTowardGoal) || !s.surge.matchesFlora(floraCanonical)) {
             return;
         }
-        firestore.collection(COL_PROGRESS).document(DOC_SURGE)
-                .set(mapOf("kgSold", FieldValue.increment(kg),
-                        "updatedAtMs", System.currentTimeMillis(),
-                        "instanceId", s.surge.instanceId()), SetOptions.merge());
-        Map<String, Object> p = new HashMap<>();
-        p.put("uid", uid);
-        p.put("kgSold", FieldValue.increment(kg));
-        firestore.collection(COL_PROGRESS).document(DOC_SURGE)
-                .collection("participants").document(uid)
-                .set(p, SetOptions.merge());
+        String instance = s.surge.instanceId();
+        io.execute(() -> GameServer.recordEventSale(kg, instance));
         Snapshot prev = cached;
         publish(new Snapshot(prev.surge, prev.shift, prev.velutina, prev.kgSoldTowardGoal, prev.myKgSold + kg));
     }
 
     public void hasParticipated(String uid, String instanceId, Consumer<Boolean> onMain) {
-        if (firestore == null || uid == null || instanceId == null || instanceId.isEmpty()) {
+        if (!GameServer.enabled() || uid == null || instanceId == null || instanceId.isEmpty()) {
             main.post(() -> onMain.accept(false));
             return;
         }
-        firestore.collection(COL_PROGRESS).document(DOC_SURGE)
-                .collection("participants").document(uid)
-                .get()
-                .addOnSuccessListener(doc -> main.post(() -> onMain.accept(doc != null && doc.exists())))
-                .addOnFailureListener(e -> main.post(() -> onMain.accept(false)));
+        io.execute(() -> {
+            JSONObject row = GameServer.fetchJson("/event-participants/" + uidPath(uid));
+            double mine = row != null ? row.optDouble("kg", 0) : 0;
+            main.post(() -> onMain.accept(mine > 0));
+        });
     }
 
     public boolean hasClaimedLocal(String instanceId) {
@@ -224,9 +254,31 @@ public class GlobalEventRepository {
                 .edit().putBoolean(instanceId, true).apply();
     }
 
+    public boolean hasDismissed(String uid, String instanceId) {
+        if (instanceId == null || instanceId.isEmpty()) {
+            return false;
+        }
+        return app.getSharedPreferences("event_dismiss_v1", Context.MODE_PRIVATE)
+                .getBoolean(dismissKey(uid, instanceId), false);
+    }
+
+    public void markDismissed(String uid, String instanceId) {
+        if (instanceId == null || instanceId.isEmpty()) {
+            return;
+        }
+        app.getSharedPreferences("event_dismiss_v1", Context.MODE_PRIVATE)
+                .edit().putBoolean(dismissKey(uid, instanceId), true).apply();
+    }
+
+    private static String dismissKey(@Nullable String uid, String instanceId) {
+        return (uid != null && !uid.isEmpty() ? uid : "_") + "|" + instanceId;
+    }
+
     public void claimSurgeRewards(String uid, Consumer<String> onMainMessage) {
         Snapshot s = cached;
-        if (!s.surge.exists() || s.surge.isLive()) {
+        boolean goalDone = DemandSurgeMilestones.highestReached(
+                s.kgSoldTowardGoal, s.surge.targetDemandKg) >= 100;
+        if (!s.surge.exists() || (s.surge.isLive() && !goalDone)) {
             main.post(() -> onMainMessage.accept("El evento aún no ha terminado."));
             return;
         }
@@ -252,7 +304,7 @@ public class GlobalEventRepository {
             int feed = DemandSurgeMilestones.feedForHighest(highest);
             int queens = DemandSurgeMilestones.queensForHighest(highest);
             if (economyRepository != null && coins > 0) {
-                economyRepository.addToBalance(coins);
+                economyRepository.addToBalance(coins, "Premio del evento global");
             }
             EventInventoryStore.add(app, treat, feed, queens);
             markClaimedLocal(instanceId);
@@ -260,50 +312,53 @@ public class GlobalEventRepository {
             EventInventoryStore.persistCloud(firestore, uid, app);
             onMainMessage.accept(null);
         });
-        if (firestore == null) {
-            grant.run();
-            return;
-        }
-        firestore.collection("users").document(uid)
-                .collection("eventClaims").document(instanceId)
-                .get()
-                .addOnSuccessListener(doc -> {
-                    if (doc != null && doc.exists() && Boolean.TRUE.equals(doc.getBoolean("claimed"))) {
-                        markClaimedLocal(instanceId);
-                        main.post(() -> onMainMessage.accept("Ya has recogido la recompensa."));
-                        return;
-                    }
-                    grant.run();
-                })
-                .addOnFailureListener(e -> grant.run());
+        io.execute(() -> {
+            JSONObject claim = GameServer.fetchJson("/event-claims/" + claimPath(uid, instanceId));
+            JSONObject body = claim != null ? claim.optJSONObject("body") : null;
+            if (body != null && body.optBoolean("claimed", false)) {
+                markClaimedLocal(instanceId);
+                main.post(() -> onMainMessage.accept("Ya has recogido la recompensa."));
+                return;
+            }
+            main.post(grant);
+        });
     }
 
     private void persistClaimCloud(String uid, String instanceId, int highest) {
-        if (firestore == null) {
+        if (!GameServer.enabled() || uid == null || instanceId == null) {
             return;
         }
-        Map<String, Object> m = new HashMap<>();
-        m.put("claimed", true);
-        m.put("claimedAtMs", System.currentTimeMillis());
-        m.put("highestMilestone", highest);
-        firestore.collection("users").document(uid)
-                .collection("eventClaims").document(instanceId)
-                .set(m, SetOptions.merge());
+        io.execute(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("claimed", true);
+                body.put("claimedAtMs", System.currentTimeMillis());
+                body.put("highestMilestone", highest);
+                JSONObject row = new JSONObject();
+                row.put("ownerId", uid);
+                row.put("instanceId", instanceId);
+                row.put("body", body);
+                GameServer.putJson("/event-claims/" + claimPath(uid, instanceId), row);
+            } catch (Exception ignored) {
+            }
+        });
     }
 
-    public void activateDemandSurge(String flora, int durationDays, String adminUid, Consumer<String> onMain) {
+    public void activateDemandSurge(String flora, int durationDays, double demandMult,
+            String adminUid, Consumer<String> onMain) {
         HoneyMarketSnapshot snap = marketRepository != null ? marketRepository.getSnapshot() : null;
         String floraKey = HoneyMarketEngine.canonicalFloraKey(flora);
         double daily = snap != null ? snap.demandKgByFlora.getOrDefault(floraKey, 50.0) : 50.0;
-        int days = Math.max(1, Math.min(30, durationDays));
-        double target = Math.max(1.0, daily * SURGE_DEMAND_MULT * days);
+        int days = Math.max(1, durationDays);
+        double demand = clampSurgeDemandMult(demandMult);
+        double target = Math.max(1.0, daily * demand * days);
         long now = System.currentTimeMillis();
         long end = now + days * 24L * 60L * 60L * 1000L;
         Map<String, Object> doc = new HashMap<>();
         doc.put("status", STATUS_ACTIVE);
         doc.put("type", "DEMAND_SURGE");
         doc.put("floraKey", floraKey);
-        doc.put("demandMult", SURGE_DEMAND_MULT);
+        doc.put("demandMult", demand);
         doc.put("priceMult", SURGE_PRICE_MULT);
         doc.put("durationDays", days);
         doc.put("startsAtMs", now);
@@ -315,11 +370,23 @@ public class GlobalEventRepository {
             progress.put("kgSold", 0.0);
             progress.put("instanceId", String.valueOf(now));
             progress.put("updatedAtMs", now);
-            if (firestore != null) {
-                firestore.collection(COL_PROGRESS).document(DOC_SURGE).set(progress);
+            try {
+                JSONObject body = new JSONObject();
+                body.put("kgSold", 0.0);
+                body.put("instanceId", String.valueOf(now));
+                body.put("updatedAtMs", now);
+                GameServer.putJson("/event-progress/" + DOC_SURGE, new JSONObject().put("body", body));
+            } catch (Exception ignored) {
             }
             onMain.accept(null);
         }, onMain);
+    }
+
+    public static double clampSurgeDemandMult(double raw) {
+        if (!Double.isFinite(raw) || raw < 1.0) {
+            return SURGE_DEMAND_MULT;
+        }
+        return Math.min(50.0, raw);
     }
 
     public void deactivateDemandSurge(Consumer<String> onMain) {
@@ -334,7 +401,7 @@ public class GlobalEventRepository {
             int durationDays,
             String adminUid,
             Consumer<String> onMain) {
-        int days = Math.max(1, Math.min(30, durationDays));
+        int days = Math.max(1, durationDays);
         long now = System.currentTimeMillis();
         Map<String, Object> doc = new HashMap<>();
         doc.put("status", STATUS_ACTIVE);
@@ -360,7 +427,7 @@ public class GlobalEventRepository {
             int durationDays,
             String adminUid,
             Consumer<String> onMain) {
-        int days = Math.max(1, Math.min(30, durationDays));
+        int days = Math.max(1, durationDays);
         long now = System.currentTimeMillis();
         Map<String, Object> doc = new HashMap<>();
         doc.put("status", STATUS_ACTIVE);
@@ -386,15 +453,90 @@ public class GlobalEventRepository {
     }
 
     private void writeEvent(String id, Map<String, Object> data, Runnable ok, Consumer<String> onMain) {
-        if (firestore == null) {
-            onMain.accept("Sin Firestore.");
+        if (!GameServer.enabled()) {
+            onMain.accept("Sin conexión al servidor.");
             return;
         }
-        firestore.collection(COL_EVENTS).document(id)
-                .set(data, SetOptions.merge())
-                .addOnSuccessListener(v -> main.post(ok))
-                .addOnFailureListener(e -> main.post(() ->
-                        onMain.accept(e.getMessage() != null ? e.getMessage() : "Error al guardar")));
+        io.execute(() -> {
+            try {
+                JSONObject current = GameServer.fetchJson("/global-events/" + id);
+                JSONObject body = current != null && current.optJSONObject("body") != null
+                        ? current.optJSONObject("body") : new JSONObject();
+                for (Map.Entry<String, Object> entry : data.entrySet()) {
+                    body.put(entry.getKey(), entry.getValue());
+                }
+                JSONObject row = new JSONObject();
+                row.put("status", body.optString("status", ""));
+                row.put("body", body);
+                if (GameServer.putJson("/global-events/" + id, row) / 100 != 2) {
+                    main.post(() -> onMain.accept("Error al guardar"));
+                    return;
+                }
+                main.post(ok);
+                pullServerEvents();
+            } catch (Exception e) {
+                main.post(() -> onMain.accept(e.getMessage() != null ? e.getMessage() : "Error al guardar"));
+            }
+        });
+    }
+
+    private void pullServerEvents() {
+        io.execute(() -> {
+            JSONArray events = GameServer.fetchArray("/global-events");
+            EventDoc surge = EventDoc.empty();
+            EventDoc shift = EventDoc.empty();
+            EventDoc vel = EventDoc.empty();
+            if (events != null) {
+                for (int i = 0; i < events.length(); i++) {
+                    JSONObject row = events.optJSONObject(i);
+                    if (row == null) {
+                        continue;
+                    }
+                    EventDoc doc = EventDoc.fromJson(row.optJSONObject("body"), row.optString("status", ""));
+                    String id = row.optString("id", "");
+                    if (DOC_SURGE.equals(id)) {
+                        surge = doc;
+                    } else if (DOC_SHIFT.equals(id)) {
+                        shift = doc;
+                    } else if (DOC_VELUTINA.equals(id)) {
+                        vel = doc;
+                    }
+                }
+            }
+            double kg = 0;
+            JSONObject progress = GameServer.fetchJson("/event-progress/" + DOC_SURGE);
+            if (progress != null && progress.optJSONObject("body") != null) {
+                kg = progress.optJSONObject("body").optDouble("kgSold", 0);
+            }
+            double mine = 0;
+            SignedInUser user = PlayerAuth.getInstance().getCurrentUser();
+            if (user != null) {
+                JSONObject part = GameServer.fetchJson("/event-participants/" + uidPath(user.getUid()));
+                if (part != null) {
+                    mine = part.optDouble("kg", 0);
+                }
+            }
+            publish(new Snapshot(surge, shift, vel, kg, mine));
+        });
+    }
+
+    @Nullable
+    private static String uidPath(@NonNull String uid) {
+        return enc("demand_surge:" + uid);
+    }
+
+    @Nullable
+    private static String claimPath(@NonNull String uid, @NonNull String instanceId) {
+        return enc(uid + ":" + instanceId);
+    }
+
+    @NonNull
+    private static String enc(@NonNull String value) {
+        try {
+            return java.net.URLEncoder.encode(value, "UTF-8");
+        } catch (Exception e) {
+            return value;
+        }
     }
 
     public boolean alreadyHitByVelutina(String hiveId, String instanceId) {
@@ -461,6 +603,42 @@ public class GlobalEventRepository {
             return new EventDoc(STATUS_OFF, "", false, null, 1, 1, 0, 0, 0, null, 0, 0, 0, 0);
         }
 
+        static EventDoc fromJson(@Nullable JSONObject d, @Nullable String statusFallback) {
+            if (d == null) {
+                return empty();
+            }
+            String status = d.optString("status", statusFallback != null ? statusFallback : STATUS_OFF);
+            return new EventDoc(
+                    status,
+                    d.optString("floraKey", ""),
+                    d.optBoolean("allFloras", false),
+                    jsonStrings(d.optJSONArray("floraKeys")),
+                    d.optDouble("demandMult", 1),
+                    d.optDouble("priceMult", 1),
+                    d.optInt("demandDeltaPercent", 0),
+                    d.optInt("priceDeltaPercent", 0),
+                    d.optDouble("lossPercent", 0),
+                    jsonStrings(d.optJSONArray("climateKeys")),
+                    d.optLong("startsAtMs", 0),
+                    d.optLong("endsAtMs", 0),
+                    d.optDouble("targetDemandKg", 0),
+                    d.optInt("durationDays", 0));
+        }
+
+        private static List<String> jsonStrings(@Nullable JSONArray raw) {
+            if (raw == null) {
+                return Collections.emptyList();
+            }
+            List<String> out = new ArrayList<>();
+            for (int i = 0; i < raw.length(); i++) {
+                String value = raw.optString(i, "");
+                if (!value.isEmpty()) {
+                    out.add(value);
+                }
+            }
+            return out;
+        }
+
         static EventDoc from(@Nullable DocumentSnapshot d) {
             if (d == null || !d.exists()) {
                 return empty();
@@ -494,7 +672,18 @@ public class GlobalEventRepository {
                 return false;
             }
             long now = System.currentTimeMillis();
-            return now >= startsAtMs && (endsAtMs <= 0 || now < endsAtMs);
+            if (!(now >= startsAtMs && (endsAtMs <= 0 || now < endsAtMs))) {
+                return false;
+            }
+            return true;
+        }
+
+        /**
+         * En vivo para efectos de mercado: deja de aplicar si el objetivo ya se cumplió
+         * (aunque el documento aún diga {@code active}).
+         */
+        public boolean isLiveForEffects(double kgSoldTowardGoal) {
+            return isLive() && !isGoalComplete(kgSoldTowardGoal);
         }
 
         public boolean isEnded() {
@@ -502,6 +691,15 @@ public class GlobalEventRepository {
                 return exists();
             }
             return STATUS_ACTIVE.equals(status) && endsAtMs > 0 && System.currentTimeMillis() >= endsAtMs;
+        }
+
+        /** Objetivo global alcanzado (100 %), aunque aún no se haya escrito {@code ended} en Firestore. */
+        public boolean isGoalComplete(double kgSoldTowardGoal) {
+            return exists() && DemandSurgeMilestones.highestReached(kgSoldTowardGoal, targetDemandKg) >= 100;
+        }
+
+        public boolean isFinished(double kgSoldTowardGoal) {
+            return isEnded() || isGoalComplete(kgSoldTowardGoal);
         }
 
         public String instanceId() {
@@ -567,7 +765,7 @@ public class GlobalEventRepository {
         GlobalEventEffects.State toEffects() {
             Map<String, Double> demand = new HashMap<>();
             Map<String, Double> price = new HashMap<>();
-            if (surge.isLive()) {
+            if (surge.isLiveForEffects(kgSoldTowardGoal)) {
                 String f = HoneyMarketEngine.canonicalFloraKey(surge.floraKey);
                 demand.put(f, surge.demandMult > 0 ? surge.demandMult : SURGE_DEMAND_MULT);
                 price.put(f, surge.priceMult > 0 ? surge.priceMult : SURGE_PRICE_MULT);

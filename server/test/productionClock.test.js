@@ -22,6 +22,9 @@ test("a laying colony changes bees and honey stock on the server", () => {
   assert.equal(summary.floraType, "Romero");
   assert.notEqual(hive.bee_count, 20000);
   assert.ok(hive.honey_production > 0);
+  const stocks = JSON.parse(hive.honey_stocks_json);
+  const stockSum = Object.values(stocks).reduce((sum, kg) => sum + kg, 0);
+  assert.ok(Math.abs(stockSum - hive.honey_production) < 0.02);
   assert.equal(hive.last_summary_day_key, 20260321);
   const pop = JSON.parse(hive.population_state_json);
   assert.equal(pop.workersAdult, hive.bee_count);

@@ -12,14 +12,11 @@ import com.apiculture.simulator.databinding.ItemMarketHoneyPillBinding;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class MarketPillsAdapter extends RecyclerView.Adapter<MarketPillsAdapter.VH> {
 
     public interface Listener {
-        void onSell5(String floraKey);
-
-        void onSellAll(String floraKey, double stockKg);
+        void onSell(MarketPillUi pill);
     }
 
     private final LayoutInflater inflater;
@@ -55,28 +52,21 @@ public class MarketPillsAdapter extends RecyclerView.Adapter<MarketPillsAdapter.
         } else {
             holder.binding.ivPillFlora.setVisibility(android.view.View.GONE);
         }
-        holder.binding.progressDemand.setMax(100);
-        holder.binding.progressDemand.setProgress(Math.min(100, Math.max(0, p.fillPercent)));
-        holder.binding.tvPillDemand.setText(c.getString(R.string.market_pill_demand_line,
-                p.filledKg, p.demandKg));
-        String adj = String.format(Locale.getDefault(), "%+d%%", p.priceAdjPercent);
-        holder.binding.tvPillPrice.setText(c.getString(R.string.market_pill_price,
-                p.priceEurPerKg, adj));
+        holder.binding.chartPrice7d.setPrices(p.priceHistory7d);
+        holder.binding.tvPillPrice.setText(c.getString(R.string.market_pill_price, p.priceEurPerKg));
+        if (p.priceNote != null && !p.priceNote.isEmpty()) {
+            holder.binding.tvPillNote.setVisibility(android.view.View.VISIBLE);
+            holder.binding.tvPillNote.setText(p.priceNote);
+        } else {
+            holder.binding.tvPillNote.setVisibility(android.view.View.GONE);
+        }
         holder.binding.tvPillStock.setText(c.getString(R.string.market_pill_stock, p.userStockKg));
-        holder.binding.btnSell5.setText(c.getString(R.string.market_sell_5));
-        holder.binding.btnSellAll.setText(c.getString(R.string.market_sell_all, p.userStockKg));
-        boolean canSell5 = p.userStockKg >= 5.0 - 1e-6;
-        boolean canSellAny = p.userStockKg > 1e-6;
-        holder.binding.btnSell5.setEnabled(canSell5);
-        holder.binding.btnSellAll.setEnabled(canSellAny);
-        holder.binding.btnSell5.setOnClickListener(v -> {
-            if (canSell5) {
-                listener.onSell5(p.floraKey);
-            }
-        });
-        holder.binding.btnSellAll.setOnClickListener(v -> {
-            if (canSellAny) {
-                listener.onSellAll(p.floraKey, p.userStockKg);
+        boolean canSell = p.maxSellKg() > 1e-6;
+        holder.binding.btnSell.setEnabled(canSell);
+        holder.binding.btnSell.setAlpha(canSell ? 1f : 0.45f);
+        holder.binding.btnSell.setOnClickListener(v -> {
+            if (canSell) {
+                listener.onSell(p);
             }
         });
     }

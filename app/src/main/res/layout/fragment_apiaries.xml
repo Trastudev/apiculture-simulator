@@ -43,16 +43,6 @@
                 android:textColor="@color/dash_muted"
                 android:textSize="13sp" />
         </LinearLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_apiaries_new_hive"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="0dp"
-            android:text="@string/hive_buy_title"
-            android:textAllCaps="false"
-            android:textSize="12sp" />
     </LinearLayout>
 
     <FrameLayout

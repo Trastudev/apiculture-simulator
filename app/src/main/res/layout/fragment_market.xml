@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -19,43 +20,300 @@
             android:orientation="horizontal">
 
             <ImageView
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:contentDescription="@string/cd_ic_venta"
                 android:src="@drawable/ic_venta" />
 
-            <LinearLayout
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:orientation="vertical">
+                android:text="@string/market_title"
+                android:textColor="@color/event_ink"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_market_stat_tile"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="12dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@string/market_stat_balance"
+                    android:src="@drawable/ic_beecoin" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/market_title"
-                    android:textColor="@color/login_text_dark"
-                    android:textSize="16sp"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/market_stat_balance"
+                    android:textAllCaps="true"
+                    android:textColor="@color/event_ink_muted"
+                    android:textSize="10sp"
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/tv_market_summary"
+                    android:id="@+id/tv_stat_balance"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:background="@drawable/bg_dash_pill_day"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="4dp"
-                    android:textColor="@color/login_text_dark"
-                    android:textSize="11sp"
+                    android:textColor="@color/event_ink"
+                    android:textSize="14sp"
                     android:textStyle="bold"
-                    tools:text="Saldo: 2000 B · Miel: 12 kg · Jugadores: 24" />
+                    tools:text="1840,00 B" />
             </LinearLayout>
 
-            <View
+            <LinearLayout
+                android:id="@+id/tile_stat_honey"
                 android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_market_stat_tile"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="12dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@string/market_stat_honey"
+                    android:src="@drawable/ic_recolectar" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/market_stat_honey"
+                    android:textAllCaps="true"
+                    android:textColor="@color/event_ink_muted"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_stat_honey"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/event_ink"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    tools:text="12,4 kg" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="@color/dash_card_bg"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="2dp"
+            app:contentPadding="6dp">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/market_tab_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:checkedButton="@id/btn_market_wholesale"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_market_wholesale"
+                    style="@style/Widget.Apisim.MapRegionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:backgroundTint="@color/map_region_btn_bg"
+                    android:text="@string/market_tab_wholesale"
+                    app:backgroundTint="@color/map_region_btn_bg" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_market_contracts"
+                    style="@style/Widget.Apisim.MapRegionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4dp"
+                    android:backgroundTint="@color/map_region_btn_bg"
+                    android:paddingEnd="12dp"
+                    android:text="@string/market_tab_contracts"
+                    app:backgroundTint="@color/map_region_btn_bg"
+                    app:iconGravity="textEnd"
+                    app:iconPadding="6dp"
+                    app:iconSize="16dp"
+                    app:iconTint="@null" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_market_orders"
+                    style="@style/Widget.Apisim.MapRegionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4dp"
+                    android:backgroundTint="@color/map_region_btn_bg"
+                    android:text="@string/market_tab_orders"
+                    app:backgroundTint="@color/map_region_btn_bg" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            app:cardBackgroundColor="@color/dash_card_bg"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="2dp"
+            app:contentPadding="6dp">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/market_region_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:checkedButton="@id/btn_market_iberia"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_market_iberia"
+                    style="@style/Widget.Apisim.MapRegionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:backgroundTint="@color/map_region_btn_bg"
+                    android:text="@string/map_region_iberia"
+                    app:backgroundTint="@color/map_region_btn_bg" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_market_mdg"
+                    style="@style/Widget.Apisim.MapRegionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4dp"
+                    android:backgroundTint="@color/map_region_btn_bg"
+                    android:text="@string/map_region_madagascar"
+                    app:backgroundTint="@color/map_region_btn_bg" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_market_za"
+                    style="@style/Widget.Apisim.MapRegionButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4dp"
+                    android:backgroundTint="@color/map_region_btn_bg"
+                    android:paddingEnd="12dp"
+                    android:text="@string/map_region_south_africa"
+                    app:backgroundTint="@color/map_region_btn_bg"
+                    app:icon="@drawable/ic_lock_padlock"
+                    app:iconGravity="textEnd"
+                    app:iconPadding="6dp"
+                    app:iconSize="16dp"
+                    app:iconTint="@null" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/input_layout_market_warehouse"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="8dp"
+            app:boxBackgroundColor="@color/dash_card_bg"
+            app:boxCornerRadiusBottomEnd="16dp"
+            app:boxCornerRadiusBottomStart="16dp"
+            app:boxCornerRadiusTopEnd="16dp"
+            app:boxCornerRadiusTopStart="16dp"
+            app:boxStrokeColor="@color/event_gold_stroke"
+            app:boxStrokeWidth="1.5dp"
+            app:hintEnabled="false">
+
+            <AutoCompleteTextView
+                android:id="@+id/spinner_market_warehouse"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="false"
+                android:inputType="none"
+                android:paddingVertical="10dp"
+                android:textColor="@color/event_ink"
+                android:textSize="14sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/tv_market_list_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text="@string/market_picker_empty"
+            android:textColor="@color/login_text_dark"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_market_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:nestedScrollingEnabled="false"
+            tools:listitem="@layout/item_market_picker" />
+
+        <LinearLayout
+            android:id="@+id/ll_market_list_pager"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/btn_market_list_prev"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/market_contracts_prev"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_chevron_left" />
+
+            <TextView
+                android:id="@+id/tv_market_list_page"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:textColor="@color/event_ink"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                tools:text="1 / 4" />
+
+            <ImageButton
+                android:id="@+id/btn_market_list_next"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/market_contracts_next"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_chevron_right" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -64,7 +322,154 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:nestedScrollingEnabled="false"
+            android:visibility="gone"
             tools:itemCount="6"
             tools:listitem="@layout/item_market_honey_pill" />
+
+        <TextView
+            android:id="@+id/tv_contracts_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/market_contracts_hint"
+            android:textColor="@color/login_text_dark"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/ll_contracts_pager"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/btn_contracts_prev"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/market_contracts_prev"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_chevron_left" />
+
+            <TextView
+                android:id="@+id/tv_contracts_page"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:textColor="@color/event_ink"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                tools:text="1 / 4" />
+
+            <ImageButton
+                android:id="@+id/btn_contracts_next"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/market_contracts_next"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_chevron_right" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/pb_contracts"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/ll_contracts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tv_contracts_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text="@string/market_contracts_empty"
+            android:textColor="@color/login_text_dark"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tv_orders_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/market_orders_hint"
+            android:textColor="@color/login_text_dark"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/ll_orders_pager"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/btn_orders_prev"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/market_orders_prev"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_chevron_left" />
+
+            <TextView
+                android:id="@+id/tv_orders_page"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:textColor="@color/event_ink"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                tools:text="1 / 1" />
+
+            <ImageButton
+                android:id="@+id/btn_orders_next"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/market_orders_next"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_chevron_right" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/ll_orders"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tv_orders_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text="@string/market_orders_empty"
+            android:textColor="@color/login_text_dark"
+            android:textSize="13sp"
+            android:visibility="gone" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

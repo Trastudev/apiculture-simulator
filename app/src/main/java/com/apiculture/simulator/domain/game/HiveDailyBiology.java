@@ -193,20 +193,15 @@ public final class HiveDailyBiology {
         if (TranshumanceRules.isInTransit(hive, dayKey)) {
             return 0.0;
         }
-        double nectar = HexNectarRules.nectar01(hive, day, hivesOnSameFlora, readyFlorasOnHex);
-        if (nectar <= 1e-6) {
+        double demand = HexNectarPool.forageDemandKg(s, hive, dayKey, tempC, skyMult);
+        if (demand <= 1e-9) {
             return 0.0;
         }
-        double tempM = TemperatureHoneyModifier.productionMultiplierForCelsius(tempC);
-        double healthM = HealthHoneyModifier.productionMultiplierForHealth(
-                hive != null ? hive.health : 80);
-        double feedM = HiveFeedingBonuses.honeyMultiplierForDay(hive, dayKey);
-        double sky = Math.max(0.0, skyMult);
-        String hid = hive != null && hive.id != null ? hive.id : "_";
-        double noise = GameBalanceConfig.nectarNoiseMin
-                + HoneyDailyProduction.deterministicUniform01(hid + ":nectar", dayKey) * GameBalanceConfig.nectarNoiseSpan;
-        double foragers = s.workersAdult * GameBalanceConfig.foragerFraction * tempM * sky;
-        return foragers * GameBalanceConfig.kgPerForagerFullFlow * nectar * healthM * feedM * noise;
+        double pool = HexNectarPool.poolKg(hive, day);
+        if (pool <= 1e-9) {
+            return 0.0;
+        }
+        return Math.min(demand, pool);
     }
 
     public static double consumptionKg(HivePopulationState s, HiveEntity hive, int eggsLaid, int dayKey) {

@@ -17,6 +17,7 @@ const {
   addXp,
   affordableFloraForLevel,
   isFloraUnlocked,
+  isZaHex,
   floraValue,
 } = require("./rules");
 const { personaForBotId, shouldLoginToday } = require("./personas");
@@ -150,8 +151,41 @@ function plannedSupers(bot, persona, rng) {
   return 0;
 }
 
+function legalFlora(bot) {
+  const preferred = affordableFloraForLevel(bot.level, bot.homeFloras);
+  return preferred[0] || (isFloraUnlocked("Mil flores", bot.level) ? "Mil flores" : "Mil flores");
+}
+
+/** Quita Sudáfrica y la miel o las colmenas de floras que el nivel aún no permite. */
+function clampBotToRules(bot) {
+  ensureBotShape(bot);
+  const level = bot.level || 0;
+  bot.ownedHexIds = (bot.ownedHexIds || []).filter((id) => id && !isZaHex(id));
+  bot.warehouseHexIds = (bot.warehouseHexIds || []).filter((id) => id && !isZaHex(id));
+  bot.hives = (bot.hives || []).filter((hive) => hive && !isZaHex(hive.hexId));
+  const fallback = legalFlora(bot);
+  for (const hive of bot.hives) {
+    if (!isFloraUnlocked(hive.floraType, level)) {
+      hive.floraType = fallback;
+      hive.needsPublish = true;
+    }
+  }
+  const honey = {};
+  for (const [flora, kg] of Object.entries(bot.honeyByFlora || {})) {
+    if (isFloraUnlocked(flora, level) && kg > 0) honey[flora] = kg;
+  }
+  bot.honeyByFlora = honey;
+  const hexFlora = {};
+  for (const [hexId, flora] of Object.entries(bot.hexFlora || {})) {
+    if (isZaHex(hexId)) continue;
+    hexFlora[hexId] = isFloraUnlocked(flora, level) ? flora : fallback;
+  }
+  bot.hexFlora = hexFlora;
+}
+
 function planDay(bot, dayKey, opts) {
   ensureBotShape(bot);
+  clampBotToRules(bot);
   const persona = personaForBotId(bot.id);
   bot.persona = persona.id;
   const rng = rngFrom((dayKey | 0) * 10007 + (bot.id | 0) * 97 + 13);
@@ -166,6 +200,7 @@ function planDay(bot, dayKey, opts) {
 
   // 1) Producción diaria (más miel si la flora vale más y hay alzas).
   for (const hive of bot.hives) {
+    if (!isFloraUnlocked(hive.floraType, bot.level)) continue;
     const cap = honeyCap(hive.superCount);
     const floraMult = scoreFlora(hive.floraType) / 15.6;
     const base = (0.42 + rng() * 1.55) * persona.productionMult * floraMult;
@@ -192,9 +227,10 @@ function planDay(bot, dayKey, opts) {
     const keep = Math.min(1.2, stock * 0.12);
     const harvest = round2(Math.max(0, stock - keep));
     if (harvest < 0.35) continue;
+    const flora = hive.floraType || "Mil flores";
+    if (!isFloraUnlocked(flora, bot.level)) continue;
     hive.honeyProduction = round2(stock - harvest);
     hive.needsPublish = true;
-    const flora = hive.floraType || "Mil flores";
     bot.honeyByFlora[flora] = round2((bot.honeyByFlora[flora] || 0) + harvest);
     addXp(bot, Math.max(RULES.XP_HARVEST_PER_KG, Math.round(harvest * RULES.XP_HARVEST_PER_KG)));
     actions.push({ type: "harvest", hiveId: hive.id, flora, kg: harvest });
@@ -202,6 +238,7 @@ function planDay(bot, dayKey, opts) {
 
   // 3) Venta al mayor (nunca comandas).
   for (const [flora, stock] of Object.entries(bot.honeyByFlora)) {
+    if (!isFloraUnlocked(flora, bot.level)) continue;
     if (stock < persona.sellThresholdKg) continue;
     const [lo, hi] = persona.sellFraction;
     const frac = lo + rng() * (hi - lo);
@@ -316,7 +353,7 @@ function planDay(bot, dayKey, opts) {
         flora,
         price,
         withWarehouse,
-        expandSecondary: persona.expandSecondaryRegion && bot.level >= RULES.CLIMATE_ZA_LEVEL,
+        expandSecondary: !!persona.expandSecondaryRegion,
       });
     }
   }

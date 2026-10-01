@@ -14,7 +14,8 @@ public class GameProductionStateEntity {
     public int gameStartDayKey;
     /**
      * Último día de simulación (fecha civil del día de juego) para el que ya se aplicó el tick.
-     * 0 = ninguno aún (el primer día elegible es {@link #gameStartDayKey}).
+     * 0 = aún no hay tick de colmenas: el día {@link #gameStartDayKey} no produce;
+     * el primer día elegible es el siguiente.
      */
     public int lastProcessedProductionDayKey;
     /**

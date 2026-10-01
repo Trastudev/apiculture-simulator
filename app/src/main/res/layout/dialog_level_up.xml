@@ -78,6 +78,21 @@
                 android:textSize="13sp"
                 tools:text="Has subido 1 nivel. ¡Recompensa lista!" />
 
+            <TextView
+                android:id="@+id/tv_level_up_climate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_shop_card"
+                android:gravity="center"
+                android:padding="10dp"
+                android:textColor="@color/event_ink"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:text="Ya puedes comprar terrenos de clima Continental."
+                tools:visibility="visible" />
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -109,7 +124,7 @@
                         android:textColor="@color/event_ink"
                         android:textSize="15sp"
                         android:textStyle="bold"
-                        tools:text="+80 BeeCoins" />
+                        tools:text="+80,00 BeeCoins" />
                 </LinearLayout>
 
                 <LinearLayout

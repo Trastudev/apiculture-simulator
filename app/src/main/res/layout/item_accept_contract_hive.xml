@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="6dp"
+    android:background="@drawable/bg_shop_card"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="10dp"
+    android:paddingVertical="6dp">
+
+    <CheckBox
+        android:id="@+id/check_hive"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="0dp"
+        app:buttonTint="@color/event_gold" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_hive_pick"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/event_ink"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="Reina del prado" />
+
+        <TextView
+            android:id="@+id/tv_hive_pick_travel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/dash_bad"
+            android:textSize="12sp"
+            tools:text="−150,00 B" />
+    </LinearLayout>
+</LinearLayout>

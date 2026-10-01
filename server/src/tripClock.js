@@ -383,6 +383,7 @@ async function startReturn(client, trip, when) {
     trip.route_road_kinds = null;
     trip.start_epoch_ms = when;
     trip.duration_ms = dur > 0 ? dur : MIN_DURATION_MS;
+    dropDeliveredCargo(trip);
     await saveCargo(client, trip);
     return;
   }
@@ -408,7 +409,109 @@ async function startReturn(client, trip, when) {
     num(trip.return_lng),
     when
   );
+  dropDeliveredCargo(trip);
   await saveCargo(client, trip);
+}
+
+function dropDeliveredCargo(trip) {
+  if (!trip || trip.kind === "collect") return;
+  trip.kg = 0;
+  trip.flora_key = null;
+  let parsed = {};
+  try {
+    parsed = JSON.parse(trip.cargo_json || "{}");
+  } catch (err) {
+    parsed = {};
+  }
+  const kept = {};
+  for (const key of Object.keys(parsed)) {
+    if (key.startsWith("_")) kept[key] = parsed[key];
+  }
+  trip.cargo_json = JSON.stringify(kept);
+}
+
+function collectLines(trip) {
+  const cargo = cargoMap(trip.cargo_json);
+  if (cargo.lines.length > 0) return cargo.lines;
+  const tour = cargo.parsed && cargo.parsed._tour;
+  if (!Array.isArray(tour)) return [];
+  const sum = new Map();
+  for (const leg of tour) {
+    if (!leg || leg.whTo === true || !leg.load || typeof leg.load !== "object") continue;
+    for (const [flora, value] of Object.entries(leg.load)) {
+      const kg = num(value);
+      if (!flora || flora.startsWith("_") || kg <= 1e-9) continue;
+      sum.set(flora, (sum.get(flora) || 0) + kg);
+    }
+  }
+  const lines = [];
+  for (const [flora, kg] of sum) {
+    lines.push({ flora, kg: Math.round(kg * 1000) / 1000 });
+  }
+  return lines;
+}
+
+async function creditWarehouseStore(client, ownerId, hexId, lines, seq) {
+  const id = ownerId + ":warehouse";
+  const found = await client.query("SELECT body FROM player_stores WHERE id = $1 FOR UPDATE", [id]);
+  let body = found.rowCount > 0 ? found.rows[0].body : {};
+  if (typeof body === "string") {
+    try { body = JSON.parse(body); } catch (err) { body = {}; }
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) body = {};
+  const stock = body.stock && typeof body.stock === "object" && !Array.isArray(body.stock)
+    ? body.stock : {};
+  if (hexId) {
+    const hex = stock[hexId] && typeof stock[hexId] === "object" ? stock[hexId] : {};
+    for (const line of lines) {
+      hex[line.flora] = Math.round(((Number(hex[line.flora]) || 0) + line.kg) * 1000) / 1000;
+    }
+    stock[hexId] = hex;
+  }
+  body.stock = stock;
+  body.honeyStockSeq = seq;
+  await client.query(
+    `INSERT INTO player_stores (id, owner_id, kind, body, updated_at)
+     VALUES ($1, $2, 'warehouse', $3::jsonb, now())
+     ON CONFLICT (id) DO UPDATE SET body = EXCLUDED.body, updated_at = now()`,
+    [id, ownerId, JSON.stringify(body)]
+  );
+  return stock;
+}
+
+async function creditCollect(client, ownerId, hexId, lines) {
+  if (!ownerId || !lines || lines.length === 0) return null;
+  const player = await client.query(
+    "SELECT economy_honey_buckets_json FROM players WHERE id = $1 FOR UPDATE",
+    [ownerId]
+  );
+  if (player.rowCount === 0) return null;
+  let buckets = {};
+  try {
+    buckets = JSON.parse(player.rows[0].economy_honey_buckets_json || "{}");
+  } catch (err) {
+    buckets = {};
+  }
+  if (!buckets || typeof buckets !== "object" || Array.isArray(buckets)) buckets = {};
+  for (const line of lines) {
+    buckets[line.flora] = Math.round(((Number(buckets[line.flora]) || 0) + line.kg) * 1000) / 1000;
+  }
+  const updated = await client.query(
+    `UPDATE players
+        SET economy_honey_buckets_json = $2,
+            honey_stock_seq = honey_stock_seq + 1,
+            updated_at = now()
+      WHERE id = $1
+      RETURNING economy_honey_buckets_json, honey_stock_seq`,
+    [ownerId, JSON.stringify(buckets)]
+  );
+  const seq = Number(updated.rows[0].honey_stock_seq);
+  const warehouseStock = await creditWarehouseStore(client, ownerId, hexId, lines, seq);
+  return {
+    honeyBuckets: updated.rows[0].economy_honey_buckets_json,
+    honeyStockSeq: seq,
+    warehouseStock,
+  };
 }
 
 async function settle(client, trip, when) {
@@ -432,6 +535,18 @@ async function settle(client, trip, when) {
     lines,
     finishedStartEpochMs: num(trip.start_epoch_ms),
   };
+  if (trip.kind === "collect") {
+    payload.lines = collectLines(trip);
+    payload.hiveCount = num(cargo.parsed && cargo.parsed._hiveCount) || 0;
+    const hex = trip.return_hex_id || trip.dest_hex_id || "";
+    if (hex) payload.destHexId = hex;
+    const credited = await creditCollect(client, trip.owner_id, hex, payload.lines);
+    if (credited) {
+      payload.honeyBuckets = credited.honeyBuckets;
+      payload.honeyStockSeq = credited.honeyStockSeq;
+      payload.warehouseStock = credited.warehouseStock;
+    }
+  }
   if (payload.type === "sale" && trip.kind === "order") {
     payload.missed = !authority.valid;
   }
@@ -568,6 +683,18 @@ async function clientMayOverwrite(pool, table, id, body) {
       + table + " WHERE id = $1 FOR UPDATE",
     [id]
   );
+  if (found.rowCount === 0 && table === "cargo_trips") {
+    const vehicleId = body && body.vehicleId ? String(body.vehicleId) : "";
+    if (vehicleId) {
+      const busy = await pool.query(
+        `SELECT 1 FROM cargo_trips
+          WHERE owner_id=$1 AND vehicle_id=$2 AND id<>$3
+          LIMIT 1`,
+        [String(body.ownerId), vehicleId, id]
+      );
+      if (busy.rowCount > 0) return false;
+    }
+  }
   if (found.rowCount > 0) {
     // Las fases de un viaje de carga las decide exclusivamente el reloj del
     // servidor. Un camión activo solo admite correcciones de ruta con el mismo
@@ -612,6 +739,143 @@ async function clientMayOverwrite(pool, table, id, body) {
   return blocked.rowCount === 0;
 }
 
+function foldName(raw) {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+async function requireAdmin(pool, uid) {
+  if (!uid) return false;
+  const row = await pool.query("SELECT player_name FROM players WHERE id = $1", [uid]);
+  return row.rowCount > 0 && foldName(row.rows[0].player_name) === "aleix";
+}
+
+function headingHome(row) {
+  if (!row) return false;
+  if (row.phase === "return") return true;
+  if (row.kind === "delivery") return true;
+  return row.kind === "collect" && collectArrivesHome(row);
+}
+
+function forceDue(row) {
+  row.duration_ms = 0;
+  row.start_epoch_ms = Date.now();
+}
+
+function summarizeCargo(row) {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    playerName: row.player_name || "",
+    kind: row.kind,
+    phase: row.phase,
+    legRole: row.leg_role || "",
+    origin: row.origin_label || "",
+    dest: row.dest_label || "",
+    returnLabel: row.return_label || "",
+    flora: row.flora_key || "",
+    kg: num(row.kg),
+  };
+}
+
+function summarizeHive(row) {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    playerName: row.player_name || "",
+    kind: "hive",
+    phase: "out",
+    legRole: "",
+    origin: "Colmenar",
+    dest: row.dest_hex_id || "Destino",
+    returnLabel: "",
+    flora: row.dest_flora || "",
+    kg: 0,
+  };
+}
+
+async function listLive(pool) {
+  const cargos = await pool.query(
+    `SELECT c.*, p.player_name
+       FROM cargo_trips c
+       LEFT JOIN players p ON p.id = c.owner_id
+      ORDER BY c.start_epoch_ms`
+  );
+  const trucks = await pool.query(
+    `SELECT t.*, p.player_name
+       FROM truck_trips t
+       LEFT JOIN players p ON p.id = t.owner_id
+      ORDER BY t.start_epoch_ms`
+  );
+  return {
+    ok: true,
+    trips: cargos.rows.map(summarizeCargo).concat(trucks.rows.map(summarizeHive)),
+  };
+}
+
+/**
+ * Adelanta el trabajo que queda (venta, recogida, entregas) y deja el camión
+ * de vuelta al almacén. Si ya iba de vuelta, llega ahora.
+ */
+async function finishEarly(pool, tripId) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const cargo = await client.query(
+      "SELECT * FROM cargo_trips WHERE id = $1 FOR UPDATE",
+      [tripId]
+    );
+    if (cargo.rowCount === 0) {
+      const truck = await client.query(
+        "SELECT * FROM truck_trips WHERE id = $1 FOR UPDATE",
+        [tripId]
+      );
+      if (truck.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return { ok: false, status: 404, error: "NOT_FOUND" };
+      }
+      await arriveTruck(client, truck.rows[0]);
+      await client.query("COMMIT");
+      return { ok: true, finished: true };
+    }
+    const first = cargo.rows[0];
+    if (headingHome(first)) {
+      forceDue(first);
+      await advanceCargo(client, first);
+      await client.query("COMMIT");
+      return { ok: true, finished: true };
+    }
+    for (let step = 0; step < 40; step += 1) {
+      const current = await client.query(
+        "SELECT * FROM cargo_trips WHERE id = $1 FOR UPDATE",
+        [tripId]
+      );
+      if (current.rowCount === 0) {
+        await client.query("COMMIT");
+        return { ok: true, finished: true };
+      }
+      const row = current.rows[0];
+      if (headingHome(row)) {
+        await client.query("COMMIT");
+        return { ok: true, returning: true };
+      }
+      forceDue(row);
+      await advanceCargo(client, row);
+    }
+    await client.query("COMMIT");
+    return { ok: true, returning: true };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 function start(pool) {
   const run = () => {
     tick(pool).catch((err) => {
@@ -623,4 +887,13 @@ function start(pool) {
   if (typeof timer.unref === "function") timer.unref();
 }
 
-module.exports = { tick, start, clientMayOverwrite, haversineKm, durationMs };
+module.exports = {
+  tick,
+  start,
+  clientMayOverwrite,
+  haversineKm,
+  durationMs,
+  requireAdmin,
+  listLive,
+  finishEarly,
+};

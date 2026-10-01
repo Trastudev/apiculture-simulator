@@ -18,10 +18,11 @@ import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.repository.LeaderboardRepository;
 import com.apiculture.simulator.databinding.FragmentRankingBinding;
 import com.apiculture.simulator.domain.parcel.HexFlora;
+import com.apiculture.simulator.presentation.hive.HiveSiteSummaryUi;
 import com.apiculture.simulator.presentation.common.SimpleViewModelFactory;
 import com.google.android.material.chip.Chip;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+import com.apiculture.simulator.data.session.PlayerAuth;
+import com.apiculture.simulator.data.session.SignedInUser;
 
 import java.util.HashMap;
 import java.util.List;
@@ -78,6 +79,9 @@ public class RankingFragment extends Fragment {
             } else if (checkedId == R.id.chip_region_za) {
                 viewModel.setRegionFilter(LeaderboardRepository.REGION_ZA);
                 binding.tvRankingTitle.setText(R.string.ranking_title_za);
+            } else if (checkedId == R.id.chip_region_mdg) {
+                viewModel.setRegionFilter(LeaderboardRepository.REGION_MDG);
+                binding.tvRankingTitle.setText(R.string.ranking_title_mdg);
             }
         });
 
@@ -86,11 +90,13 @@ public class RankingFragment extends Fragment {
                 return;
             }
             if (checkedId == R.id.chip_level) {
-                viewModel.setMetric(LeaderboardRepository.Metric.LEVEL);
+                viewModel.setMetric(LeaderboardRepository.Metric.NET_WORTH);
             } else if (checkedId == R.id.chip_honey) {
                 viewModel.setMetric(LeaderboardRepository.Metric.HONEY_SOLD);
             } else if (checkedId == R.id.chip_hives) {
-                viewModel.setMetric(LeaderboardRepository.Metric.HIVES);
+                viewModel.setMetric(LeaderboardRepository.Metric.CONTRACTS);
+            } else if (checkedId == R.id.chip_orders) {
+                viewModel.setMetric(LeaderboardRepository.Metric.ORDERS);
             } else if (checkedId == R.id.chip_bees) {
                 viewModel.setMetric(LeaderboardRepository.Metric.BEES);
             }
@@ -119,7 +125,7 @@ public class RankingFragment extends Fragment {
         for (String flora : HexFlora.FLORA_TYPES) {
             Chip chip = new Chip(requireContext());
             chip.setId(View.generateViewId());
-            chip.setText(flora);
+            chip.setText(HiveSiteSummaryUi.floraLabel(requireContext(), flora));
             chip.setCheckable(true);
             chip.setChecked(false);
             chip.setEnsureMinTouchTargetSize(false);
@@ -150,7 +156,7 @@ public class RankingFragment extends Fragment {
     }
 
     private void publishSelfIfLoggedIn() {
-        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        SignedInUser u = PlayerAuth.getInstance().getCurrentUser();
         if (u != null) {
             ((ApicultureApp) requireActivity().getApplication()).getLeaderboardRepository()
                     .enqueuePublish(u.getUid());
@@ -167,6 +173,23 @@ public class RankingFragment extends Fragment {
         boolean empty = list == null || list.isEmpty();
         binding.tvRankingEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
         binding.rvRanking.setVisibility(empty ? View.GONE : View.VISIBLE);
+        int focus = -1;
+        if (list != null) {
+            for (int i = 0; i < list.size(); i++) {
+                if (list.get(i).isSelf) {
+                    focus = i;
+                    break;
+                }
+            }
+        }
+        if (focus >= 0) {
+            int index = focus;
+            binding.rvRanking.post(() -> {
+                if (binding != null) {
+                    binding.rvRanking.scrollToPosition(index);
+                }
+            });
+        }
     }
 
     @Override

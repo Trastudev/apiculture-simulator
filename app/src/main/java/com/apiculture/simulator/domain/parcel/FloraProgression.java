@@ -3,90 +3,23 @@ package com.apiculture.simulator.domain.parcel;
 import com.apiculture.simulator.domain.game.IberianClimateZone;
 import com.apiculture.simulator.domain.market.HoneyMarketEngine;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * Desbloqueo de flora por nivel de jugador y reglas de siembra (tiempo y coste).
+ * Coste y tiempo de siembra, y precio de terreno según el mix silvestre.
  * <p>
- * Orden: primero {@code Mil flores} (nivel 0); el resto por techo de precio €/kg del mercado (mayor a menor),
- * alineado con {@link HoneyMarketEngine}.
+ * Precio de compra = {@link HexParcelGameRules#HEX_PURCHASE_BASE_EUR} + suma de la prima de cada
+ * flora nativa (mil flores no suma). La prima sube con el techo de mercado €/kg de esa miel.
  */
 public final class FloraProgression {
 
-    private static final List<String> UNLOCK_ORDER;
-
-    static {
-        Map<String, Double> ceilings = honeyCeilingsCopy();
-        List<String> rest = new ArrayList<>();
-        for (String k : HexFlora.FLORA_TYPES) {
-            if (!"Mil flores".equals(k)) {
-                rest.add(k);
-            }
-        }
-        rest.sort(Comparator.comparing((String k) -> ceilings.getOrDefault(k, 0.0)).reversed());
-        List<String> order = new ArrayList<>();
-        order.add("Mil flores");
-        order.addAll(rest);
-        UNLOCK_ORDER = Collections.unmodifiableList(order);
-    }
-
-    private static Map<String, Double> honeyCeilingsCopy() {
-        Map<String, Double> m = new LinkedHashMap<>();
-        for (String k : HexFlora.FLORA_TYPES) {
-            m.put(k, HoneyMarketEngine.priceCeilingEurPerKgForFlora(k));
-        }
-        return m;
-    }
+    private static final double CEILING_FLOOR = 15.30;
+    private static final int PREMIUM_BASE = 400;
+    private static final double PREMIUM_PER_EUR_KG = 1400.0;
+    private static final int PREMIUM_MIN = 250;
+    private static final int PREMIUM_MAX = 2500;
 
     private FloraProgression() {
-    }
-
-    public static List<String> unlockOrder() {
-        return UNLOCK_ORDER;
-    }
-
-    public static int indexInUnlockOrder(String floraKey) {
-        String k = HoneyMarketEngine.canonicalFloraKey(floraKey);
-        for (int i = 0; i < UNLOCK_ORDER.size(); i++) {
-            if (UNLOCK_ORDER.get(i).equals(k)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /**
-     * La flora en índice {@code i} exige nivel de jugador {@code >= i} (nivel 0 solo Mil flores).
-     */
-    public static boolean isFloraUnlockedForPlayerLevel(String floraKey, int playerLevel) {
-        int idx = indexInUnlockOrder(floraKey);
-        if (idx < 0) {
-            return false;
-        }
-        int lvl = Math.max(0, playerLevel);
-        return lvl >= idx;
-    }
-
-    /**
-     * Nivel mínimo del jugador para poder usar esta flora (coincide con el índice en el orden de desbloqueo).
-     */
-    public static int minLevelRequiredForFlora(String floraKey) {
-        int idx = indexInUnlockOrder(floraKey);
-        return Math.max(0, idx);
-    }
-
-    public static List<String> florasUnlockedAtLevel(int playerLevel) {
-        int lvl = Math.max(0, playerLevel);
-        List<String> out = new ArrayList<>();
-        for (int i = 0; i < UNLOCK_ORDER.size() && i <= lvl; i++) {
-            out.add(UNLOCK_ORDER.get(i));
-        }
-        return out;
     }
 
     /** Horas de crecimiento para la enésima flora en el terreno (1 → 24h, 2 → 48h…). */
@@ -105,20 +38,32 @@ public final class FloraProgression {
     }
 
     /**
-     * Prima € sobre la base del terreno por la flora “nativa” del hex (misma escala que siembras: índice 1 → 1000 €…).
-     * Mil flores (índice 0) → 0 €.
+     * Prima de una flora nativa. Mil flores no encarece el hex; el resto según valor de mercado de su miel.
      */
     public static int terrainFloraPremiumEuros(String floraKey) {
-        int idx = indexInUnlockOrder(floraKey);
-        if (idx <= 0) {
+        String k = HoneyMarketEngine.canonicalFloraKey(floraKey);
+        if (k.isEmpty() || HexFlora.MIL_FLORES.equals(k)) {
             return 0;
         }
-        return 1000 * idx;
+        double ceiling = HoneyMarketEngine.priceCeilingEurPerKgForFlora(k);
+        int value = (int) Math.round(PREMIUM_BASE + (ceiling - CEILING_FLOOR) * PREMIUM_PER_EUR_KG);
+        return Math.max(PREMIUM_MIN, Math.min(PREMIUM_MAX, value));
     }
 
-    /** Precio total de compra de terreno libre: base 1000 € + prima por tipo de flora del hex. */
+    /** Precio de un hex si solo contara una flora nativa. */
     public static int terrainPurchaseTotalEurosForNativeFlora(String floraKey) {
         return (int) HexParcelGameRules.HEX_PURCHASE_BASE_EUR + terrainFloraPremiumEuros(floraKey);
+    }
+
+    /** Precio total: base + suma de primas del mix silvestre. */
+    public static int terrainPurchaseTotalEurosForNativeMix(List<String> mix) {
+        int sum = 0;
+        if (mix != null) {
+            for (String k : mix) {
+                sum += terrainFloraPremiumEuros(k);
+            }
+        }
+        return (int) HexParcelGameRules.HEX_PURCHASE_BASE_EUR + sum;
     }
 
     /** Vista previa estable en mapa para hex sin filas persistidas (no escribe BD). */

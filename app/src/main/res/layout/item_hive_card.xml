@@ -208,11 +208,12 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Alzas -->
+        <!-- Alzas: el sistema ya no existe. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
+            android:visibility="gone"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -268,6 +269,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:minHeight="40dp"
+                android:visibility="gone"
                 android:text="@string/hive_card_buy_super"
                 android:textAllCaps="false"
                 android:textSize="11sp" />

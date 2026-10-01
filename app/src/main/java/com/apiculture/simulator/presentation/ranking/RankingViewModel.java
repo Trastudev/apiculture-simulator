@@ -18,7 +18,7 @@ public class RankingViewModel extends ViewModel {
     private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
     private final MutableLiveData<String> error = new MutableLiveData<>();
     private final MutableLiveData<LeaderboardRepository.Metric> metric =
-            new MutableLiveData<>(LeaderboardRepository.Metric.LEVEL);
+            new MutableLiveData<>(LeaderboardRepository.Metric.NET_WORTH);
     /** null = global */
     private final MutableLiveData<String> regionFilter = new MutableLiveData<>(null);
     /** null = miel vendida total */
@@ -73,7 +73,7 @@ public class RankingViewModel extends ViewModel {
     public void fetchRanking() {
         LeaderboardRepository.Metric m = metric.getValue();
         if (m == null) {
-            m = LeaderboardRepository.Metric.LEVEL;
+            m = LeaderboardRepository.Metric.NET_WORTH;
         }
         loading.setValue(true);
         LeaderboardRepository.Metric chosen = m;

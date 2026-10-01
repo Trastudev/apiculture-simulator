@@ -33,8 +33,23 @@ public interface HiveDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void upsert(HiveEntity hive);
 
-    @Query("SELECT COUNT(*) FROM hives WHERE hexId = :hexId AND hexId IS NOT NULL")
+    @Query("SELECT COUNT(*) FROM hives WHERE hexId = :hexId AND hexId IS NOT NULL AND inWarehouse = 0")
     int countByHexId(String hexId);
+
+    @Query("SELECT * FROM hives WHERE hexId = :hexId AND hexId IS NOT NULL AND inWarehouse = 0")
+    List<HiveEntity> getByHexIdSync(String hexId);
+
+    @Query("SELECT COUNT(*) FROM hives WHERE hexId = :hexId AND ownerId = :ownerId AND hexId IS NOT NULL AND inWarehouse = 0")
+    int countByHexIdAndOwner(String hexId, String ownerId);
+
+    @Query("SELECT * FROM hives WHERE ownerId = :ownerId AND inWarehouse = 1")
+    List<HiveEntity> getWarehouseHivesSync(String ownerId);
+
+    @Query("SELECT COUNT(*) FROM hives WHERE ownerId = :ownerId AND inWarehouse = 1")
+    int countWarehouse(String ownerId);
+
+    @Query("SELECT * FROM hives WHERE contractId = :contractId")
+    List<HiveEntity> getHivesByContractSync(String contractId);
 
     @Query("DELETE FROM hives WHERE id = :hiveId")
     void deleteById(String hiveId);

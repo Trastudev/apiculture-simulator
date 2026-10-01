@@ -1,133 +1,316 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:clipToPadding="false"
+    android:descendantFocusability="beforeDescendants"
     android:fillViewport="true"
-    android:paddingHorizontal="12dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="16dp"
-    android:scrollbars="vertical">
+    android:overScrollMode="ifContentScrolls"
+    android:paddingHorizontal="20dp"
+    android:paddingVertical="8dp">
 
-    <LinearLayout
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        app:cardBackgroundColor="@color/event_cream"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/event_gold_stroke"
+        app:strokeWidth="1.5dp">
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/hive_buy_name_section_title"
-            android:textColor="@android:color/white"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+            android:orientation="vertical">
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/til_hive_name"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:hint="@string/hive_buy_name_field_hint"
-            app:hintTextColor="@android:color/white"
-            app:boxStrokeColor="@android:color/white">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/edit_hive_name"
+            <TextView
+                android:id="@+id/tv_hive_buy_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:importantForAccessibility="yes"
-                android:inputType="textCapSentences"
-                android:maxLength="120"
-                android:minHeight="56dp"
-                android:paddingVertical="12dp"
-                android:textColor="@color/login_text_dark"
-                android:textSize="16sp" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:gravity="center"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="6dp"
+                android:text="@string/hive_buy_title"
+                android:textColor="@color/event_ink"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:labelFor="@id/spinner_hex"
-            android:text="@string/hive_buy_hex_label"
-            android:textColor="@android:color/white"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="112dp">
 
-        <Spinner
-            android:id="@+id/spinner_hex"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:minHeight="48dp" />
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@null"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/hex_purchase_banner" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:labelFor="@id/spinner_flora"
-            android:text="@string/hive_buy_flora_label"
-            android:textColor="@android:color/white"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_event_banner_scrim" />
 
-        <Spinner
-            android:id="@+id/spinner_flora"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:minHeight="48dp" />
+                <TextView
+                    android:id="@+id/tv_hive_buy_kicker"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|start"
+                    android:layout_margin="12dp"
+                    android:background="@drawable/bg_event_kicker_pill"
+                    android:letterSpacing="0.08"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="4dp"
+                    android:text="@string/hive_buy_kicker"
+                    android:textAllCaps="true"
+                    android:textColor="@color/white"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="@string/hive_buy_supers_label"
-            android:textColor="@android:color/white"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+                <ImageView
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_shop_icon_tile"
+                    android:contentDescription="@null"
+                    android:padding="6dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_colmena_prado" />
 
-        <RadioGroup
-            android:id="@+id/rg_supers"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp">
+                <TextView
+                    android:id="@+id/tv_hive_buy_price"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="12dp"
+                    android:background="@drawable/bg_event_kg_chip"
+                    android:drawablePadding="6dp"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:textColor="@color/event_ink"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_beecoin"
+                    tools:text="200,00 B" />
+            </FrameLayout>
 
-            <RadioButton
-                android:id="@+id/rb_super_0"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:checked="true"
-                android:text="@string/hive_buy_super_0"
-                android:textColor="@android:color/white"
-                app:buttonTint="@android:color/white" />
+                android:background="@drawable/bg_event_global_body"
+                android:orientation="vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="8dp">
 
-            <RadioButton
-                android:id="@+id/rb_super_1"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/hive_buy_super_1"
-                android:textColor="@android:color/white"
-                app:buttonTint="@android:color/white" />
+                <TextView
+                    android:id="@+id/tv_hive_buy_intro"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/hive_buy_intro"
+                    android:textColor="@color/event_ink_muted"
+                    android:textSize="13sp" />
 
-            <RadioButton
-                android:id="@+id/rb_super_2"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/hive_buy_super_2"
-                android:textColor="@android:color/white"
-                app:buttonTint="@android:color/white" />
-        </RadioGroup>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_shop_card"
+                    android:orientation="vertical"
+                    android:padding="12dp">
 
-        <TextView
-            android:id="@+id/tv_hive_buy_price"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:textColor="@android:color/white"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:labelFor="@id/edit_hive_name"
+                        android:text="@string/hive_buy_name_section_title"
+                        android:textColor="@color/event_ink"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <EditText
+                        android:id="@+id/edit_hive_name"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_dialog_field"
+                        android:hint="@string/hive_buy_name_hint"
+                        android:importantForAccessibility="yes"
+                        android:inputType="textCapSentences"
+                        android:maxLength="120"
+                        android:minHeight="48dp"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="10dp"
+                        android:singleLine="true"
+                        android:textColor="@color/event_ink"
+                        android:textColorHint="@color/event_ink_muted"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_hive_buy_hex_label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:labelFor="@id/spinner_hex"
+                        android:visibility="gone"
+                        android:text="@string/hive_buy_hex_label"
+                        android:textColor="@color/event_ink"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/spinner_hex"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:visibility="gone"
+                        android:background="@drawable/bg_dialog_spinner"
+                        android:minHeight="48dp"
+                        android:popupBackground="@color/event_cream"
+                        android:spinnerMode="dropdown" />
+
+                    <TextView
+                        android:id="@+id/tv_hive_buy_hex_value"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_dialog_field"
+                        android:minHeight="48dp"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="12dp"
+                        android:textColor="@color/event_ink"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        tools:text="Terreno mediterráneo"
+                        tools:visibility="visible" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:labelFor="@id/spinner_flora"
+                        android:text="@string/hive_buy_flora_label"
+                        android:textColor="@color/event_ink"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/spinner_flora"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@drawable/bg_dialog_spinner"
+                        android:minHeight="48dp"
+                        android:popupBackground="@color/event_cream"
+                        android:spinnerMode="dropdown" />
+
+                    <TextView
+                        android:id="@+id/tv_hive_buy_flora_empty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="@string/hive_buy_no_flora_ready"
+                        android:textColor="@color/event_ink_muted"
+                        android:textSize="12sp"
+                        android:visibility="gone"
+                        tools:visibility="visible" />
+
+                    <include
+                        android:id="@+id/include_flora_saturation"
+                        layout="@layout/include_flora_saturation"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp" />
+
+                    <TextView
+                        android:id="@+id/tv_hive_buy_supers_label"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:visibility="gone"
+                        android:text="@string/hive_buy_supers_label"
+                        android:textColor="@color/event_ink"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <RadioGroup
+                        android:id="@+id/rg_supers"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:visibility="gone">
+
+                        <RadioButton
+                            android:id="@+id/rb_super_0"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:checked="true"
+                            android:text="@string/hive_buy_super_0"
+                            android:textColor="@color/event_ink"
+                            app:buttonTint="@color/event_gold" />
+
+                        <RadioButton
+                            android:id="@+id/rb_super_1"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/hive_buy_super_1"
+                            android:textColor="@color/event_ink"
+                            app:buttonTint="@color/event_gold" />
+
+                        <RadioButton
+                            android:id="@+id/rb_super_2"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/hive_buy_super_2"
+                            android:textColor="@color/event_ink"
+                            app:buttonTint="@color/event_gold" />
+                    </RadioGroup>
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_buy_warehouse"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/map_buy_warehouse"
+                    android:textAllCaps="false"
+                    android:textColor="@color/event_ink"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    app:backgroundTint="@color/event_cream"
+                    app:cornerRadius="14dp"
+                    app:strokeColor="@color/event_gold_stroke"
+                    app:strokeWidth="1.5dp"
+                    tools:visibility="visible" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_hive_buy_confirm"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/hive_buy_confirm"
+                    android:textAllCaps="false"
+                    android:textColor="@color/event_ink"
+                    android:textStyle="bold"
+                    app:backgroundTint="@color/event_gold"
+                    app:cornerRadius="14dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_hive_buy_cancel"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginBottom="6dp"
+                    android:text="@string/hex_purchase_cancel"
+                    android:textAllCaps="false"
+                    android:textColor="@color/event_ink_muted" />
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+</ScrollView>

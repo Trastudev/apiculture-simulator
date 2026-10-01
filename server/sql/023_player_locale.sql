@@ -1,0 +1,1 @@
+ALTER TABLE players ADD COLUMN IF NOT EXISTS game_locale text NOT NULL DEFAULT '';

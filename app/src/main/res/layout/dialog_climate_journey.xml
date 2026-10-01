@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <ImageView
+        android:id="@+id/iv_climate_backdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        tools:src="@drawable/bg_yard_mediterranean" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:layout_gravity="top"
+        android:background="@drawable/bg_event_banner_scrim"
+        android:rotation="180" />
+
+    <LinearLayout
+        android:id="@+id/block_climate_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginTop="28dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp">
+
+        <TextView
+            android:id="@+id/tv_climate_journey_kicker"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_event_kicker_pill"
+            android:letterSpacing="0.18"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="5dp"
+            android:text="@string/climate_journey_kicker"
+            android:textAllCaps="true"
+            android:textColor="#FFF8E1"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <FrameLayout
+            android:id="@+id/wrap_za_flag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_climate_flag_frame"
+            android:elevation="10dp"
+            android:padding="5dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:id="@+id/iv_za_flag"
+                android:layout_width="168dp"
+                android:layout_height="112dp"
+                android:contentDescription="@string/climate_journey_za_title"
+                android:scaleType="fitXY"
+                android:src="@drawable/ic_flag_south_africa" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/tv_climate_journey_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="sans-serif-black"
+            android:gravity="center"
+            android:letterSpacing="0.08"
+            android:shadowColor="#CC000000"
+            android:shadowDx="0"
+            android:shadowDy="3"
+            android:shadowRadius="10"
+            android:textColor="#FFF8E1"
+            android:textSize="36sp"
+            tools:text="Mediterráneo" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/layer_climate_travelers"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+</FrameLayout>

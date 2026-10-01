@@ -1,5 +1,8 @@
 package com.apiculture.simulator.domain.game;
 
+import android.content.Context;
+
+import com.apiculture.simulator.R;
 import com.apiculture.simulator.domain.parcel.HexParcel;
 
 /**
@@ -11,6 +14,22 @@ public enum SouthernAfricanClimateZone {
     HIGHVELD,
     SUBTROPICAL,
     BUSHVELD;
+
+    public String label(Context context) {
+        switch (this) {
+            case FYNBOS:
+                return context.getString(R.string.map_climate_fynbos);
+            case KAROO:
+                return context.getString(R.string.map_climate_karoo);
+            case HIGHVELD:
+                return context.getString(R.string.map_climate_highveld);
+            case SUBTROPICAL:
+                return context.getString(R.string.map_climate_subtropical);
+            case BUSHVELD:
+            default:
+                return context.getString(R.string.map_climate_bushveld);
+        }
+    }
 
     public String labelEs() {
         switch (this) {
@@ -63,7 +82,7 @@ public enum SouthernAfricanClimateZone {
         if (parcel == null) {
             return HIGHVELD;
         }
-        int elev = parcel.maxElevationMeters != null ? parcel.maxElevationMeters : 800;
+        int elev = parcel.maxElevationMeters != null ? parcel.maxElevationMeters : -1;
         return fromLatLonElev(parcel.centroidLat, parcel.centroidLon, elev);
     }
 
@@ -75,17 +94,20 @@ public enum SouthernAfricanClimateZone {
     }
 
     public static SouthernAfricanClimateZone fromLatLonElev(double lat, double lon, int elevM) {
-        int elev = Math.max(0, elevM);
-        if (elev >= 1600) {
+        boolean known = elevM >= 0;
+        int elev = known ? elevM : 0;
+        if (known && elev >= 1600) {
             return HIGHVELD;
         }
         if (lat <= -32.15 && lon <= 22.2) {
             return FYNBOS;
         }
-        if (lat <= -30.4 && lon >= 19.0 && lon <= 26.2 && elev < 1300) {
+        if (lat <= -30.4 && lon >= 19.0 && lon <= 26.2 && (!known || elev < 1300)) {
             return KAROO;
         }
-        if (lon >= 29.7 && elev < 750) {
+        // Costa este (KZN y Lowveld). Sin altitud, el relleno de 800 m
+        // superaba el corte de 750 m y no quedaba ningún hex subtropical.
+        if (lon >= 29.7 && (!known || elev < 750)) {
             return SUBTROPICAL;
         }
         if (lat >= -25.6) {

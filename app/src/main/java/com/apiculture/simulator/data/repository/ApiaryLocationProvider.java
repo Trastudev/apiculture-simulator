@@ -8,7 +8,7 @@ import androidx.lifecycle.Observer;
 
 import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
-import com.google.firebase.auth.FirebaseAuth;
+import com.apiculture.simulator.data.session.PlayerAuth;
 
 import java.util.List;
 
@@ -37,7 +37,7 @@ public class ApiaryLocationProvider {
         }
         ApicultureApp app = (ApicultureApp) appContext;
 
-        String ownerId = FirebaseAuth.getInstance().getUid();
+        String ownerId = PlayerAuth.getInstance().getUid();
         if (ownerId == null) {
             callback.onNoLocation();
             return;

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
@@ -18,15 +19,26 @@ import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.SparseArray;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
+import com.apiculture.simulator.data.repository.IberiaHexOverlayStore;
+import com.apiculture.simulator.domain.game.NpcContractCatalog;
+import com.apiculture.simulator.domain.parcel.HexParcel;
+import com.apiculture.simulator.presentation.market.NpcPortraitUi;
+import com.apiculture.simulator.domain.health.HiveAlertBadge;
 import com.apiculture.simulator.domain.game.DailySkyCondition;
+import com.apiculture.simulator.domain.game.GameCalendar;
+import com.apiculture.simulator.domain.game.HiveFeedingBonuses;
+import com.apiculture.simulator.domain.game.TranshumanceRules;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,6 +50,12 @@ public class ApiaryYardView extends View {
 
     public interface OnHiveTapListener {
         void onHiveTap(@NonNull HiveEntity hive);
+    }
+
+    public interface OnHiveCareListener {
+        void onTreatBadge(@NonNull HiveEntity hive);
+
+        void onFeedBadge(@NonNull HiveEntity hive);
     }
 
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -61,14 +79,28 @@ public class ApiaryYardView extends View {
     private boolean previewMode;
     private List<HiveEntity> hives = Collections.emptyList();
     private final List<RectF> hiveRects = new ArrayList<>();
+    private final List<RectF> treatBadgeRects = new ArrayList<>();
+    private final List<RectF> feedBadgeRects = new ArrayList<>();
 
     private boolean animRunning;
     private long animStartMs;
     private float animSec;
     private float lastTouchX;
     private float lastTouchY;
+    private float downX;
+    private float downY;
+    private boolean gestureMoved;
+    private float zoom = 1f;
+    private float panX;
+    private float panY;
+    private static final float MAX_ZOOM = 2.6f;
+    private ScaleGestureDetector scaleDetector;
     @Nullable
     private OnHiveTapListener hiveTapListener;
+    private boolean guideFirstHive;
+    @Nullable
+    private OnHiveCareListener hiveCareListener;
+    private boolean hitFeed;
 
     private final Runnable animTick = new Runnable() {
         @Override
@@ -108,10 +140,98 @@ public class ApiaryYardView extends View {
         stroke.setStyle(Paint.Style.STROKE);
         stroke.setStrokeCap(Paint.Cap.ROUND);
         stroke.setStrokeJoin(Paint.Join.ROUND);
+        scaleDetector = new ScaleGestureDetector(getContext(),
+                new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                    @Override
+                    public boolean onScaleBegin(ScaleGestureDetector detector) {
+                        return !previewMode;
+                    }
+
+                    @Override
+                    public boolean onScale(ScaleGestureDetector detector) {
+                        if (previewMode) {
+                            return false;
+                        }
+                        float next = Math.max(1f, Math.min(MAX_ZOOM, zoom * detector.getScaleFactor()));
+                        float ratio = next / zoom;
+                        if (ratio != 1f) {
+                            float fx = detector.getFocusX();
+                            float fy = detector.getFocusY();
+                            panX = fx - (fx - panX) * ratio;
+                            panY = fy - (fy - panY) * ratio;
+                            zoom = next;
+                        }
+                        clampPan();
+                        gestureMoved = true;
+                        invalidate();
+                        return true;
+                    }
+                });
+        scaleDetector.setQuickScaleEnabled(false);
     }
 
     public void setOnHiveTapListener(@Nullable OnHiveTapListener listener) {
         this.hiveTapListener = listener;
+    }
+
+    /** Capítulo 1, viñeta 11. Marca la primera colmena para el agujero del tutorial. */
+    public void setGuideFirstHive(boolean guide) {
+        if (guideFirstHive == guide) {
+            return;
+        }
+        guideFirstHive = guide;
+        invalidate();
+    }
+
+    public boolean copyFirstHiveRect(@NonNull RectF out) {
+        layoutHives();
+        if (hiveRects.isEmpty()) {
+            return false;
+        }
+        RectF r = hiveRects.get(0);
+        out.set(panX + r.left * zoom, panY + r.top * zoom,
+                panX + r.right * zoom, panY + r.bottom * zoom);
+        return out.width() > 1f && out.height() > 1f;
+    }
+
+    /** Avisa cuando el marco de la colmena guía cambia de sitio en la pantalla. */
+    public interface GuideRectListener {
+        void onGuideRect(@NonNull RectF viewLocal);
+    }
+
+    @Nullable private GuideRectListener guideRectListener;
+    private final RectF guidePublished = new RectF();
+
+    public void setGuideRectListener(@Nullable GuideRectListener listener) {
+        guideRectListener = listener;
+        guidePublished.setEmpty();
+    }
+
+    private void publishGuideRect() {
+        if (!guideFirstHive || guideRectListener == null || hiveRects.isEmpty()) {
+            return;
+        }
+        RectF next = new RectF();
+        if (!copyFirstHiveRect(next)) {
+            return;
+        }
+        if (Math.abs(guidePublished.left - next.left) < 1f
+                && Math.abs(guidePublished.top - next.top) < 1f
+                && Math.abs(guidePublished.right - next.right) < 1f
+                && Math.abs(guidePublished.bottom - next.bottom) < 1f) {
+            return;
+        }
+        guidePublished.set(next);
+        RectF copy = new RectF(next);
+        post(() -> {
+            if (guideRectListener != null) {
+                guideRectListener.onGuideRect(copy);
+            }
+        });
+    }
+
+    public void setOnHiveCareListener(@Nullable OnHiveCareListener listener) {
+        this.hiveCareListener = listener;
     }
 
     public void setPreviewMode(boolean preview) {
@@ -140,6 +260,9 @@ public class ApiaryYardView extends View {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
+        zoom = 1f;
+        panX = 0f;
+        panY = 0f;
         layoutHives();
     }
 
@@ -169,6 +292,10 @@ public class ApiaryYardView extends View {
         if (w <= 0 || h <= 0) {
             return;
         }
+        canvas.save();
+        canvas.translate(panX, panY);
+        canvas.scale(zoom, zoom);
+        publishGuideRect();
         float meadowTop = groundTop(h);
         drawSky(canvas, w, h);
         Bitmap backdrop = climateBitmap(w, h);
@@ -185,6 +312,7 @@ public class ApiaryYardView extends View {
         if (!previewMode) {
             drawHivesAndBees(canvas);
         }
+        canvas.restore();
     }
 
     @Override
@@ -192,28 +320,85 @@ public class ApiaryYardView extends View {
         if (previewMode) {
             return false;
         }
-        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+        scaleDetector.onTouchEvent(event);
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            lastTouchX = event.getX();
+            lastTouchY = event.getY();
+            downX = lastTouchX;
+            downY = lastTouchY;
+            gestureMoved = false;
+            if (getParent() != null) {
+                getParent().requestDisallowInterceptTouchEvent(true);
+            }
+            return true;
+        }
+        if (action == MotionEvent.ACTION_MOVE && event.getPointerCount() == 1
+                && !scaleDetector.isInProgress()) {
+            float dx = event.getX() - lastTouchX;
+            float dy = event.getY() - lastTouchY;
+            if (Math.hypot(event.getX() - downX, event.getY() - downY)
+                    > getResources().getDisplayMetrics().density * 12f) {
+                gestureMoved = true;
+            }
+            if (zoom > 1.001f) {
+                panX += dx;
+                panY += dy;
+                clampPan();
+                invalidate();
+            }
             lastTouchX = event.getX();
             lastTouchY = event.getY();
             return true;
         }
-        if (event.getAction() == MotionEvent.ACTION_UP) {
-            if (Math.hypot(event.getX() - lastTouchX, event.getY() - lastTouchY)
-                    < getResources().getDisplayMetrics().density * 18f) {
-                HiveEntity hit = hitHive(event.getX(), event.getY());
-                if (hit != null && hiveTapListener != null) {
-                    hiveTapListener.onHiveTap(hit);
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
+            if (getParent() != null) {
+                getParent().requestDisallowInterceptTouchEvent(false);
+            }
+            if (action == MotionEvent.ACTION_UP && !gestureMoved && !scaleDetector.isInProgress()) {
+                float wx = screenToWorldX(event.getX());
+                float wy = screenToWorldY(event.getY());
+                HiveEntity care = hitCareBadge(wx, wy);
+                if (care != null && hiveCareListener != null) {
+                    if (hitFeed) {
+                        hiveCareListener.onFeedBadge(care);
+                    } else {
+                        hiveCareListener.onTreatBadge(care);
+                    }
                     performClick();
-                    return true;
+                } else {
+                    HiveEntity hit = hitHive(wx, wy);
+                    if (hit != null && hiveTapListener != null) {
+                        hiveTapListener.onHiveTap(hit);
+                        performClick();
+                    }
                 }
             }
+            return true;
         }
-        return super.onTouchEvent(event);
+        return true;
     }
 
     @Override
     public boolean performClick() {
         return super.performClick();
+    }
+
+    @Nullable
+    private HiveEntity hitCareBadge(float x, float y) {
+        hitFeed = false;
+        for (int i = feedBadgeRects.size() - 1; i >= 0; i--) {
+            if (feedBadgeRects.get(i).contains(x, y) && i < hives.size()) {
+                hitFeed = true;
+                return hives.get(i);
+            }
+        }
+        for (int i = treatBadgeRects.size() - 1; i >= 0; i--) {
+            if (treatBadgeRects.get(i).contains(x, y) && i < hives.size()) {
+                return hives.get(i);
+            }
+        }
+        return null;
     }
 
     @Nullable
@@ -224,6 +409,29 @@ public class ApiaryYardView extends View {
             }
         }
         return null;
+    }
+
+    private float screenToWorldX(float x) {
+        return (x - panX) / zoom;
+    }
+
+    private float screenToWorldY(float y) {
+        return (y - panY) / zoom;
+    }
+
+    private void clampPan() {
+        int w = getWidth();
+        int h = getHeight();
+        if (w <= 0 || h <= 0 || zoom <= 1.001f) {
+            zoom = Math.max(1f, zoom);
+            panX = 0f;
+            panY = 0f;
+            return;
+        }
+        float minX = w * (1f - zoom);
+        float minY = h * (1f - zoom);
+        panX = Math.min(0f, Math.max(minX, panX));
+        panY = Math.min(0f, Math.max(minY, panY));
     }
 
     private float groundTop(int h) {
@@ -244,7 +452,7 @@ public class ApiaryYardView extends View {
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
         BitmapFactory.decodeResource(getResources(), res, bounds);
-        int maxSide = Math.max(viewW, viewH);
+        int maxSide = Math.round(Math.max(viewW, viewH) * MAX_ZOOM);
         if (maxSide <= 0) {
             maxSide = 1080;
         }
@@ -256,7 +464,20 @@ public class ApiaryYardView extends View {
         BitmapFactory.Options opts = new BitmapFactory.Options();
         opts.inSampleSize = Math.max(1, sample);
         opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
-        climateBmp = BitmapFactory.decodeResource(getResources(), res, opts);
+        opts.inMutable = true;
+        opts.inScaled = false;
+        Bitmap decoded = BitmapFactory.decodeResource(getResources(), res, opts);
+        if (decoded == null) {
+            climateBmp = null;
+            return null;
+        }
+        Bitmap copy = decoded.copy(Bitmap.Config.ARGB_8888, true);
+        if (copy != null && copy != decoded) {
+            decoded.recycle();
+            decoded = copy;
+        }
+        YardBackdropCleaner.stripChromaMagenta(decoded);
+        climateBmp = decoded;
         return climateBmp;
     }
 
@@ -413,10 +634,10 @@ public class ApiaryYardView extends View {
         int botN = n / 2;
         float meadowTop = groundTop(h);
         float meadowH = h - meadowTop;
-        float hiveH = Math.min(meadowH * 0.30f, w / Math.max(topN, 1) * 0.72f);
+        float hiveH = Math.min(meadowH * 0.25f, w / Math.max(topN, 1) * 0.68f);
         float hiveW = hiveH * 0.92f;
-        float topCy = meadowTop + meadowH * 0.26f;
-        float botCy = meadowTop + meadowH * 0.58f;
+        float topCy = meadowTop + meadowH * 0.24f;
+        float botCy = meadowTop + meadowH * 0.64f;
         placeRow(0, topN, topCy, hiveW, hiveH, w);
         if (botN > 0) {
             placeRow(topN, botN, botCy, hiveW, hiveH, w);
@@ -523,6 +744,18 @@ public class ApiaryYardView extends View {
                 break;
             case BUSHVELD:
                 drawBushveldScene(canvas, w, h, meadowTop);
+                break;
+            case MDG_EQUATORIAL:
+                drawSubtropicalScene(canvas, w, h, meadowTop);
+                break;
+            case MDG_HIGHLANDS:
+                drawHighveldScene(canvas, w, h, meadowTop);
+                break;
+            case MDG_TROPICAL:
+                drawBushveldScene(canvas, w, h, meadowTop);
+                break;
+            case MDG_DESERT:
+                drawKarooScene(canvas, w, h, meadowTop);
                 break;
             case CONTINENTAL:
             default:
@@ -795,6 +1028,23 @@ public class ApiaryYardView extends View {
                 drawAcacia(canvas, w * 0.86f, meadowTop + meadowH * 0.72f, dp(48f));
                 drawDryClump(canvas, w * 0.32f, meadowTop + meadowH * 0.92f, dp(14f));
                 break;
+            case MDG_EQUATORIAL:
+                drawPalm(canvas, w * 0.10f, meadowTop + meadowH * 0.88f, dp(44f));
+                drawPalm(canvas, w * 0.88f, meadowTop + meadowH * 0.82f, dp(50f));
+                break;
+            case MDG_HIGHLANDS:
+                drawBush(canvas, w * 0.08f, meadowTop + meadowH * 0.84f, dp(24f),
+                        Color.parseColor("#33691E"), Color.parseColor("#9CCC65"));
+                drawDaisy(canvas, w * 0.20f, meadowTop + meadowH * 0.90f, dp(8f), 0.5f);
+                break;
+            case MDG_TROPICAL:
+                drawAcacia(canvas, w * 0.14f, meadowTop + meadowH * 0.78f, dp(40f));
+                drawAcacia(canvas, w * 0.86f, meadowTop + meadowH * 0.72f, dp(48f));
+                break;
+            case MDG_DESERT:
+                drawDryClump(canvas, w * 0.16f, meadowTop + meadowH * 0.88f, dp(14f));
+                drawDryClump(canvas, w * 0.82f, meadowTop + meadowH * 0.84f, dp(18f));
+                break;
             case CONTINENTAL:
             default:
                 drawPoplar(canvas, w * 0.08f, meadowTop + meadowH * 0.82f, dp(52f));
@@ -923,30 +1173,59 @@ public class ApiaryYardView extends View {
         namePaint.setTextSize(dp(11f));
         fill.setColor(Color.WHITE);
         fill.setAlpha(255);
+        treatBadgeRects.clear();
+        feedBadgeRects.clear();
+        while (treatBadgeRects.size() < hives.size()) {
+            treatBadgeRects.add(new RectF());
+        }
+        while (feedBadgeRects.size() < hives.size()) {
+            feedBadgeRects.add(new RectF());
+        }
+        int todayKey = GameCalendar.toDayKey(LocalDate.now(GameCalendar.userTimeZone()));
         boolean beesOut = sky != DailySkyCondition.RAINY;
         for (int i = 0; i < hiveRects.size() && i < hives.size(); i++) {
             RectF r = hiveRects.get(i);
             tmp.set(r.left, r.top, r.right, r.bottom);
             canvas.drawBitmap(hiveBmp, null, tmp, fill);
+            if (guideFirstHive && i == 0) {
+                stroke.setStyle(Paint.Style.STROKE);
+                stroke.setStrokeWidth(dp(4f));
+                stroke.setColor(Color.rgb(255, 176, 32));
+                canvas.drawRoundRect(r, dp(8f), dp(8f), stroke);
+                stroke.setStyle(Paint.Style.STROKE);
+            }
 
             HiveEntity hive = hives.get(i);
             drawHiveFloraBadge(canvas, r, hive.floraType);
+            float markR = hiveMarkRadius(r);
+            if (HiveAlertBadge.needsAttention(hive)) {
+                drawHiveAlertDot(canvas, r, markR);
+            }
+            drawCareBadge(canvas, r, treatBadgeRects.get(i),
+                    hive.varroaTreatmentDaysRemaining > 0, R.drawable.ic_tratamiento,
+                    hiveMarkX(r, markR, 0));
+            drawCareBadge(canvas, r, feedBadgeRects.get(i),
+                    HiveFeedingBonuses.feedingDaysRemaining(hive, todayKey) > 0,
+                    R.drawable.ic_apialimento, hiveMarkX(r, markR, 1));
 
             String label = hive.name != null && !hive.name.trim().isEmpty() ? hive.name.trim() : "Colmena";
             CharSequence ellipsized = TextUtils.ellipsize(label, namePaint, r.width() * 0.92f, TextUtils.TruncateAt.END);
             float cx = r.centerX();
-            float cy = r.bottom + dp(12f);
+            float cy = r.bottom + dp(4f);
             float tw = namePaint.measureText(ellipsized, 0, ellipsized.length());
             fill.setColor(Color.parseColor("#FFF8EC"));
             fill.setAlpha(242);
-            canvas.drawRoundRect(cx - tw / 2f - dp(7f), cy - dp(9f), cx + tw / 2f + dp(7f), cy + dp(8f),
-                    dp(8f), dp(8f), fill);
+            canvas.drawRoundRect(cx - tw / 2f - dp(6f), cy - dp(7f), cx + tw / 2f + dp(6f), cy + dp(6f),
+                    dp(7f), dp(7f), fill);
             fill.setAlpha(255);
             stroke.setStrokeWidth(dp(1f));
             stroke.setColor(Color.parseColor("#E8D5A3"));
-            canvas.drawRoundRect(cx - tw / 2f - dp(7f), cy - dp(9f), cx + tw / 2f + dp(7f), cy + dp(8f),
-                    dp(8f), dp(8f), stroke);
-            canvas.drawText(ellipsized, 0, ellipsized.length(), cx, cy + dp(4f), namePaint);
+            canvas.drawRoundRect(cx - tw / 2f - dp(6f), cy - dp(7f), cx + tw / 2f + dp(6f), cy + dp(6f),
+                    dp(7f), dp(7f), stroke);
+            canvas.drawText(ellipsized, 0, ellipsized.length(), cx, cy + dp(3f), namePaint);
+            if (!previewMode && TranshumanceRules.hasPendingContractMove(hive)) {
+                drawPendingContractTrip(canvas, r, hive, cy + dp(7f));
+            }
             if (beesOut && beeBmp != null) {
                 int bees = 2 + (i % 2);
                 drawOrbitBees(canvas, r, bees, i);
@@ -954,13 +1233,127 @@ public class ApiaryYardView extends View {
         }
     }
 
+    /** Radio común de botiquín, apialimento y aviso. */
+    private float hiveMarkRadius(RectF hive) {
+        float base = Math.min(hive.width(), hive.height()) * 0.07f;
+        return Math.max(dp(4f), base);
+    }
+
+    /** 0 tratamiento, 1 apialimento, 2 aviso. De izquierda a derecha. */
+    private float hiveMarkX(RectF hive, float r, int slot) {
+        float step = r * 2f + dp(2f);
+        if (slot >= 2) {
+            return hive.right - r - dp(1f);
+        }
+        return hive.left + r + dp(1f) + slot * step;
+    }
+
+    private void drawCareBadge(Canvas canvas, RectF hive, RectF hit, boolean active, int iconRes,
+            float cx) {
+        hit.setEmpty();
+        if (!active) {
+            return;
+        }
+        float r = hiveMarkRadius(hive);
+        float cy = hive.top + r + dp(2f);
+        float slop = Math.max(r, dp(12f) / Math.max(zoom, 1f));
+        hit.set(cx - slop, cy - slop, cx + slop, cy + slop);
+        fill.setColor(Color.parseColor("#FFF8EC"));
+        fill.setAlpha(255);
+        canvas.drawCircle(cx, cy, r, fill);
+        Bitmap icon = drawableBitmap(iconRes);
+        if (icon != null) {
+            float inset = r * 0.28f;
+            tmp.set(cx - r + inset, cy - r + inset, cx + r - inset, cy + r - inset);
+            canvas.drawBitmap(icon, null, tmp, fill);
+        }
+    }
+
+    private void drawHiveAlertDot(Canvas canvas, RectF hive, float baseR) {
+        float pulse = 0.88f + 0.14f * (0.5f + 0.5f * (float) Math.sin(animSec * Math.PI * 2.0 / 0.9));
+        float r = baseR * pulse;
+        float cx = hiveMarkX(hive, baseR, 2);
+        float cy = hive.top + baseR + dp(2f);
+        fill.setColor(0xFFE53935);
+        fill.setAlpha(255);
+        canvas.drawCircle(cx, cy, r, fill);
+    }
+
+    private void drawPendingContractTrip(Canvas canvas, RectF hive, HiveEntity entity, float belowNameY) {
+        Bitmap from = drawableBitmap(R.drawable.ic_compracolmena);
+        Bitmap to = destTripBitmap(entity);
+        Bitmap arrow = drawableBitmap(R.drawable.ic_chevron_right);
+        String dest = PendingContractMoveUi.destLabel(getContext(), entity.pendingContractHexId);
+        String eta = PendingContractMoveUi.formatDepartRemaining(
+                PendingContractMoveUi.remainingUntilDepartureMs(entity, System.currentTimeMillis()));
+        String destLine = getResources().getString(R.string.yard_hive_trip_dest, dest);
+        String leaveLine = getResources().getString(R.string.yard_hive_trip_leaves, eta);
+        namePaint.setTextSize(dp(7.5f));
+        float icon = dp(14f);
+        float maxText = Math.max(hive.width() * 1.35f, dp(86f));
+        CharSequence destEllip = TextUtils.ellipsize(destLine, namePaint, maxText, TextUtils.TruncateAt.END);
+        float destTw = namePaint.measureText(destEllip, 0, destEllip.length());
+        float leaveTw = namePaint.measureText(leaveLine);
+        float iconsW = icon + dp(8f) + icon;
+        float contentW = Math.max(iconsW, Math.max(destTw, leaveTw));
+        float cx = hive.centerX();
+        float top = belowNameY + dp(1f);
+        float bot = top + icon + dp(18f);
+        float left = cx - contentW / 2f - dp(5f);
+        float right = cx + contentW / 2f + dp(5f);
+        fill.setColor(Color.parseColor("#FFF1E6"));
+        fill.setAlpha(245);
+        canvas.drawRoundRect(left, top, right, bot, dp(6f), dp(6f), fill);
+        fill.setAlpha(255);
+        stroke.setStrokeWidth(dp(0.8f));
+        stroke.setColor(Color.parseColor("#E8D5A3"));
+        canvas.drawRoundRect(left, top, right, bot, dp(6f), dp(6f), stroke);
+        float midIcons = top + dp(3f) + icon / 2f;
+        float ix = cx - iconsW / 2f;
+        if (from != null) {
+            tmp.set(ix, midIcons - icon / 2f, ix + icon, midIcons + icon / 2f);
+            canvas.drawBitmap(from, null, tmp, fill);
+        }
+        ix += icon;
+        if (arrow != null) {
+            tmp.set(ix, midIcons - dp(4f), ix + dp(8f), midIcons + dp(4f));
+            canvas.drawBitmap(arrow, null, tmp, fill);
+        } else {
+            namePaint.setColor(Color.parseColor("#6B4A12"));
+            canvas.drawText("→", ix + dp(4f), midIcons + dp(2.5f), namePaint);
+        }
+        ix += dp(8f);
+        if (to != null) {
+            tmp.set(ix, midIcons - icon / 2f, ix + icon, midIcons + icon / 2f);
+            canvas.drawBitmap(to, null, tmp, fill);
+        }
+        namePaint.setColor(Color.parseColor("#6B4A12"));
+        canvas.drawText(destEllip, 0, destEllip.length(), cx, top + icon + dp(10f), namePaint);
+        canvas.drawText(leaveLine, cx, top + icon + dp(17f), namePaint);
+        namePaint.setColor(Color.parseColor("#2C2419"));
+        namePaint.setTextSize(dp(11f));
+    }
+
+    @Nullable
+    private Bitmap destTripBitmap(@NonNull HiveEntity hive) {
+        HexParcel dest = IberiaHexOverlayStore.findById(getContext(), hive.pendingContractHexId);
+        if (NpcContractCatalog.isNpcFarm(dest)) {
+            int face = NpcPortraitUi.faceDrawable(NpcContractCatalog.portraitIndexFor(
+                    NpcContractCatalog.npcNameFor(dest)));
+            return drawableBitmap(face);
+        }
+        String flora = dest != null ? com.apiculture.simulator.domain.parcel.HexFlora.nativeFloraForParcel(dest)
+                : hive.floraType;
+        return drawableBitmap(HiveSiteSummaryUi.floraHoneyJarIcon(flora));
+    }
+
     private void drawHiveFloraBadge(Canvas canvas, RectF hive, @Nullable String floraType) {
         Bitmap badge = floraIconBitmap(HiveSiteSummaryUi.floraBadgeIcon(floraType));
         if (badge == null) {
             return;
         }
-        float size = Math.min(hive.width(), hive.height()) * 0.44f;
-        float cx = hive.centerX();
+        float size = Math.min(hive.width(), hive.height()) * 0.3209f;
+        float cx = hive.left + hive.width() * 0.36f;
         float cy = hive.top + hive.height() * 0.48f;
         fill.setAlpha(255);
         tmp.set(cx - size / 2f, cy - size / 2f, cx + size / 2f, cy + size / 2f);
@@ -969,11 +1362,29 @@ public class ApiaryYardView extends View {
 
     @Nullable
     private Bitmap floraIconBitmap(int resId) {
+        return drawableBitmap(resId);
+    }
+
+    @Nullable
+    private Bitmap drawableBitmap(int resId) {
+        if (resId == 0) {
+            return null;
+        }
         Bitmap cached = floraIconCache.get(resId);
         if (cached != null && !cached.isRecycled()) {
             return cached;
         }
-        Bitmap decoded = BitmapFactory.decodeResource(getResources(), resId);
+        Bitmap decoded = IconBitmaps.decode(getResources(), resId, Math.max(64, Math.round(dp(96f))));
+        if (decoded == null) {
+            Drawable d = ContextCompat.getDrawable(getContext(), resId);
+            if (d != null) {
+                int size = Math.max(Math.round(dp(24f)), 1);
+                decoded = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+                Canvas c = new Canvas(decoded);
+                d.setBounds(0, 0, size, size);
+                d.draw(c);
+            }
+        }
         if (decoded != null) {
             floraIconCache.put(resId, decoded);
         }

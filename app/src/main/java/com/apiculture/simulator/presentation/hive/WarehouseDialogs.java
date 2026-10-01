@@ -1,0 +1,317 @@
+package com.apiculture.simulator.presentation.hive;
+
+import android.app.Dialog;
+import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+
+import com.apiculture.simulator.ApicultureApp;
+import com.apiculture.simulator.R;
+import com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity;
+import com.apiculture.simulator.data.repository.FleetStore;
+import com.apiculture.simulator.data.repository.WarehouseHoneyStore;
+import com.apiculture.simulator.databinding.DialogBuyWarehouseBinding;
+import com.apiculture.simulator.databinding.DialogMapBuildChoiceBinding;
+import com.apiculture.simulator.databinding.DialogWarehouseStatusBinding;
+import com.apiculture.simulator.domain.game.FleetRules;
+import com.apiculture.simulator.domain.parcel.WarehouseRules;
+import com.apiculture.simulator.presentation.common.GameNotice;
+import com.apiculture.simulator.presentation.common.TripCargoUi;
+import com.apiculture.simulator.data.session.PlayerAuth;
+
+import java.util.List;
+
+/**
+ * Elección en mapa (almacén / colmena), compra de almacén y estado de capacidad.
+ */
+public final class WarehouseDialogs {
+
+    private WarehouseDialogs() {
+    }
+
+    public static void showBuildChoice(@NonNull Fragment fragment, @NonNull HiveViewModel viewModel,
+            @NonNull String hexId, boolean alreadyHasWarehouse) {
+        showBuildChoice(fragment, viewModel, hexId, alreadyHasWarehouse, Double.NaN, Double.NaN);
+    }
+
+    public static void showBuildChoice(@NonNull Fragment fragment, @NonNull HiveViewModel viewModel,
+            @NonNull String hexId, boolean alreadyHasWarehouse, double tapLat, double tapLng) {
+        if (!fragment.isAdded() || fragment.getContext() == null) {
+            return;
+        }
+        DialogMapBuildChoiceBinding d = DialogMapBuildChoiceBinding.inflate(fragment.getLayoutInflater());
+        Dialog dialog = creamDialog(fragment, d.getRoot());
+        d.tvMapBuildChoiceTitle.setText(R.string.map_build_choice_title);
+        d.btnChoiceHive.setText(R.string.map_build_choice_hive);
+        d.btnChoiceWarehouse.setText(R.string.map_buy_warehouse);
+        if (alreadyHasWarehouse) {
+            d.btnChoiceWarehouse.setEnabled(false);
+            d.btnChoiceWarehouse.setAlpha(0.45f);
+        }
+        d.btnChoiceWarehouse.setOnClickListener(v -> {
+            dialog.dismiss();
+            showBuy(fragment, viewModel, hexId, tapLat, tapLng);
+        });
+        d.btnChoiceHive.setOnClickListener(v -> {
+            dialog.dismiss();
+            BuyHiveDialogs.show(fragment, viewModel, hexId);
+        });
+        d.btnChoiceCancel.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    public static void showInstallChoice(@NonNull Fragment fragment,
+            @NonNull Runnable onApiary, @NonNull Runnable onWarehouse) {
+        showInstallChoice(fragment, onApiary, onWarehouse, null);
+    }
+
+    public static void showInstallChoice(@NonNull Fragment fragment,
+            @NonNull Runnable onApiary, @NonNull Runnable onWarehouse, @Nullable Runnable onHeadquarters) {
+        if (!fragment.isAdded() || fragment.getContext() == null) {
+            return;
+        }
+        DialogMapBuildChoiceBinding d = DialogMapBuildChoiceBinding.inflate(fragment.getLayoutInflater());
+        Dialog dialog = creamDialog(fragment, d.getRoot());
+        d.tvMapBuildChoiceTitle.setText(R.string.map_install_choice_title);
+        d.btnChoiceHive.setText(R.string.map_install_choice_apiary);
+        d.btnChoiceWarehouse.setText(R.string.map_install_choice_warehouse);
+        d.btnChoiceHive.setOnClickListener(v -> {
+            // Capítulo 1, viñeta 7b. Pasa al diálogo Instalar apiario.
+            com.apiculture.simulator.presentation.tutorial.TutorialBus.handoff(dialog);
+            dialog.dismiss();
+            onApiary.run();
+        });
+        d.btnChoiceWarehouse.setOnClickListener(v -> {
+            // Capítulo 1, viñeta 16. Pasa a comprar el almacén.
+            if (com.apiculture.simulator.presentation.tutorial.TutorialBus.wantsWarehouseChoice()) {
+                com.apiculture.simulator.presentation.tutorial.TutorialBus.handoff(dialog);
+            }
+            dialog.dismiss();
+            onWarehouse.run();
+        });
+        if (onHeadquarters != null) {
+            d.btnChoiceHq.setVisibility(android.view.View.VISIBLE);
+            d.btnChoiceHq.setText(R.string.map_install_choice_hq);
+            d.btnChoiceHq.setOnClickListener(v -> {
+                dialog.dismiss();
+                onHeadquarters.run();
+            });
+        } else {
+            d.btnChoiceHq.setVisibility(android.view.View.GONE);
+        }
+        if (com.apiculture.simulator.presentation.tutorial.TutorialBus.wantsWarehouseChoice()) {
+            d.btnChoiceHive.setEnabled(false);
+            d.btnChoiceHive.setAlpha(0.4f);
+            d.btnChoiceCancel.setEnabled(false);
+            d.btnChoiceCancel.setAlpha(0.4f);
+            d.btnChoiceHq.setEnabled(false);
+            d.btnChoiceHq.setAlpha(0.4f);
+        }
+        d.btnChoiceCancel.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+        // Capítulo 1, viñeta 7b o 16. Resalta apiario o almacén según el paso.
+        boolean warehouseStep = com.apiculture.simulator.presentation.tutorial.TutorialBus.wantsWarehouseChoice();
+        com.apiculture.simulator.presentation.tutorial.TutorialBus.emitDialog(
+                com.apiculture.simulator.presentation.tutorial.TutorialEvent.INSTALL_CHOICE,
+                dialog, warehouseStep ? d.btnChoiceWarehouse : d.btnChoiceHive);
+    }
+
+    public static void showNeedWarehouse(@NonNull Fragment fragment) {
+        if (!fragment.isAdded() || fragment.getContext() == null) {
+            return;
+        }
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(fragment.requireContext())
+                .setTitle(R.string.harvest_need_warehouse_title)
+                .setMessage(R.string.harvest_need_warehouse_message)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.harvest_need_warehouse_go_map, (d, w) -> {
+                    if (!fragment.isAdded()) {
+                        return;
+                    }
+                    androidx.navigation.fragment.NavHostFragment.findNavController(fragment)
+                            .navigate(R.id.mapFragment);
+                })
+                .show();
+    }
+
+    public static void showBuy(@NonNull Fragment fragment, @NonNull HiveViewModel viewModel,
+            @NonNull String hexId) {
+        showBuy(fragment, viewModel, hexId, Double.NaN, Double.NaN);
+    }
+
+    public static void showBuy(@NonNull Fragment fragment, @NonNull HiveViewModel viewModel,
+            @NonNull String hexId, double tapLat, double tapLng) {
+        if (!fragment.isAdded() || fragment.getContext() == null) {
+            return;
+        }
+        String ownerId = PlayerAuth.getInstance().getUid();
+        if (ownerId == null || ownerId.isEmpty()) {
+            GameNotice.show(fragment.requireContext(), R.string.hive_buy_session_invalid);
+            return;
+        }
+        DialogBuyWarehouseBinding d = DialogBuyWarehouseBinding.inflate(fragment.getLayoutInflater());
+        Dialog dialog = creamDialog(fragment, d.getRoot());
+        d.btnConfirmWarehouse.setOnClickListener(v -> {
+            String name = d.editWarehouseName.getText() == null
+                    ? "" : d.editWarehouseName.getText().toString();
+            viewModel.buyWarehouse(ownerId, hexId, tapLat, tapLng, name, msg -> {
+                if (!fragment.isAdded()) {
+                    return;
+                }
+                if (msg == null) {
+                    dialog.dismiss();
+                    // Capítulo 1, viñeta 16. Almacén instalado.
+                    com.apiculture.simulator.presentation.tutorial.TutorialBus.emit(
+                            com.apiculture.simulator.presentation.tutorial.TutorialEvent.WAREHOUSE_BOUGHT);
+                    GameNotice.showSuccess(fragment.requireContext(), R.string.map_buy_warehouse_ok);
+                } else {
+                    GameNotice.show(fragment.requireContext(), msg);
+                }
+            });
+        });
+        d.btnCancelWarehouse.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    public static void showStatus(@NonNull Fragment fragment, @NonNull HiveViewModel viewModel,
+            @Nullable List<HexParcelOwnershipEntity> ownerships,
+            @Nullable String ownerId, @Nullable String hexId) {
+        showStatus(fragment, viewModel, ownerships, ownerId, hexId, null);
+    }
+
+    public static void showStatus(@NonNull Fragment fragment, @NonNull HiveViewModel viewModel,
+            @Nullable List<HexParcelOwnershipEntity> ownerships,
+            @Nullable String ownerId, @Nullable String hexId, @Nullable String siteId) {
+        if (!fragment.isAdded() || fragment.getContext() == null) {
+            return;
+        }
+        ApicultureApp app = (ApicultureApp) fragment.requireContext().getApplicationContext();
+        HexParcelOwnershipEntity row = null;
+        if (ownerships != null && hexId != null) {
+            String want = siteId != null && !siteId.isEmpty() ? siteId : null;
+            for (HexParcelOwnershipEntity o : ownerships) {
+                if (o == null || !hexId.equals(o.hexId) || !o.hasWarehouse) {
+                    continue;
+                }
+                if (ownerId != null && !ownerId.equals(o.ownerId)) {
+                    continue;
+                }
+                String got = o.siteId != null && !o.siteId.isEmpty() ? o.siteId : "default";
+                if (want == null || want.equals(got)) {
+                    row = o;
+                    break;
+                }
+            }
+            if (row == null) {
+                for (HexParcelOwnershipEntity o : ownerships) {
+                    if (o != null && hexId.equals(o.hexId) && o.hasWarehouse
+                            && (ownerId == null || ownerId.equals(o.ownerId))) {
+                        row = o;
+                        break;
+                    }
+                }
+            }
+        }
+        int level = WarehouseRules.levelOf(row);
+        double cap = WarehouseRules.capacityKg(level);
+        WarehouseHoneyStore.reconcile(fragment.requireContext(), app.getEconomyRepository(),
+                ownerId, ownerships);
+        double here = WarehouseHoneyStore.totalAt(fragment.requireContext(), ownerId, hexId);
+        int playerLevel = ownerId != null ? app.getPlayerProgressRepository().getLevel(ownerId) : 0;
+        DialogWarehouseStatusBinding d = DialogWarehouseStatusBinding.inflate(fragment.getLayoutInflater());
+        Dialog dialog = creamDialog(fragment, d.getRoot());
+        String warehouseName = row != null && row.parcelName != null && !row.parcelName.trim().isEmpty()
+                ? row.parcelName.trim()
+                : fragment.getString(R.string.map_warehouse_title);
+        d.tvWarehouseTitle.setText(warehouseName);
+        d.tvWarehouseLevel.setText(fragment.getString(R.string.map_warehouse_level, level));
+        d.tvWarehouseKg.setText(fragment.getString(R.string.map_warehouse_kg, here, cap));
+        java.util.Map<String, Double> jars = WarehouseHoneyStore.at(fragment.requireContext(), ownerId, hexId);
+        TripCargoUi.bind(fragment.getLayoutInflater(), d.llWarehouseHoney, jars, fragment.requireContext());
+        int jarsVisible = d.llWarehouseHoney.getVisibility();
+        d.tvWarehouseJars.setVisibility(jarsVisible);
+        d.hsWarehouseHoney.setVisibility(jarsVisible);
+        int slots = FleetRules.truckSlots(level);
+        int used = 0;
+        for (FleetStore.Vehicle vehicle : FleetStore.vehicles(fragment.requireContext(), ownerId)) {
+            if (vehicle != null && vehicle.isTruck() && hexId != null && hexId.equals(vehicle.homeId)) {
+                used++;
+            }
+        }
+        int freeSlots = Math.max(0, slots - used);
+        d.tvWarehouseSlots.setVisibility(freeSlots > 0 ? android.view.View.VISIBLE : android.view.View.GONE);
+        if (freeSlots > 0) {
+            d.tvWarehouseSlots.setText(fragment.getString(R.string.map_warehouse_truck_slots,
+                    freeSlots, slots));
+        }
+        FleetDialogs.fillVehicleRows(fragment, d.llWarehouseFleet, ownerId, hexId, true);
+        Context fleetContext = fragment.requireContext().getApplicationContext();
+        new Thread(() -> {
+            FleetStore.releaseIdle(fleetContext, ownerId);
+            if (fragment.getActivity() == null) {
+                return;
+            }
+            fragment.requireActivity().runOnUiThread(() -> {
+                if (!fragment.isAdded()) {
+                    return;
+                }
+                FleetDialogs.fillVehicleRows(fragment, d.llWarehouseFleet, ownerId, hexId, true);
+            });
+        }, "warehouse-fleet").start();
+        d.btnWarehouseTransfer.setOnClickListener(v -> {
+            dialog.dismiss();
+            FleetDialogs.showTransfer(fragment, ownerId, hexId);
+        });
+        d.barWarehouseKg.setMax(1000);
+        d.barWarehouseKg.setProgress(cap <= 1e-9 ? 0 : (int) Math.round(1000.0 * Math.min(1.0, here / cap)));
+        int cost = WarehouseRules.upgradeCostB(level);
+        d.btnWarehouseUpgrade.setText(fragment.getString(R.string.map_warehouse_upgrade, level + 1, (double) cost));
+        boolean canUpgrade = level < Math.max(1, playerLevel);
+        d.btnWarehouseUpgrade.setEnabled(canUpgrade);
+        d.btnWarehouseUpgrade.setAlpha(canUpgrade ? 1f : 0.45f);
+        d.btnWarehouseUpgrade.setOnClickListener(v -> {
+            if (ownerId == null || hexId == null) {
+                return;
+            }
+            viewModel.upgradeWarehouse(ownerId, hexId, msg -> {
+                if (!fragment.isAdded()) {
+                    return;
+                }
+                if (msg == null) {
+                    dialog.dismiss();
+                    GameNotice.showSuccess(fragment.requireContext(), R.string.map_warehouse_upgrade_ok);
+                } else {
+                    GameNotice.show(fragment.requireContext(), msg);
+                }
+            });
+        });
+        String sellSite = row != null && row.siteId != null ? row.siteId : siteId;
+        d.btnWarehouseSell.setOnClickListener(v -> {
+            dialog.dismiss();
+            SiteSellDialogs.sellWarehouse(fragment, viewModel, ownerships, ownerId, hexId, sellSite);
+        });
+        d.btnWarehouseClose.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    @NonNull
+    private static Dialog creamDialog(@NonNull Fragment fragment, @NonNull android.view.View root) {
+        Dialog dialog = new Dialog(fragment.requireContext());
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(root);
+        dialog.setCancelable(true);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        return dialog;
+    }
+}
