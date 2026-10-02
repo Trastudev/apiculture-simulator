@@ -255,8 +255,8 @@
     "secondaryNectarTrigger": 0.18,
     "secondaryNectarShare": 0.28,
     "nectarIntensityCap": 1.50,
-    "baseDailyNectarKgNative": 20.0,
-    "baseDailyNectarKgPlanted": 20.0,
+    "baseDailyNectarKgNative": 40.0,
+    "baseDailyNectarKgPlanted": 40.0,
     "neighborForageSharePerHex": 0
   },
   "pollination": {
