@@ -2,6 +2,7 @@
 
 const { randomUUID } = require("crypto");
 const { encode, decode } = require("./polyline");
+const catalog = require("./offerCatalog");
 
 const MIN_DURATION_MS = 60_000;
 const CRUISE_KMH = 70;
@@ -86,36 +87,35 @@ async function authoritativeOrder(client, trip, when) {
   const cargo = cargoMap(trip.cargo_json);
   const valid = Boolean(row.taken)
     && String(row.claimed_by || "") === String(trip.owner_id)
-    && cargo.lines.length === 1
-    && cargo.lines[0].flora === row.flora_key
-    && sameRequiredNumber(cargo.lines[0].kg, row.kg)
-    && sameRequiredNumber(trip.kg, row.kg)
-    && trip.flora_key != null
-    && trip.flora_key === row.flora_key
-    && trip.dest_hex_id != null
-    && trip.dest_hex_id === row.dest_hex_id
-    && sameRequiredNumber(trip.dest_lat, row.dest_lat, 0.00001)
-    && sameRequiredNumber(trip.dest_lng, row.dest_lng, 0.00001)
-    && sameRequiredNumber(trip.unit_price, row.unit_price, 0.01);
+    && orderCargoMatches(cargo, trip.flora_key, trip.kg, trip.dest_hex_id, trip.unit_price, row);
   return { valid, row };
 }
 
-function publishedOrderMatches(body, row, now) {
+function sameFlora(a, b) {
+  const left = catalog.canonicalFlora(a);
+  const right = catalog.canonicalFlora(b);
+  return left.length > 0 && left === right;
+}
+
+function orderCargoMatches(cargo, floraKey, kg, destHexId, unitPrice, row) {
+  if (!cargo || cargo.lines.length !== 1 || !row) return false;
+  const line = cargo.lines[0];
+  const shippedKg = hasFiniteNumber(kg) && num(kg) > 1e-9 ? kg : line.kg;
+  return sameFlora(line.flora, row.flora_key)
+    && sameFlora(floraKey || line.flora, row.flora_key)
+    && sameRequiredNumber(line.kg, row.kg, 0.02)
+    && sameRequiredNumber(shippedKg, row.kg, 0.02)
+    && destHexId != null
+    && String(destHexId) === String(row.dest_hex_id)
+    && sameRequiredNumber(unitPrice, row.unit_price, 0.05);
+}
+
+function publishedOrderMatches(body, row) {
   if (!row || !body || body.kind !== "order" || !body.orderId) return false;
-  const cargo = cargoMap(body.cargoJson);
-  return row.taken === true
-    && String(row.claimed_by || "") === String(body.ownerId || "")
-    && cargo.lines.length === 1
-    && cargo.lines[0].flora === row.flora_key
-    && sameRequiredNumber(cargo.lines[0].kg, row.kg)
-    && sameRequiredNumber(body.kg, row.kg)
-    && body.floraKey != null
-    && body.floraKey === row.flora_key
-    && body.destHexId != null
-    && body.destHexId === row.dest_hex_id
-    && sameRequiredNumber(body.destLat, row.dest_lat, 0.00001)
-    && sameRequiredNumber(body.destLng, row.dest_lng, 0.00001)
-    && sameRequiredNumber(body.unitPrice, row.unit_price, 0.01);
+  if (row.taken !== true) return false;
+  if (String(row.claimed_by || "") !== String(body.ownerId || "")) return false;
+  return orderCargoMatches(
+      cargoMap(body.cargoJson), body.floraKey, body.kg, body.destHexId, body.unitPrice, row);
 }
 
 async function insertEffect(client, ownerId, payload) {
@@ -685,8 +685,9 @@ async function clientMayOverwrite(pool, table, id, body) {
       const busy = await pool.query(
         `SELECT 1 FROM cargo_trips
           WHERE owner_id=$1 AND vehicle_id=$2 AND id<>$3
+            AND start_epoch_ms + GREATEST(duration_ms, 0) > $4
           LIMIT 1`,
-        [String(body.ownerId), vehicleId, id]
+        [String(body.ownerId), vehicleId, id, Date.now()]
       );
       if (busy.rowCount > 0) return false;
     }
@@ -717,7 +718,7 @@ async function clientMayOverwrite(pool, table, id, body) {
       "SELECT * FROM honey_orders WHERE id = $1",
       [body.orderId]
     );
-    if (order.rowCount === 0 || !publishedOrderMatches(body, order.rows[0], Date.now())) {
+    if (order.rowCount === 0 || !publishedOrderMatches(body, order.rows[0])) {
       return false;
     }
   }
@@ -887,6 +888,7 @@ module.exports = {
   tick,
   start,
   clientMayOverwrite,
+  publishedOrderMatches,
   haversineKm,
   durationMs,
   requireAdmin,
