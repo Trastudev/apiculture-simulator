@@ -42,7 +42,7 @@ test("offer actions are atomic and map a successful claim", async () => {
   const result = await clock.action(pool, { type: "claim-order", id: "o1", ownerId: "p1" });
   assert.equal(result.ok, true);
   assert.equal(result.order.taken, true);
-  assert.equal(result.order.claimed_by, "p1");
+  assert.equal(result.order.claimedBy, "p1");
   assert.ok(pool.state.queries.some((q) => /pg_advisory_xact_lock/i.test(q.sql)));
   assert.ok(pool.state.queries.some((q) => /COMMIT/i.test(q.sql)));
 });
@@ -97,6 +97,13 @@ test("offer snapshot uses the camel-case contract consumed by the app", async ()
   assert.equal(result.orders[0].npcName, "Núria Soler");
   assert.equal(result.orders[0].destHexId, "hex_iberia_1");
   assert.equal(result.offers[0].startDoy, 100);
+});
+
+test("Arboç orders pay the 12–18 mean times 1.5, not the old 5.04", () => {
+  const catalog = require("../src/offerCatalog");
+  const unit = Math.round(catalog.meanPriceEur("Arboç") * catalog.orderScarcity("Arboç") * 1.5 * 100) / 100;
+  assert.ok(unit >= 18, `got ${unit}`);
+  assert.notEqual(unit, 5.04);
 });
 
 test("order replacements stay near the previous destination", () => {

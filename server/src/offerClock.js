@@ -67,6 +67,10 @@ function basePrice(flora) {
   return (mean > 0 ? mean : 12) * catalog.orderScarcity(flora);
 }
 
+function orderUnitPrice(flora) {
+  return Math.round(basePrice(flora) * PRICE_BONUS * 100) / 100;
+}
+
 function cropForParcel(parcel, band, nowMs, dayKey) {
   return catalog.offerForParcel(parcel, band, nowMs, dayKey);
 }
@@ -152,7 +156,6 @@ function nearbyReplacement(parcels, dead, used, seed) {
 
 function orderRow(region, band, parcel, dayKey, nowMs, seed, old, prices) {
   const flora = floraForParcel(parcel, band, seed, nowMs);
-  const oldPrice = old && num(old.unit_price) > 0 ? num(old.unit_price) : 0;
   const id = `srv-ho-${region}-${dayKey}-${band}-${hash32(`${parcel.id}:${seed}`).toString(16)}`;
   const pin = catalog.pointInParcel(parcel, `${id}:pin`);
   return {
@@ -161,9 +164,7 @@ function orderRow(region, band, parcel, dayKey, nowMs, seed, old, prices) {
     portrait_index: parcel.npcIndex,
     flora_key: flora,
     kg: kgForBand(band, seed),
-    unit_price: oldPrice > 0
-      ? oldPrice
-      : Math.round(basePrice(flora) * PRICE_BONUS * 100) / 100,
+    unit_price: orderUnitPrice(flora),
     dest_hex_id: parcel.id,
     dest_lat: pin.lat,
     dest_lng: pin.lng,
@@ -253,6 +254,22 @@ async function insertOffers(client, rows) {
   }
 }
 
+async function repriceOpenOrders(client, region) {
+  const rows = await client.query(
+    `SELECT id, flora_key, unit_price FROM honey_orders
+      WHERE region=$1 AND taken=false`,
+    [region]
+  );
+  for (const row of rows.rows) {
+    const want = orderUnitPrice(row.flora_key);
+    if (!(want > 0) || Math.abs(num(row.unit_price) - want) < 0.009) continue;
+    await client.query(
+      `UPDATE honey_orders SET unit_price=$2, updated_at=now() WHERE id=$1 AND taken=false`,
+      [row.id, want]
+    );
+  }
+}
+
 async function scatterOpenOrders(client, region, parcels) {
   const byId = new Map(parcels.map((parcel) => [parcel.id, parcel]));
   const rows = await client.query(
@@ -281,6 +298,7 @@ async function scatterOpenOrders(client, region, parcels) {
 async function maintainRegion(client, region, nowMs, dayKey, prices) {
   const all = catalog.getParcels(region);
   await scatterOpenOrders(client, region, all);
+  await repriceOpenOrders(client, region);
   const pendingOrders = [];
   const pendingOffers = [];
   // La primera pasada tras desplegar el reloj descarta el pool legado de
@@ -622,7 +640,7 @@ async function action(pool, body, authUid) {
       const order = found.rows[0];
       if (order.taken) {
         return order.claimed_by === owner
-          ? { ok: true, alreadyOwned: true, order }
+          ? { ok: true, alreadyOwned: true, order: orderJson(order) }
           : { ok: false, reason: "unavailable" };
       }
       if (num(order.expire_epoch_ms) <= nowMs) {
@@ -633,7 +651,7 @@ async function action(pool, body, authUid) {
           WHERE id=$1 RETURNING *`,
         [id, owner]
       );
-      return { ok: true, order: result.rows[0] };
+      return { ok: true, order: orderJson(result.rows[0]) };
     }
     if (type === "release-order") {
       const owner = String(body.ownerId || "");
@@ -822,6 +840,7 @@ module.exports = {
   snapshot,
   pickScattered,
   nearbyReplacement,
+  orderUnitPrice,
   orderCount,
   offerCount,
   utcDayKey,
