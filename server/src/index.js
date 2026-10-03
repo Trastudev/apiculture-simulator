@@ -27,6 +27,13 @@ const pool = new Pool({
   database: process.env.PGDATABASE || "apiculture",
   user: process.env.PGUSER || "apiculture",
   password: process.env.PGPASSWORD,
+  idleTimeoutMillis: 30_000,
+});
+
+// Sin este listener, una conexión ociosa que Postgres cierra de madrugada
+// mata el proceso entero y Caddy se queda en 502.
+pool.on("error", (err) => {
+  console.error("conexión ociosa con la base de datos:", err.message);
 });
 
 const COLUMNS = {
