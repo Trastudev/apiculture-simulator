@@ -86,8 +86,6 @@ async function authoritativeOrder(client, trip, when) {
   const cargo = cargoMap(trip.cargo_json);
   const valid = Boolean(row.taken)
     && String(row.claimed_by || "") === String(trip.owner_id)
-    && hasFiniteNumber(row.expire_epoch_ms)
-    && num(row.expire_epoch_ms) > when
     && cargo.lines.length === 1
     && cargo.lines[0].flora === row.flora_key
     && sameRequiredNumber(cargo.lines[0].kg, row.kg)
@@ -107,8 +105,6 @@ function publishedOrderMatches(body, row, now) {
   const cargo = cargoMap(body.cargoJson);
   return row.taken === true
     && String(row.claimed_by || "") === String(body.ownerId || "")
-    && hasFiniteNumber(row.expire_epoch_ms)
-    && num(row.expire_epoch_ms) > now
     && cargo.lines.length === 1
     && cargo.lines[0].flora === row.flora_key
     && sameRequiredNumber(cargo.lines[0].kg, row.kg)

@@ -98,3 +98,18 @@ test("offer snapshot uses the camel-case contract consumed by the app", async ()
   assert.equal(result.orders[0].destHexId, "hex_iberia_1");
   assert.equal(result.offers[0].startDoy, 100);
 });
+
+test("order replacements stay near the previous destination", () => {
+  const parcels = [
+    { id: "far", lat: 41.8, lng: -1.5 },
+    { id: "near-a", lat: 40.12, lng: -3.05 },
+    { id: "near-b", lat: 40.08, lng: -2.95 },
+    { id: "same", lat: 40.1, lng: -3.0 },
+  ];
+  const dead = { dest_hex_id: "same", dest_lat: 40.1, dest_lng: -3.0 };
+  const used = new Set();
+  const hit = clock.nearbyReplacement(parcels, dead, used, "seed-1");
+  assert.ok(hit);
+  assert.ok(hit.id === "near-a" || hit.id === "near-b");
+  assert.equal(clock.ORDER_LIFE_MS, 8 * 60 * 60 * 1000);
+});

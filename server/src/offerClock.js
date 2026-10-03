@@ -6,6 +6,9 @@ const REGIONS = ["iberia", "za", "mdg"];
 const HEXES_PER_BATCH = 50;
 const ORDERS_PER_BATCH = 2;
 const OFFERS_PER_BATCH = 2;
+const ORDER_LIFE_MS = 8 * 60 * 60 * 1000;
+const ORDER_NEAR_KM = 40;
+const ORDER_NEAR_FALLBACK_KM = 80;
 const POLLINATION_HEXES_PER_BATCH = 70;
 const PRICE_BONUS = 1.5;
 let clockReady = false;
@@ -115,6 +118,38 @@ function nearestReplacement(parcels, dead, used, band, seed) {
   return picks[0] || null;
 }
 
+function parcelKm(dead, parcel) {
+  const lat = num(dead.dest_lat != null ? dead.dest_lat : dead.destLat);
+  const lng = num(dead.dest_lng != null ? dead.dest_lng : dead.destLng);
+  const pLat = num(parcel.lat != null ? parcel.lat : parcel.centroidLat);
+  const pLng = num(parcel.lng != null ? parcel.lng : parcel.centroidLon);
+  const p1 = (lat * Math.PI) / 180;
+  const p2 = (pLat * Math.PI) / 180;
+  const dphi = ((pLat - lat) * Math.PI) / 180;
+  const dl = ((pLng - lng) * Math.PI) / 180;
+  const a = Math.sin(dphi / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+function nearbyReplacement(parcels, dead, used, seed) {
+  if (!dead || !parcels || !parcels.length) return null;
+  const deadHex = dead.dest_hex_id || dead.destHexId || "";
+  const pickIn = (maxKm) => {
+    const hits = [];
+    for (const parcel of parcels) {
+      if (!parcel || !parcel.id || used.has(parcel.id) || parcel.id === deadHex) continue;
+      const km = parcelKm(dead, parcel);
+      if (km <= maxKm + 1e-6) hits.push(parcel);
+    }
+    if (!hits.length) return null;
+    return hits[floorMod(hash32(String(seed)), hits.length)];
+  };
+  return pickIn(ORDER_NEAR_KM)
+      || pickIn(ORDER_NEAR_FALLBACK_KM)
+      || pickScattered(parcels, 1, used, seed)[0]
+      || null;
+}
+
 function orderRow(region, band, parcel, dayKey, nowMs, seed, old, prices) {
   const flora = floraForParcel(parcel, band, seed, nowMs);
   const oldPrice = old && num(old.unit_price) > 0 ? num(old.unit_price) : 0;
@@ -135,7 +170,7 @@ function orderRow(region, band, parcel, dayKey, nowMs, seed, old, prices) {
     dest_label: parcel.place || parcel.id,
     region,
     created_day_key: dayKey,
-    expire_epoch_ms: utcDayEnd(dayKey),
+    expire_epoch_ms: nowMs + ORDER_LIFE_MS,
     taken: false,
     claimed_by: null,
     band,
@@ -261,6 +296,12 @@ async function maintainRegion(client, region, nowMs, dayKey, prices) {
       WHERE region=$1 AND taken=false AND id NOT LIKE 'srv-po-%'`,
     [region]
   );
+  await client.query(
+    `UPDATE honey_orders
+        SET expire_epoch_ms=$2, updated_at=now()
+      WHERE region=$1 AND taken=false AND expire_epoch_ms > $3`,
+    [region, nowMs + ORDER_LIFE_MS, nowMs + ORDER_LIFE_MS]
+  );
   const staleBefore = nowMs - 7 * 24 * 60 * 60 * 1000;
   await client.query(
     `DELETE FROM honey_orders h
@@ -338,12 +379,13 @@ async function maintainRegion(client, region, nowMs, dayKey, prices) {
   for (const dead of orders.rows.filter((r) => num(r.expire_epoch_ms) <= nowMs)) {
     const band = Math.max(0, Math.min(9, int(dead.band)));
     const eligible = all.filter((p) => catalog.orderEligible(p, band));
-    const replacement = nearestReplacement(eligible, dead, usedOrders, band,
-        `${dayKey}:${dead.id}`);
+    const replacement = nearbyReplacement(eligible, dead, usedOrders,
+        `${nowMs}:${dead.id}`);
     await client.query("DELETE FROM honey_orders WHERE id=$1", [dead.id]);
     if (replacement) {
+      usedOrders.add(replacement.id);
       pendingOrders.push(orderRow(region, band, replacement, dayKey, nowMs,
-          `${dayKey}:${dead.id}`, dead, prices));
+          `${nowMs}:${dead.id}`, null, prices));
     }
   }
   for (const dead of offers.rows.filter((r) => num(r.expire_epoch_ms) <= nowMs)) {
@@ -423,6 +465,25 @@ async function maintainRegion(client, region, nowMs, dayKey, prices) {
   await insertOffers(client, pendingOffers);
 }
 
+async function spawnNearbyOrder(client, dead, nowMs, dayKey, prices) {
+  if (!dead || !dead.region) return;
+  const band = Math.max(0, Math.min(9, int(dead.band)));
+  const region = dead.region;
+  const all = catalog.getParcels(region);
+  const eligible = all.filter((p) => catalog.orderEligible(p, band));
+  const used = new Set();
+  const open = await client.query(
+    `SELECT dest_hex_id FROM honey_orders WHERE region=$1`,
+    [region]
+  );
+  for (const row of open.rows) used.add(row.dest_hex_id);
+  if (dead.dest_hex_id) used.add(dead.dest_hex_id);
+  const replacement = nearbyReplacement(eligible, dead, used, `${nowMs}:done:${dead.id}`);
+  if (!replacement) return;
+  await insertOrders(client, [orderRow(region, band, replacement, dayKey, nowMs,
+      `${nowMs}:done:${dead.id}`, null, prices)]);
+}
+
 async function runWithLock(pool, work) {
   const client = await pool.connect();
   try {
@@ -467,6 +528,7 @@ async function tick(pool) {
 
 async function action(pool, body, authUid) {
   const nowMs = Date.now();
+  const dayKey = utcDayKey(nowMs);
   return runWithLock(pool, async (client) => {
     const type = String(body && body.type || "");
     if (authUid) {
@@ -586,10 +648,19 @@ async function action(pool, body, authUid) {
     if (type === "finish-order") {
       const owner = String(body.ownerId || "");
       if (!owner) return { ok: false, reason: "owner required" };
+      const found = await client.query(
+        "SELECT * FROM honey_orders WHERE id=$1 AND taken=true AND claimed_by=$2",
+        [id, owner]
+      );
       const result = await client.query(
         "DELETE FROM honey_orders WHERE id=$1 AND taken=true AND claimed_by=$2",
         [id, owner]
       );
+      if (result.rowCount > 0 && found.rowCount > 0) {
+        const dead = found.rows[0];
+        const prices = await loadMarketPrices(client, dayKey);
+        await spawnNearbyOrder(client, dead, nowMs, dayKey, prices);
+      }
       return { ok: result.rowCount > 0 };
     }
     if (type === "take-offer") {
@@ -750,8 +821,10 @@ module.exports = {
   action,
   snapshot,
   pickScattered,
+  nearbyReplacement,
   orderCount,
   offerCount,
   utcDayKey,
+  ORDER_LIFE_MS,
   stats: catalog.stats,
 };
