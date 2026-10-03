@@ -466,13 +466,6 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && urlPath === "/offer-actions") {
       const body = await readBody(req);
       const result = await offerClock.action(pool, body, req.authUid || null);
-      if (result.ok) {
-        // La reposición puede recorrer el mapa completo; no bloquea la
-        // confirmación de claim/oferta que está esperando la app.
-        setImmediate(() => {
-          offerClock.tick(pool).catch((err) => console.error("reloj de ofertas:", err.message));
-        });
-      }
       send(res, result.ok ? 200 : 409, result);
       return;
     }

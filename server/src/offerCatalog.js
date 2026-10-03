@@ -726,6 +726,59 @@ function bandDailyOfferCount(parcelCount, band) {
   return Math.min(48, Math.max(BAND_POLLINATION_COUNT[band], density));
 }
 
+const GRID = new Map();
+const GRID_STEP = 0.2;
+
+function gridFor(region) {
+  if (GRID.has(region)) return GRID.get(region);
+  const cells = new Map();
+  for (const parcel of loadRegion(region)) {
+    const key = `${Math.floor(parcel.lat / GRID_STEP)}:${Math.floor(parcel.lng / GRID_STEP)}`;
+    let bucket = cells.get(key);
+    if (!bucket) {
+      bucket = [];
+      cells.set(key, bucket);
+    }
+    bucket.push(parcel);
+  }
+  GRID.set(region, cells);
+  return cells;
+}
+
+/** Hex que contiene el punto, mirando solo la celda y las vecinas. */
+function parcelAt(region, lat, lng) {
+  if (!REGION_FILES[region] || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const cells = gridFor(region);
+  const row = Math.floor(lat / GRID_STEP);
+  const col = Math.floor(lng / GRID_STEP);
+  let nearest = null;
+  let nearestKm = 8;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      const bucket = cells.get(`${row + dr}:${col + dc}`);
+      if (!bucket) continue;
+      for (const parcel of bucket) {
+        if (parcel.ring && ringContains(lat, lng, parcel.ring)) return parcel;
+        const km = haversineKm(lat, lng, parcel.lat, parcel.lng);
+        if (km < nearestKm) {
+          nearestKm = km;
+          nearest = parcel;
+        }
+      }
+    }
+  }
+  return nearest;
+}
+
+function haversineKm(lat, lng, lat2, lng2) {
+  const p1 = (lat * Math.PI) / 180;
+  const p2 = (lat2 * Math.PI) / 180;
+  const dphi = ((lat2 - lat) * Math.PI) / 180;
+  const dl = ((lng2 - lng) * Math.PI) / 180;
+  const a = Math.sin(dphi / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
 function getParcels(region) {
   return loadRegion(region);
 }
@@ -747,6 +800,7 @@ module.exports = {
   BAND_POLLINATION_COUNT,
   NPC_NAMES,
   getParcels,
+  parcelAt,
   playableCentroid,
   orderEligible,
   pointInParcel,

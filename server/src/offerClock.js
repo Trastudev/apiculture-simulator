@@ -483,23 +483,51 @@ async function maintainRegion(client, region, nowMs, dayKey, prices) {
   await insertOffers(client, pendingOffers);
 }
 
-async function spawnNearbyOrder(client, dead, nowMs, dayKey, prices) {
+function shiftKm(lat, lng, km, bearing) {
+  const d = km / 6371;
+  const p1 = (lat * Math.PI) / 180;
+  const l1 = (lng * Math.PI) / 180;
+  const p2 = Math.asin(Math.sin(p1) * Math.cos(d) + Math.cos(p1) * Math.sin(d) * Math.cos(bearing));
+  const l2 = l1 + Math.atan2(
+    Math.sin(bearing) * Math.sin(d) * Math.cos(p1),
+    Math.cos(d) - Math.sin(p1) * Math.sin(p2));
+  let deg = (l2 * 180) / Math.PI;
+  deg = ((deg + 540) % 360) - 180;
+  return { lat: (p2 * 180) / Math.PI, lng: deg };
+}
+
+/**
+ * Una sola reposición junto al punto aceptado. Varias ofertas pueden
+ * coincidir en el mismo hex. Solo se cambia de punto si no hay terreno
+ * jugable o el clima de la banda no admite esa oferta.
+ */
+async function placeNearby(client, dead, kind, nowMs, dayKey, prices) {
   if (!dead || !dead.region) return;
-  const band = Math.max(0, Math.min(9, int(dead.band)));
   const region = dead.region;
-  const all = catalog.getParcels(region);
-  const eligible = all.filter((p) => catalog.orderEligible(p, band));
-  const used = new Set();
-  const open = await client.query(
-    `SELECT dest_hex_id FROM honey_orders WHERE region=$1`,
-    [region]
-  );
-  for (const row of open.rows) used.add(row.dest_hex_id);
-  if (dead.dest_hex_id) used.add(dead.dest_hex_id);
-  const replacement = nearbyReplacement(eligible, dead, used, `${nowMs}:done:${dead.id}`);
-  if (!replacement) return;
-  await insertOrders(client, [orderRow(region, band, replacement, dayKey, nowMs,
-      `${nowMs}:done:${dead.id}`, null, prices)]);
+  const band = Math.max(0, Math.min(9, int(dead.band)));
+  const originLat = num(dead.dest_lat);
+  const originLng = num(dead.dest_lng);
+  if (!originLat && !originLng) return;
+  const tag = dead.id || dead.dest_hex_id || dead.hex_id || "";
+  for (let i = 0; i < 24; i++) {
+    const seed = `${nowMs}:${tag}:${kind}:${i}`;
+    const km = 8 + (hash32(`${seed}:km`) % 33);
+    const bearing = (hash32(`${seed}:br`) % 360) * Math.PI / 180;
+    const point = shiftKm(originLat, originLng, km, bearing);
+    const parcel = catalog.parcelAt(region, point.lat, point.lng);
+    if (!parcel) continue;
+    if (kind === "order") {
+      if (!catalog.orderEligible(parcel, band)) continue;
+      await insertOrders(client, [orderRow(region, band, parcel, dayKey, nowMs, seed, null, prices)]);
+      return;
+    }
+    if (!catalog.offerEligible(parcel, band) || cropForParcel(parcel, band, nowMs, dayKey) == null) {
+      continue;
+    }
+    const row = offerRow(region, band, parcel, dayKey, nowMs, seed);
+    if (row) await insertOffers(client, [row]);
+    return;
+  }
 }
 
 async function runWithLock(pool, work) {
@@ -580,11 +608,12 @@ async function action(pool, body, authUid) {
       if (found.rows[0].taken && found.rows[0].claimed_by === owner) {
         return { ok: true, alreadyOwned: true, offerId: found.rows[0].id };
       }
-      await client.query(
+      const taken = await client.query(
         `UPDATE pollination_offers SET taken=true, claimed_by=$2, updated_at=now()
-          WHERE id=$1`,
+          WHERE id=$1 RETURNING *`,
         [found.rows[0].id, owner]
       );
+      await placeNearby(client, taken.rows[0], "offer", nowMs, dayKey, null);
       return { ok: true, offerId: found.rows[0].id };
     }
     if (type === "release-pollination-offer") {
@@ -622,10 +651,12 @@ async function action(pool, body, authUid) {
         [hexId, nowMs, band]
       );
       if (found.rowCount === 0) return { ok: false, reason: "unavailable" };
-      await client.query(
-        `UPDATE pollination_offers SET taken=true, claimed_by=$2, updated_at=now() WHERE id=$1`,
+      const taken = await client.query(
+        `UPDATE pollination_offers SET taken=true, claimed_by=$2, updated_at=now()
+          WHERE id=$1 RETURNING *`,
         [found.rows[0].id, owner]
       );
+      await placeNearby(client, taken.rows[0], "offer", nowMs, dayKey, null);
       return { ok: true, offerId: found.rows[0].id };
     }
     if (!id) throw Object.assign(new Error("id required"), { status: 400 });
@@ -651,6 +682,8 @@ async function action(pool, body, authUid) {
           WHERE id=$1 RETURNING *`,
         [id, owner]
       );
+      const prices = await loadMarketPrices(client, dayKey);
+      await placeNearby(client, result.rows[0], "order", nowMs, dayKey, prices);
       return { ok: true, order: orderJson(result.rows[0]) };
     }
     if (type === "release-order") {
@@ -666,19 +699,10 @@ async function action(pool, body, authUid) {
     if (type === "finish-order") {
       const owner = String(body.ownerId || "");
       if (!owner) return { ok: false, reason: "owner required" };
-      const found = await client.query(
-        "SELECT * FROM honey_orders WHERE id=$1 AND taken=true AND claimed_by=$2",
-        [id, owner]
-      );
       const result = await client.query(
         "DELETE FROM honey_orders WHERE id=$1 AND taken=true AND claimed_by=$2",
         [id, owner]
       );
-      if (result.rowCount > 0 && found.rowCount > 0) {
-        const dead = found.rows[0];
-        const prices = await loadMarketPrices(client, dayKey);
-        await spawnNearbyOrder(client, dead, nowMs, dayKey, prices);
-      }
       return { ok: result.rowCount > 0 };
     }
     if (type === "take-offer") {
@@ -703,6 +727,7 @@ async function action(pool, body, authUid) {
           WHERE id=$1 RETURNING *`,
         [id, owner]
       );
+      await placeNearby(client, result.rows[0], "offer", nowMs, dayKey, null);
       return { ok: true, offer: result.rows[0] };
     }
     throw Object.assign(new Error("unknown action"), { status: 400 });
@@ -820,17 +845,7 @@ async function snapshot(pool, region, ownerId, near) {
 }
 
 function start(pool) {
-  let running = false;
-  const run = () => {
-    if (running) return;
-    running = true;
-    tick(pool)
-      .catch((err) => console.error("reloj de ofertas:", err.message))
-      .finally(() => { running = false; });
-  };
-  run();
-  const timer = setInterval(run, 30000);
-  if (typeof timer.unref === "function") timer.unref();
+  tick(pool).catch((err) => console.error("reloj de ofertas:", err.message));
 }
 
 module.exports = {
