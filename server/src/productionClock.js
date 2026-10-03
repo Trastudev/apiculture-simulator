@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const netWorth = require("./netWorth");
+const colonyTick = require("./colonyTick");
 
 const PRODUCTION_HOUR = 8;
 const balance = JSON.parse(fs.readFileSync(
@@ -104,29 +105,39 @@ function productionOpen(timeZone, nowMs) {
   return clockParts(timeZone, nowMs).hour >= PRODUCTION_HOUR;
 }
 
-function adultsOf(hive) {
+const WORKER_BROOD_DAYS = 22;
+
+function parsePop(hive) {
   try {
     const pop = JSON.parse(hive.population_state_json || "{}");
-    const adults = num(pop.workersAdult, NaN);
-    if (Number.isFinite(adults) && adults > 0) return Math.round(adults);
+    return pop && typeof pop === "object" ? pop : {};
   } catch (err) {
-    /* la colmena legacy solo tiene bee_count */
+    return {};
   }
+}
+
+function adultsOf(hive) {
+  const pop = parsePop(hive);
+  const fromW = num(pop.w, NaN);
+  if (Number.isFinite(fromW) && fromW > 0) return Math.round(fromW);
+  const fromLegacy = num(pop.workersAdult, NaN);
+  if (Number.isFinite(fromLegacy) && fromLegacy > 0) return Math.round(fromLegacy);
   return Math.max(0, Math.round(num(hive.bee_count)));
 }
 
-function writeAdults(hive, adults) {
-  hive.bee_count = adults;
-  let pop = {};
-  try {
-    pop = JSON.parse(hive.population_state_json || "{}") || {};
-  } catch (err) {
-    pop = {};
-  }
-  if (pop && typeof pop === "object") {
-    pop.workersAdult = adults;
-    hive.population_state_json = JSON.stringify(pop);
-  }
+function writeAdults(hive, adults, dayKey, deaths, emergences, laid) {
+  const next = Math.max(0, Math.round(adults));
+  const eggs = Math.max(0, Math.round(laid || 0));
+  const pop = parsePop(hive);
+  pop.w = next;
+  pop.workersAdult = next;
+  pop.b = Array.from({ length: WORKER_BROOD_DAYS }, () => eggs);
+  pop.lpk = dayKey;
+  pop.lwd = Math.max(0, Math.round(deaths || 0));
+  pop.lwe = Math.max(0, Math.round(emergences || 0));
+  pop.lel = eggs;
+  hive.population_state_json = JSON.stringify(pop);
+  hive.bee_count = next + eggs * WORKER_BROOD_DAYS;
 }
 
 function superCapKg() {
@@ -151,7 +162,7 @@ async function precipitationOf(lat, lon, dayKey) {
   const date = dayKeyToIso(dayKey);
   const url = "https://api.open-meteo.com/v1/forecast?latitude=" + encodeURIComponent(lat)
     + "&longitude=" + encodeURIComponent(lon)
-    + "&daily=precipitation_sum,weather_code,cloud_cover_mean&timezone=Europe%2FMadrid"
+      + "&daily=precipitation_sum,weather_code,cloud_cover_mean,temperature_2m_mean&timezone=Europe%2FMadrid"
     + "&start_date=" + date + "&end_date=" + date;
   console.log("Open-Meteo envía GET", url);
   let observed = { mm: 0, code: null, clouds: null };
@@ -164,10 +175,12 @@ async function precipitationOf(lat, lon, dayKey) {
       const mm = body.daily && body.daily.precipitation_sum ? Number(body.daily.precipitation_sum[0]) : 0;
       const code = body.daily && body.daily.weather_code ? Number(body.daily.weather_code[0]) : null;
       const clouds = body.daily && body.daily.cloud_cover_mean ? Number(body.daily.cloud_cover_mean[0]) : null;
+      const tempC = body.daily && body.daily.temperature_2m_mean ? Number(body.daily.temperature_2m_mean[0]) : null;
       observed = {
         mm: Number.isFinite(mm) ? mm : 0,
         code: Number.isFinite(code) ? code : null,
         clouds: Number.isFinite(clouds) ? clouds : null,
+        tempC: Number.isFinite(tempC) ? tempC : null,
       };
       console.log("Open-Meteo día", date, "código", observed.code, "lluvia", observed.mm, "mm nubes", observed.clouds, "%");
     }
@@ -182,70 +195,18 @@ function rainStopsForage(observed) {
   return observed.mm >= 5;
 }
 
-function stepHive(hive, dayKey, rainFactor) {
-  const pop = balance.population;
-  const eggs = balance.eggs;
-  const honey = balance.honey;
-  const before = adultsOf(hive);
-  const doy = dayOfYear(dayKey);
-  const health = clamp(num(hive.health, 80), 0, 100);
-  const queen = clamp(num(hive.queen_genetic_quality, 50), 0, 100);
-  let k = lerpKnots(doy, pop.kDoy, pop.kAdults);
-  k *= pop.queenKFactorMin + pop.queenKFactorSpan * (queen / 100);
-  k *= pop.healthKFactorMin + pop.healthKFactorSpan * (health / 100);
-  const varroa = Math.max(0, num(hive.varroa_pct));
-  if (varroa > pop.varroaKStartPct) {
-    const t = Math.min(1, (varroa - pop.varroaKStartPct) / pop.varroaKSpanPct);
-    k *= 1 - pop.varroaKMaxPenalty * t;
-  }
-  k = clamp(Math.round(k), 0, pop.maxAdultWorkersPerHive);
-  const life = clamp(
-    lerpKnots(doy, pop.workerLifespanDoy, pop.workerLifespanDays),
-    pop.workerLifespanClampMin,
-    pop.workerLifespanClampMax
-  );
-  const deaths = Math.min(before, Math.round(before / life));
-  const lambda = k >= before ? pop.lambdaTowardK : pop.lambdaTowardKDown;
-  let next = before + Math.round(lambda * (k - before));
-  next = clamp(next, 0, pop.maxAdultWorkersPerHive);
-  const layBase = lerpKnots(doy, eggs.doy, eggs.base);
-  const strength = Math.min(1, before / eggs.strengthRefAdults);
-  let laid = layBase * (0.55 + 0.45 * (queen / 100)) * (0.35 + 0.65 * strength);
-  laid *= 0.5 + 0.5 * (health / 100);
-  laid *= eggs.layNoiseMin + uniform01((hive.id || "_") + ":lay", dayKey) * eggs.layNoiseSpan;
-  laid = clamp(Math.round(laid), 0, eggs.maxPerDay);
-  const noise = honey.nectarNoiseMin
-    + uniform01((hive.id || "_") + ":nectar", dayKey) * honey.nectarNoiseSpan;
-  const forage = Math.max(0, before * honey.foragerFraction * honey.kgPerForagerFullFlow
-    * (0.55 + 0.45 * (health / 100)) * noise) * (rainFactor == null ? 1 : rainFactor);
-  const brood = laid * 21;
-  const consumption = honey.consumptionBaseKg
-    + before * honey.consumptionPerAdultKg
-    + brood * honey.consumptionPerBroodEqKg;
-  const net = forage - consumption;
-  const cap = superCapKg(hive.super_count);
-  const stock = clamp(num(hive.honey_production) + net, 0, cap);
-  writeAdults(hive, next);
-  hive.honey_production = Math.round(stock * 1000) / 1000;
+function stepHive(hive, dayKey, rainFactor, weather) {
+  const observed = weather && typeof weather === "object" ? { ...weather } : {};
+  if (rainFactor === 0) observed.mm = Math.max(num(observed.mm), 5);
+  const summary = colonyTick.applyColonyDay(hive, dayKey, observed, {
+    balance,
+    lerpKnots,
+    dayOfYear,
+    uniform01,
+    superCapKg,
+  });
   alignHoneyStocks(hive);
-  hive.last_summary_day_key = dayKey;
-  hive.last_summary_honey_kg = Math.round(net * 1000) / 1000;
-  hive.last_summary_delta_bees = next - before;
-  hive.last_summary_worker_deaths = deaths;
-  hive.last_summary_eggs_laid = laid;
-  hive.last_summary_swarmed = false;
-  return {
-    hiveId: hive.id,
-    hiveName: hive.name || "",
-    floraType: hive.flora_type || "Mil flores",
-    honeyKg: hive.last_summary_honey_kg,
-    forageKg: Math.round(forage * 1000) / 1000,
-    consumptionKg: Math.round(consumption * 1000) / 1000,
-    workerNet: hive.last_summary_delta_bees,
-    eggsLaid: laid,
-    beeCount: next,
-    honeyStockKg: hive.honey_production,
-  };
+  return summary;
 }
 
 /** El total de la colmena y el desglose por flora tienen que coincidir. */
@@ -434,10 +395,9 @@ async function tickOwner(pool, ownerId, nowMs = Date.now(), timeZoneId, checkpoi
         if (hive.in_warehouse) continue;
         const first = num(hive.first_production_day_key);
         if (first > 0 && last < first) continue;
-        if (num(hive.transhumance_arrives_day_key) > last) continue;
         const weather = await precipitationOf(hive.lat, hive.lng, last);
         const rainFactor = rainStopsForage(weather) ? 0 : 1;
-        summaries.push(stepHive(hive, last, rainFactor));
+        summaries.push(stepHive(hive, last, rainFactor, weather));
       }
       days.push({ dayKey: last, summaries });
       await client.query(
@@ -454,12 +414,26 @@ async function tickOwner(pool, ownerId, nowMs = Date.now(), timeZoneId, checkpoi
             honey_production = $3,
             honey_stocks_json = $4,
             population_state_json = $5,
-            last_summary_day_key = $6,
-            last_summary_honey_kg = $7,
-            last_summary_delta_bees = $8,
-            last_summary_worker_deaths = $9,
-            last_summary_eggs_laid = $10,
-            last_summary_swarmed = $11,
+            health = $6,
+            varroa_pct = $7,
+            queen_genetic_quality = $8,
+            last_health_sim_day_key = $9,
+            varroa_treatment_days_remaining = $10,
+            varroa_rebound_days_remaining = $11,
+            feed_honey_bonus_end_day_key_exclusive = $12,
+            feed_honey_bonus_multiplier = $13,
+            feed_brood_bonus_end_day_key_exclusive = $14,
+            feed_brood_bonus_multiplier = $15,
+            transhumance_arrives_day_key = $16,
+            last_summary_day_key = $17,
+            last_summary_honey_kg = $18,
+            last_summary_delta_bees = $19,
+            last_summary_worker_deaths = $20,
+            last_summary_worker_emergences = $21,
+            last_summary_eggs_laid = $22,
+            last_summary_swarmed = $23,
+            last_summary_delta_health = $24,
+            last_summary_delta_varroa = $25,
             updated_at = now()
           WHERE id = $1`,
         [
@@ -468,12 +442,26 @@ async function tickOwner(pool, ownerId, nowMs = Date.now(), timeZoneId, checkpoi
           hive.honey_production,
           hive.honey_stocks_json,
           hive.population_state_json,
+          hive.health,
+          hive.varroa_pct,
+          hive.queen_genetic_quality,
+          hive.last_health_sim_day_key,
+          hive.varroa_treatment_days_remaining,
+          hive.varroa_rebound_days_remaining,
+          hive.feed_honey_bonus_end_day_key_exclusive,
+          hive.feed_honey_bonus_multiplier,
+          hive.feed_brood_bonus_end_day_key_exclusive,
+          hive.feed_brood_bonus_multiplier,
+          hive.transhumance_arrives_day_key,
           hive.last_summary_day_key,
           hive.last_summary_honey_kg,
           hive.last_summary_delta_bees,
           hive.last_summary_worker_deaths,
+          hive.last_summary_worker_emergences,
           hive.last_summary_eggs_laid,
           hive.last_summary_swarmed,
+          hive.last_summary_delta_health,
+          hive.last_summary_delta_varroa,
         ]
       );
     }
