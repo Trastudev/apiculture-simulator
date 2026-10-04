@@ -29,6 +29,13 @@ const NPC_NAMES = [
   "Laia Puig", "Manuel Ortega", "Sofia Almeida", "Nomsa Dlamini", "Ander Urrutia",
   "Rosa Beltrán", "Mei Lin", "Wei Chen", "Yuki Tanaka", "Hiroshi Nakamura",
   "Alba Cruz", "Nico Vidal", "Priya Naidoo", "Sipho Ndlovu",
+  "Aina Costa", "Marc Solé", "Hana Sato", "Kwame Mensah",
+  "Inês Duarte", "Oleksandr Petrenko", "Fatou Diallo", "Lars Eriksson",
+  "Amparo Gil", "Yusuf Demir", "Sibusiso Khumalo", "Mireia Pujol",
+  "Chloé Moreau", "Rajesh Patel", "Leila Haddad", "Kenji Watanabe",
+  "Aisha Rahman", "Mateo Quiroga", "Naledi Maseko", "Giovanni Rossi",
+  "Freya Nielsen", "Hassan Benali", "Ximena Rojas", "Pavel Novák",
+  "Zuri Okonkwo", "Eneko Zabala",
 ];
 
 const NATIVE_POOLS = {
@@ -306,25 +313,25 @@ function personaPool(parcel) {
     const zone = parcel.region === "mdg"
       ? zaClimate(parcel.lat, parcel.lng, 800)
       : zaClimate(parcel.lat, parcel.lng, parcel.elevation);
-    if (zone === "FYNBOS") return [9, 22, 13, 4, 19, 18];
-    if (zone === "KAROO") return [9, 4, 23];
-    if (zone === "SUBTROPICAL") return [13, 23, 22, 4];
-    if (zone === "BUSHVELD") return [4, 23, 13];
-    return [4, 23, 13, 9];
+    if (zone === "FYNBOS") return [9, 22, 13, 4, 19, 18, 42, 34, 44];
+    if (zone === "KAROO") return [9, 4, 23, 31, 42];
+    if (zone === "SUBTROPICAL") return [13, 23, 22, 4, 27, 30, 48];
+    if (zone === "BUSHVELD") return [4, 23, 13, 34, 30, 27];
+    return [4, 23, 13, 9, 42, 37, 34];
   }
   const lat = parcel.lat;
   const lon = parcel.lng;
-  if (lat >= 42.35 && lon >= -3.2 && lon <= -1.15) return [3, 7, 14, 2];
-  if (lon <= -6.7 && lat >= 41.7) return [5, 12, 15, 21];
-  if (lon <= -6.7) return [5, 12, 16, 17, 21];
+  if (lat >= 42.35 && lon >= -3.2 && lon <= -1.15) return [3, 7, 14, 2, 49, 35, 24];
+  if (lon <= -6.7 && lat >= 41.7) return [5, 12, 15, 21, 28, 36, 31];
+  if (lon <= -6.7) return [5, 12, 16, 17, 21, 43, 45];
   if (lat < 36.9 || (lat < 37.45 && lon > -6.2 && lon < -2.0)) {
-    return [8, 6, 11, 15, 20];
+    return [8, 6, 11, 15, 20, 38, 40, 46];
   }
-  if (parcel.climate === "MEDITERRANEAN") return [0, 1, 10, 16, 17, 21, 18, 6];
-  if (parcel.climate === "SOUTH") return [6, 11, 15, 8, 20, 16, 17];
-  if (parcel.climate === "ATLANTIC") return [5, 12, 15, 21];
-  if (parcel.climate === "MOUNTAIN") return [3, 7, 14, 2, 20];
-  return [2, 11, 15, 19, 20, 16, 17];
+  if (parcel.climate === "MEDITERRANEAN") return [0, 1, 10, 16, 17, 21, 18, 6, 25, 33, 26];
+  if (parcel.climate === "SOUTH") return [6, 11, 15, 8, 20, 16, 17, 41, 46, 32];
+  if (parcel.climate === "ATLANTIC") return [5, 12, 15, 21, 28, 44, 47];
+  if (parcel.climate === "MOUNTAIN") return [3, 7, 14, 2, 20, 49, 29, 39];
+  return [2, 11, 15, 19, 20, 16, 17, 37, 43, 48];
 }
 
 function stableHash64(value) {
