@@ -12,6 +12,8 @@ const ORDER_NEAR_FALLBACK_KM = 80;
 const POLLINATION_HEXES_PER_BATCH = 70;
 const PRICE_BONUS = 1.5;
 let clockReady = false;
+let expiryTimer = null;
+let armRequested = false;
 
 function num(value) {
   const n = Number(value);
@@ -227,6 +229,19 @@ async function insertOrders(client, rows) {
        VALUES ${values.join(",")}
        ON CONFLICT (id) DO NOTHING`,
       params
+    );
+    const jobValues = [];
+    const jobParams = [];
+    chunk.forEach((row, index) => {
+      const base = index * 2;
+      jobValues.push(`($${base + 1},$${base + 2},'pending')`);
+      jobParams.push(row.id, row.expire_epoch_ms);
+    });
+    await client.query(
+      `INSERT INTO honey_order_expirations (order_id, due_epoch_ms, state)
+       VALUES ${jobValues.join(",")}
+       ON CONFLICT (order_id) DO NOTHING`,
+      jobParams
     );
   }
 }
@@ -501,7 +516,7 @@ function shiftKm(lat, lng, km, bearing) {
  * coincidir en el mismo hex. Solo se cambia de punto si no hay terreno
  * jugable o el clima de la banda no admite esa oferta.
  */
-async function placeNearby(client, dead, kind, nowMs, dayKey, prices) {
+async function placeNearby(client, dead, kind, nowMs, dayKey, prices, seedBase) {
   if (!dead || !dead.region) return;
   const region = dead.region;
   const band = Math.max(0, Math.min(9, int(dead.band)));
@@ -510,7 +525,7 @@ async function placeNearby(client, dead, kind, nowMs, dayKey, prices) {
   if (!originLat && !originLng) return;
   const tag = dead.id || dead.dest_hex_id || dead.hex_id || "";
   for (let i = 0; i < 24; i++) {
-    const seed = `${nowMs}:${tag}:${kind}:${i}`;
+    const seed = seedBase ? `${seedBase}:${i}` : `${nowMs}:${tag}:${kind}:${i}`;
     const km = 8 + (hash32(`${seed}:km`) % 33);
     const bearing = (hash32(`${seed}:br`) % 360) * Math.PI / 180;
     const point = shiftKm(originLat, originLng, km, bearing);
@@ -682,8 +697,6 @@ async function action(pool, body, authUid) {
           WHERE id=$1 RETURNING *`,
         [id, owner]
       );
-      const prices = await loadMarketPrices(client, dayKey);
-      await placeNearby(client, result.rows[0], "order", nowMs, dayKey, prices);
       return { ok: true, order: orderJson(result.rows[0]) };
     }
     if (type === "release-order") {
@@ -844,8 +857,112 @@ async function snapshot(pool, region, ownerId, near) {
   };
 }
 
+function requestArm() {
+  armRequested = true;
+}
+
+function armIfRequested(pool) {
+  if (!armRequested) return;
+  armRequested = false;
+  arm(pool);
+}
+
+function arm(pool) {
+  if (expiryTimer) clearTimeout(expiryTimer);
+  expiryTimer = null;
+  pool.query(
+    `SELECT due_epoch_ms FROM honey_order_expirations
+      WHERE state='pending'
+      ORDER BY due_epoch_ms ASC
+      LIMIT 1`
+  ).then((result) => {
+    if (!result.rows.length) return;
+    const due = num(result.rows[0].due_epoch_ms);
+    const wait = Math.max(0, due - Date.now());
+    const delay = Math.min(wait, 2_147_483_647);
+    expiryTimer = setTimeout(() => {
+      expiryTimer = null;
+      if (Date.now() + 1000 < due) {
+        arm(pool);
+        return;
+      }
+      expireDue(pool)
+        .catch((err) => console.error("caducidad de comandas:", err.message))
+        .finally(() => arm(pool));
+    }, delay);
+    if (typeof expiryTimer.unref === "function") expiryTimer.unref();
+  }).catch((err) => console.error("programa de caducidad:", err.message));
+}
+
+async function backfillExpirations(pool) {
+  await pool.query(
+    `UPDATE honey_order_expirations e
+        SET state='expired', processed_at=now()
+      WHERE e.state='pending'
+        AND NOT EXISTS (SELECT 1 FROM honey_orders o WHERE o.id=e.order_id)`
+  );
+  await pool.query(
+    `INSERT INTO honey_order_expirations (order_id, due_epoch_ms, state)
+     SELECT id, expire_epoch_ms, 'pending' FROM honey_orders
+     ON CONFLICT (order_id) DO NOTHING`
+  );
+}
+
+/**
+ * Cierra una comanda una sola vez y crea su sustituta.
+ * Si ya venció, no es cobrable. Un segundo intento no crea otra oferta.
+ */
+async function closeOrder(client, order, nowMs, reason) {
+  if (!order || !order.id) return { closed: false, payable: false };
+  const due = num(order.expire_epoch_ms);
+  const finalReason = reason === "satisfied" && due <= nowMs ? "expired" : reason;
+  await client.query(
+    `INSERT INTO honey_order_expirations (order_id, due_epoch_ms, state)
+     VALUES ($1, $2, 'pending')
+     ON CONFLICT (order_id) DO NOTHING`,
+    [order.id, due]
+  );
+  const closed = await client.query(
+    `UPDATE honey_order_expirations
+        SET state=$2, processed_at=now()
+      WHERE order_id=$1 AND state='pending'
+      RETURNING order_id`,
+    [order.id, finalReason]
+  );
+  if (closed.rowCount === 0) return { closed: false, payable: false };
+  await client.query("DELETE FROM honey_orders WHERE id=$1", [order.id]);
+  const dayKey = utcDayKey(nowMs);
+  const prices = await loadMarketPrices(client, dayKey);
+  await placeNearby(client, order, "order", nowMs, dayKey, prices, `${finalReason}:${order.id}`);
+  requestArm();
+  return { closed: true, payable: finalReason === "satisfied" };
+}
+
+async function expireDue(pool, nowMs = Date.now()) {
+  return runWithLock(pool, async (client) => {
+    const due = await client.query(
+      `SELECT o.*
+         FROM honey_order_expirations e
+         JOIN honey_orders o ON o.id = e.order_id
+        WHERE e.state='pending' AND e.due_epoch_ms <= $1
+        ORDER BY o.id
+        FOR UPDATE OF o, e`,
+      [nowMs]
+    );
+    let closed = 0;
+    for (const order of due.rows) {
+      const result = await closeOrder(client, order, nowMs, "expired");
+      if (result.closed) closed += 1;
+    }
+    return closed;
+  });
+}
+
 function start(pool) {
-  tick(pool).catch((err) => console.error("reloj de ofertas:", err.message));
+  tick(pool)
+    .then(() => backfillExpirations(pool))
+    .then(() => arm(pool))
+    .catch((err) => console.error("reloj de ofertas:", err.message));
 }
 
 module.exports = {
@@ -853,6 +970,9 @@ module.exports = {
   tick,
   action,
   snapshot,
+  closeOrder,
+  expireDue,
+  armIfRequested,
   pickScattered,
   nearbyReplacement,
   orderUnitPrice,

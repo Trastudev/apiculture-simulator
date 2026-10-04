@@ -6,8 +6,10 @@ Con `GAME_SERVER_URL` configurado, la API es la autoridad de:
 - `pollination_offers` (ofertas NPC de polinización).
 
 El servidor carga sus propios overlays y `game_balance.json` desde
-`server/data/`. Cada 30 segundos, y después de una acción de aceptar,
-reclamar o terminar, mantiene el cupo de cada región y banda:
+`server/data/`. Al arrancar rellena el cupo una vez. Después no hay barrido
+periódico: una comanda cobrada en el reloj de viajes se sustituye en esa
+misma transacción, y cada comanda abierta tiene una fila en
+`honey_order_expirations` que el proceso despierta a su vencimiento de 8 horas.
 
 1. Expira y elimina ofertas abiertas vencidas.
 2. Consolida el pool antiguo importado de Firestore.

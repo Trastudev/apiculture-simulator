@@ -3,6 +3,7 @@
 const { randomUUID } = require("crypto");
 const { encode, decode } = require("./polyline");
 const catalog = require("./offerCatalog");
+const offerClock = require("./offerClock");
 
 const MIN_DURATION_MS = 60_000;
 const CRUISE_KMH = 70;
@@ -543,8 +544,13 @@ async function settle(client, trip, when) {
       payload.warehouseStock = credited.warehouseStock;
     }
   }
-  if (payload.type === "sale" && trip.kind === "order") {
-    payload.missed = !authority.valid;
+  if (trip.kind === "order") {
+    if (!authority.valid || !order) {
+      payload.missed = true;
+    } else {
+      const closed = await offerClock.closeOrder(client, order, num(when), "satisfied");
+      payload.missed = !closed.payable;
+    }
   }
   if (payload.type === "sale" && !payload.missed) {
     let euros = 0;
@@ -566,10 +572,6 @@ async function settle(client, trip, when) {
     }
   }
   await insertEffect(client, trip.owner_id, payload);
-  // Solo una comanda válida y vinculada al owner puede cerrar la fila.
-  if (trip.kind === "order" && authority.valid && trip.order_id) {
-    await client.query("DELETE FROM honey_orders WHERE id = $1", [trip.order_id]);
-  }
 }
 
 async function finishCargo(client, trip) {
@@ -652,6 +654,7 @@ async function tick(pool) {
       }
     }
     await client.query("COMMIT");
+    offerClock.armIfRequested(pool);
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
