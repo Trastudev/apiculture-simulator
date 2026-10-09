@@ -69,8 +69,37 @@ function basePrice(flora) {
   return (mean > 0 ? mean : 12) * catalog.orderScarcity(flora);
 }
 
-function orderUnitPrice(flora) {
-  return Math.round(basePrice(flora) * PRICE_BONUS * 100) / 100;
+// Envases del obrador: kilos por tarro (0 = bidón a granel) y precio por kilo
+// respecto al bidón. Debe coincidir con WorkshopRules.Format de la app.
+const ORDER_FORMATS = {
+  BULK: { jarKg: 0, factor: 1.0 },
+  JAR_1000: { jarKg: 1, factor: 1.25 },
+  JAR_500: { jarKg: 0.5, factor: 1.4 },
+  JAR_250: { jarKg: 0.25, factor: 1.6 },
+};
+
+function formatFactor(format) {
+  const f = ORDER_FORMATS[format];
+  return f ? f.factor : 1.0;
+}
+
+// Las comandas pequeñas piden tarros pequeños; las grandes, tarro de kilo o bidón.
+function orderFormat(id, kg) {
+  const h = floorMod(hash32(`fmt:${id}`), 100);
+  if (kg < 3) return h < 50 ? "JAR_250" : "JAR_500";
+  if (kg < 12) return h < 35 ? "JAR_500" : h < 70 ? "JAR_1000" : "BULK";
+  return h < 40 ? "JAR_1000" : "BULK";
+}
+
+function orderKgForFormat(kg, format) {
+  const f = ORDER_FORMATS[format];
+  if (!f || f.jarKg <= 0) return kg;
+  const jars = Math.max(1, Math.round(kg / f.jarKg));
+  return Math.round(jars * f.jarKg * 100) / 100;
+}
+
+function orderUnitPrice(flora, format) {
+  return Math.round(basePrice(flora) * PRICE_BONUS * formatFactor(format) * 100) / 100;
 }
 
 function cropForParcel(parcel, band, nowMs, dayKey) {
@@ -160,13 +189,16 @@ function orderRow(region, band, parcel, dayKey, nowMs, seed, old, prices) {
   const flora = floraForParcel(parcel, band, seed, nowMs);
   const id = `srv-ho-${region}-${dayKey}-${band}-${hash32(`${parcel.id}:${seed}`).toString(16)}`;
   const pin = catalog.pointInParcel(parcel, `${id}:pin`);
+  const rawKg = kgForBand(band, seed);
+  const format = orderFormat(id, rawKg);
   return {
     id,
     npc_name: catalog.npc(parcel),
     portrait_index: parcel.npcIndex,
     flora_key: flora,
-    kg: kgForBand(band, seed),
-    unit_price: orderUnitPrice(flora),
+    kg: orderKgForFormat(rawKg, format),
+    unit_price: orderUnitPrice(flora, format),
+    format,
     dest_hex_id: parcel.id,
     dest_lat: pin.lat,
     dest_lng: pin.lng,
@@ -216,16 +248,17 @@ async function insertOrders(client, rows) {
     const values = [];
     const params = [];
     chunk.forEach((row, index) => {
-      const base = index * 16;
-      values.push(`($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7},$${base + 8},$${base + 9},$${base + 10},$${base + 11},$${base + 12},$${base + 13},$${base + 14},$${base + 15},$${base + 16})`);
+      const base = index * 17;
+      values.push(`($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7},$${base + 8},$${base + 9},$${base + 10},$${base + 11},$${base + 12},$${base + 13},$${base + 14},$${base + 15},$${base + 16},$${base + 17})`);
       params.push(row.id,row.npc_name,row.portrait_index,row.flora_key,row.kg,row.unit_price,
         row.dest_hex_id,row.dest_lat,row.dest_lng,row.dest_label,row.region,
-        row.created_day_key,row.expire_epoch_ms,row.taken,row.claimed_by,row.band);
+        row.created_day_key,row.expire_epoch_ms,row.taken,row.claimed_by,row.band,
+        row.format || "BULK");
     });
     await client.query(
       `INSERT INTO honey_orders
         (id,npc_name,portrait_index,flora_key,kg,unit_price,dest_hex_id,dest_lat,dest_lng,
-         dest_label,region,created_day_key,expire_epoch_ms,taken,claimed_by,band)
+         dest_label,region,created_day_key,expire_epoch_ms,taken,claimed_by,band,format)
        VALUES ${values.join(",")}
        ON CONFLICT (id) DO NOTHING`,
       params
@@ -271,12 +304,12 @@ async function insertOffers(client, rows) {
 
 async function repriceOpenOrders(client, region) {
   const rows = await client.query(
-    `SELECT id, flora_key, unit_price FROM honey_orders
+    `SELECT id, flora_key, unit_price, format FROM honey_orders
       WHERE region=$1 AND taken=false`,
     [region]
   );
   for (const row of rows.rows) {
-    const want = orderUnitPrice(row.flora_key);
+    const want = orderUnitPrice(row.flora_key, row.format);
     if (!(want > 0) || Math.abs(num(row.unit_price) - want) < 0.009) continue;
     await client.query(
       `UPDATE honey_orders SET unit_price=$2, updated_at=now() WHERE id=$1 AND taken=false`,
@@ -765,6 +798,7 @@ function orderJson(row) {
     taken: Boolean(row.taken),
     claimedBy: row.claimed_by || "",
     band: int(row.band),
+    format: row.format || "BULK",
   };
 }
 
@@ -824,7 +858,7 @@ async function snapshot(pool, region, ownerId, near) {
   const result = await pool.query(
     `SELECT id,npc_name,portrait_index,flora_key,kg,unit_price,dest_hex_id,
             dest_lat,dest_lng,dest_label,region,created_day_key,expire_epoch_ms,
-            taken,claimed_by,band
+            taken,claimed_by,band,format
        FROM honey_orders
       WHERE ($1::text IS NULL OR region=$1)
          AND ($2::text IS NULL OR taken=false OR claimed_by=$2)

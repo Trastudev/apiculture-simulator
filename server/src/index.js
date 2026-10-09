@@ -168,7 +168,7 @@ async function savePlayer(id, body) {
     honey_brand: current ? current.honey_brand : null,
     profile_complete: current ? current.profile_complete : false,
     time_zone_id: current ? current.time_zone_id : null,
-    economy_balance_eur: current ? current.economy_balance_eur : 20000,
+    economy_balance_eur: current ? current.economy_balance_eur : 45000,
     economy_honey_buckets_json: current ? current.economy_honey_buckets_json : null,
     economy_honey_sold_kg_total: current ? current.economy_honey_sold_kg_total : 0,
     economy_honey_sold_by_flora_json: current ? current.economy_honey_sold_by_flora_json : null,

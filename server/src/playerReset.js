@@ -81,7 +81,7 @@ async function wipeOwner(pool, ownerId) {
     await eraseGameplay(client, ownerId);
     await client.query(
       `UPDATE players SET
-          economy_balance_eur = 20000,
+          economy_balance_eur = 45000,
           economy_honey_buckets_json = '{}',
           economy_honey_sold_kg_total = 0,
           economy_honey_sold_by_flora_json = '{}',
@@ -132,7 +132,7 @@ async function wipeEveryone(pool) {
     );
     await client.query(
       `UPDATE players SET
-          economy_balance_eur = 20000,
+          economy_balance_eur = 45000,
           economy_honey_buckets_json = '{}',
           economy_honey_sold_kg_total = 0,
           economy_honey_sold_by_flora_json = '{}',

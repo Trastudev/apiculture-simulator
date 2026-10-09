@@ -511,6 +511,46 @@ async function creditCollect(client, ownerId, hexId, lines) {
   };
 }
 
+// Las alzas descargadas en el obrador entran en recepción. El formato de cada
+// tanda es el de WorkshopStore en la app. Devuelve null si el jugador no tiene obrador.
+async function creditWorkshop(client, ownerId, lines, source, when, tripId) {
+  if (!ownerId || !lines || lines.length === 0) return null;
+  const id = ownerId + ":workshop";
+  const found = await client.query("SELECT body FROM player_stores WHERE id = $1 FOR UPDATE", [id]);
+  if (found.rowCount === 0) return null;
+  let body = found.rows[0].body;
+  if (typeof body === "string") {
+    try { body = JSON.parse(body); } catch (err) { body = null; }
+  }
+  if (!body || typeof body !== "object" || !body.hexId || !body.levels) return null;
+  const batches = Array.isArray(body.batches) ? body.batches : [];
+  const at = Math.round(num(when)) || Date.now();
+  lines.forEach((line, index) => {
+    const batchId = `${tripId}:${index}`;
+    if (batches.some((b) => b && b.id === batchId)) return;
+    batches.push({
+      id: batchId,
+      flora: line.flora,
+      kg: Math.round(num(line.kg) * 1000) / 1000,
+      source: source || "",
+      createdAt: at,
+      stage: "RECEPTION",
+      inMachine: false,
+      waitingSince: at,
+      startAt: 0,
+      endAt: 0,
+      format: "",
+      waxKg: 0,
+    });
+  });
+  body.batches = batches;
+  await client.query(
+    "UPDATE player_stores SET body = $2::jsonb, updated_at = now() WHERE id = $1",
+    [id, JSON.stringify(body)]
+  );
+  return body;
+}
+
 async function settle(client, trip, when) {
   const authority = trip.kind === "order"
     ? await authoritativeOrder(client, trip, when)
@@ -537,8 +577,14 @@ async function settle(client, trip, when) {
     payload.hiveCount = num(cargo.parsed && cargo.parsed._hiveCount) || 0;
     const hex = trip.return_hex_id || trip.dest_hex_id || "";
     if (hex) payload.destHexId = hex;
-    const credited = await creditCollect(client, trip.owner_id, hex, payload.lines);
-    if (credited) {
+    const workshop = cargo.parsed && cargo.parsed._workshop
+      ? await creditWorkshop(client, trip.owner_id, payload.lines,
+          cargo.parsed._source || trip.origin_label || "", when, trip.id)
+      : null;
+    const credited = workshop ? null : await creditCollect(client, trip.owner_id, hex, payload.lines);
+    if (workshop) {
+      payload.workshop = workshop;
+    } else if (credited) {
       payload.honeyBuckets = credited.honeyBuckets;
       payload.honeyStockSeq = credited.honeyStockSeq;
       payload.warehouseStock = credited.warehouseStock;

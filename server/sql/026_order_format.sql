@@ -1,0 +1,1 @@
+ALTER TABLE honey_orders ADD COLUMN IF NOT EXISTS format text NOT NULL DEFAULT 'BULK';

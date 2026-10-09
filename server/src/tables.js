@@ -110,6 +110,7 @@ const TABLES = [
       field("taken", "taken", "bool"),
       field("claimedBy", "claimed_by", "text"),
       field("band", "band", "int"),
+      field("format", "format", "text"),
     ],
   },
   {
