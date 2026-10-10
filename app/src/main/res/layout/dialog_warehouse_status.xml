@@ -101,6 +101,29 @@
             </HorizontalScrollView>
 
             <TextView
+                android:id="@+id/tv_warehouse_packed_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:text="@string/map_warehouse_packed"
+                android:textColor="@color/event_ink"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tv_warehouse_packed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:lineSpacingExtra="2dp"
+                android:textColor="@color/event_ink_muted"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
@@ -126,6 +149,18 @@
                 android:orientation="vertical" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_warehouse_workshop"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/workshop_warehouse_open"
+                android:textAllCaps="false"
+                android:textColor="@color/event_ink"
+                android:textStyle="bold"
+                app:backgroundTint="@color/event_gold"
+                app:cornerRadius="14dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_warehouse_transfer"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
@@ -139,32 +174,7 @@
                 app:strokeColor="@color/event_gold_stroke"
                 app:strokeWidth="1.5dp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_warehouse_workshop"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginTop="8dp"
-                android:text="@string/workshop_warehouse_open"
-                android:textAllCaps="false"
-                android:textColor="@color/event_ink"
-                android:textStyle="bold"
-                android:visibility="gone"
-                app:backgroundTint="@color/event_cream"
-                app:cornerRadius="14dp"
-                app:strokeColor="@color/event_gold_stroke"
-                app:strokeWidth="1.5dp" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_warehouse_upgrade"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginTop="14dp"
-                android:textAllCaps="false"
-                android:textColor="@color/event_ink"
-                android:textStyle="bold"
-                app:backgroundTint="@color/event_gold"
-                app:cornerRadius="14dp"
-                tools:text="Subir a nivel 2 (250,00 B)" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_warehouse_sell"

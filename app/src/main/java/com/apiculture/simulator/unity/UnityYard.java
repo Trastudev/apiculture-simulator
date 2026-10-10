@@ -58,6 +58,15 @@ final class UnityYard {
             }
         }
         yard.put("slots", Math.min(PARKING, FleetRules.truckSlots(warehouseLevel)));
+        // Ampliar el obrador (antes en el mapa): Ramón lo hace. Más plazas de camión y más capacidad.
+        int playerLevel = ownerId != null
+                ? ((com.apiculture.simulator.ApicultureApp) app).getPlayerProgressRepository().getLevel(ownerId) : 1;
+        yard.put("obradorLevel", warehouseLevel);
+        yard.put("obradorUpgradeCost", com.apiculture.simulator.domain.parcel.WarehouseRules.upgradeCostB(warehouseLevel));
+        yard.put("obradorCanUpgrade", warehouseLevel < Math.max(1, playerLevel));
+        yard.put("obradorKg", com.apiculture.simulator.domain.parcel.WarehouseRules.capacityKg(warehouseLevel));
+        yard.put("obradorNextKg", com.apiculture.simulator.domain.parcel.WarehouseRules.capacityKg(warehouseLevel + 1));
+        yard.put("obradorNextSlots", Math.min(PARKING, FleetRules.truckSlots(warehouseLevel + 1)));
 
         List<CargoTripEntity> trips = AppDatabase.getInstance(app).cargoTripDao().getAllSync();
         JSONArray trucks = new JSONArray();

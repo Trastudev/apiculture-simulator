@@ -49,6 +49,10 @@ import java.util.Set;
 
 public class ApiaryYardFragment extends Fragment {
 
+    /** Abrir directamente el 3D (desde el mapa); al volver se queda el mapa. */
+    public static final String ARG_OPEN_3D = "open3d";
+    private boolean autoOpen3d;
+
     private FragmentApiaryYardBinding binding;
     private HiveViewModel viewModel;
     private String hexId = "";
@@ -87,6 +91,7 @@ public class ApiaryYardFragment extends Fragment {
         parcelName = args != null && args.getString("parcelName") != null
                 ? args.getString("parcelName") : getString(R.string.apiaries_title);
         contractYard = args != null && args.getBoolean("contractYard", false);
+        autoOpen3d = args != null && args.getBoolean(ARG_OPEN_3D, false);
         visitOwnerId = args != null && args.getString("visitOwnerId") != null
                 ? args.getString("visitOwnerId") : "";
         visitYard = !visitOwnerId.isEmpty();
@@ -310,6 +315,16 @@ public class ApiaryYardFragment extends Fragment {
         HexParcel parcel = hexId.isEmpty() ? null : IberiaHexOverlayStore.findById(requireContext(), hexId);
         binding.yardView.setClimate(YardClimate.resolve(requireContext(), hexId, sample));
         applySky(YardClimate.yesterdaySky(hexId, sample, parcel));
+        if (autoOpen3d && can3d) {
+            autoOpen3d = false;
+            open3d();
+            // Esta pantalla solo hacía de paso: al salir del 3D se vuelve al mapa.
+            binding.getRoot().post(() -> {
+                if (isAdded()) {
+                    NavHostFragment.findNavController(this).popBackStack();
+                }
+            });
+        }
         refreshObservedSky(sample, parcel);
     }
 

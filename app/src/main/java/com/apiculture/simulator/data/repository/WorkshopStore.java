@@ -248,6 +248,39 @@ public final class WorkshopStore {
         }
     }
 
+    /**
+     * Tutorial: la primera tanda (la más antigua de todos los obradores) termina ya su máquina actual.
+     * @return la máquina a la que ha pasado, o null si no estaba en ninguna (espera envase o máquina).
+     */
+    @Nullable
+    public static WorkshopRules.Machine tutorialFinishStage(@NonNull Context context, @Nullable String ownerId) {
+        if (ownerId == null || ownerId.isEmpty()) {
+            return null;
+        }
+        synchronized (LOCK) {
+            Map<String, WorkshopState> doc = fresh(context, ownerId);
+            WorkshopState where = null;
+            WorkshopState.Batch first = null;
+            long now = System.currentTimeMillis();
+            for (WorkshopState s : doc.values()) {
+                WorkshopScheduler.advance(s, now);
+                for (WorkshopState.Batch b : s.batches) {
+                    if (first == null || b.createdAt < first.createdAt) {
+                        first = b;
+                        where = s;
+                    }
+                }
+            }
+            if (first == null || !WorkshopScheduler.finishCurrentStage(where, first.id, now)) {
+                return null;
+            }
+            write(context, ownerId, doc);
+            WorkshopState.Batch after = where.batch(first.id);
+            // Si ya no está, se ha envasado: la última máquina fue la envasadora.
+            return after != null ? after.stage : WorkshopRules.Machine.PACKER;
+        }
+    }
+
     /** Reparto de una tanda en tarros de cada tamaño; el resto, a granel. */
     @Nullable
     public static String chooseMix(@NonNull Context context, @Nullable String ownerId,

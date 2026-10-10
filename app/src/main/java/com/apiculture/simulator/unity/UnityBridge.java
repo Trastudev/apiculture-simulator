@@ -302,6 +302,20 @@ public final class UnityBridge {
         });
     }
 
+    /** Ramón amplía el obrador un nivel: más plazas de camión y más capacidad. */
+    @SuppressWarnings("unused")
+    public static void onYardUpgradeObrador() {
+        IO.execute(() -> {
+            Context ctx = appContext;
+            if (ctx == null) {
+                return;
+            }
+            String error = ((ApicultureApp) ctx).getHexParcelRepository().upgradeWarehouseBlocking(ownerId, workshopHex);
+            sendWorkshop();
+            send("WorkshopResult", "Obrador||" + (error == null ? "ok" : error));
+        });
+    }
+
     /** El vendedor del patio sube un nivel un camión. */
     @SuppressWarnings("unused")
     public static void onYardUpgrade(String vehicleId) {

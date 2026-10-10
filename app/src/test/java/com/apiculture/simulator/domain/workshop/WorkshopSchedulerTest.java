@@ -62,6 +62,19 @@ public class WorkshopSchedulerTest {
     }
 
     @Test
+    public void tutorialFinishesOneStageAtATime() {
+        WorkshopState s = basic();
+        Batch b = WorkshopScheduler.receive(s, "Romero", 20, "", 0);
+        WorkshopScheduler.advance(s, MIN);
+        Assert.assertEquals(Machine.RECEPTION, b.stage);
+        Assert.assertTrue(WorkshopScheduler.finishCurrentStage(s, b.id, 2 * MIN));
+        Assert.assertEquals(Machine.UNCAPPER, b.stage);
+        Assert.assertTrue(b.inMachine);
+        Assert.assertTrue(WorkshopScheduler.finishCurrentStage(s, b.id, 3 * MIN));
+        Assert.assertEquals(Machine.EXTRACTOR, b.stage);
+    }
+
+    @Test
     public void mixCannotTakeMoreHoneyThanTheBatch() {
         WorkshopState s = basic();
         Batch b = WorkshopScheduler.receive(s, "Romero", 2, "", 0);

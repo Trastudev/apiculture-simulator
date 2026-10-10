@@ -1615,6 +1615,24 @@ public final class GameServer {
         }
     }
 
+    /**
+     * Tutorial: la primera recogida ("collect") o la primera venta ("sale") llega al momento.
+     * El servidor solo lo permite una vez por grupo y en viajes del propio jugador.
+     */
+    public static boolean tutorialFastTrip(@NonNull String tripId, @NonNull String group) {
+        if (!enabled() || tripId.isEmpty() || isMainThread()) {
+            return false;
+        }
+        try {
+            JSONObject body = new JSONObject();
+            body.put("id", tripId);
+            body.put("group", group);
+            return request("POST", "/tutorial/fast-trip", body.toString()).status == 200;
+        } catch (JSONException e) {
+            return false;
+        }
+    }
+
     private static int post(@NonNull String path, @NonNull String body) {
         return request("POST", path, body).status;
     }

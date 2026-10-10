@@ -29,3 +29,35 @@ test("an order trip can land anywhere inside the same hex", () => {
   }, row);
   assert.equal(ok, true);
 });
+
+// Pool de mentira: devuelve el viaje y el store del tutorial que se le den.
+function fakePool(trip, fastBody) {
+  return {
+    async query(sql) {
+      if (sql.includes("FROM cargo_trips")) return { rowCount: trip ? 1 : 0, rows: trip ? [trip] : [] };
+      if (sql.includes("FROM player_stores")) {
+        return { rowCount: fastBody ? 1 : 0, rows: fastBody ? [{ body: fastBody }] : [] };
+      }
+      throw new Error("consulta inesperada: " + sql);
+    },
+  };
+}
+
+test("tutorial fast trip only works on the player's own trips", async () => {
+  const pool = fakePool({ owner_id: "otro", kind: "collect" }, null);
+  const r = await clock.tutorialFinish(pool, "p1", "t1", "collect");
+  assert.equal(r.ok, false);
+  assert.equal(r.error, "NOT_OWNER");
+});
+
+test("tutorial fast trip needs a trip of its group", async () => {
+  const pool = fakePool({ owner_id: "p1", kind: "transfer" }, null);
+  const r = await clock.tutorialFinish(pool, "p1", "t1", "sale");
+  assert.equal(r.error, "WRONG_KIND");
+});
+
+test("tutorial fast trip can be used once per group", async () => {
+  const pool = fakePool({ owner_id: "p1", kind: "order" }, JSON.stringify({ sale: true }));
+  const r = await clock.tutorialFinish(pool, "p1", "t1", "sale");
+  assert.equal(r.error, "USED");
+});

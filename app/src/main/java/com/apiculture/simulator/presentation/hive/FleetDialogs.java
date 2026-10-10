@@ -451,6 +451,7 @@ public final class FleetDialogs {
         String[] floraKeys = stock.keySet().toArray(new String[0]);
         String[] picked = {floraKeys[0]};
         String[] destHex = {null};
+        String[] destName = {null};
         int[] ticket = {0};
         Runnable refreshQuote = () -> refreshTransferQuote(fragment, ownerId, fromHex, picked[0],
                 selectedKg(seek, stock.get(picked[0])), destHex[0], ++ticket[0], ticket,
@@ -518,6 +519,7 @@ public final class FleetDialogs {
             row.addView(label);
             row.setOnClickListener(v -> {
                 destHex[0] = dest.hexId;
+                destName[0] = label.getText().toString();
                 for (int i = 0; i < destHost.getChildCount(); i++) {
                     destHost.getChildAt(i).setAlpha(destHost.getChildAt(i) == v ? 1f : 0.4f);
                 }
@@ -532,8 +534,20 @@ public final class FleetDialogs {
             if (to == null) {
                 return;
             }
-            dialog.dismiss();
-            send(fragment, ownerId, fromHex, picked[0], selectedKg(seek, stock.get(picked[0])), to);
+            double kg = selectedKg(seek, stock.get(picked[0]));
+            String flora = picked[0];
+            // Mover miel cuesta dinero: se confirma antes de que salga el camión.
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(fragment.requireContext())
+                    .setTitle(R.string.fleet_transfer_confirm_title)
+                    .setMessage(fragment.getString(R.string.fleet_transfer_confirm, kg,
+                            HiveSiteSummaryUi.floraLabel(fragment.requireContext(), flora),
+                            destName[0] != null ? destName[0] : ""))
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .setPositiveButton(R.string.fleet_transfer_confirm_ok, (dd, w) -> {
+                        dialog.dismiss();
+                        send(fragment, ownerId, fromHex, flora, kg, to);
+                    })
+                    .show();
         });
         root.findViewById(R.id.btn_transfer_close).setOnClickListener(v -> dialog.dismiss());
         dialog.show();

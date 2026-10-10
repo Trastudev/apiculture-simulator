@@ -263,7 +263,6 @@ public final class WarehouseDialogs {
         WarehouseHoneyStore.reconcile(fragment.requireContext(), app.getEconomyRepository(),
                 ownerId, ownerships);
         double here = WarehouseHoneyStore.totalAt(fragment.requireContext(), ownerId, hexId);
-        int playerLevel = ownerId != null ? app.getPlayerProgressRepository().getLevel(ownerId) : 0;
         DialogWarehouseStatusBinding d = DialogWarehouseStatusBinding.inflate(fragment.getLayoutInflater());
         Dialog dialog = creamDialog(fragment, d.getRoot());
         String warehouseName = row != null && row.parcelName != null && !row.parcelName.trim().isEmpty()
@@ -275,8 +274,30 @@ public final class WarehouseDialogs {
         java.util.Map<String, Double> jars = WarehouseHoneyStore.at(fragment.requireContext(), ownerId, hexId);
         TripCargoUi.bind(fragment.getLayoutInflater(), d.llWarehouseHoney, jars, fragment.requireContext());
         int jarsVisible = d.llWarehouseHoney.getVisibility();
-        d.tvWarehouseJars.setVisibility(jarsVisible);
         d.hsWarehouseHoney.setVisibility(jarsVisible);
+        // Miel a granel (bidones) y, aparte, la envasada en tarros de cada tamaño.
+        StringBuilder packed = new StringBuilder();
+        if (ownerId != null && hexId != null) {
+            for (com.apiculture.simulator.domain.workshop.WorkshopState.Packed p
+                    : com.apiculture.simulator.data.repository.WorkshopStore.get(fragment.requireContext(), ownerId, hexId).packed) {
+                if (p.jars <= 0) {
+                    continue;
+                }
+                if (packed.length() > 0) {
+                    packed.append('\n');
+                }
+                packed.append(fragment.getString(R.string.map_warehouse_packed_line,
+                        HiveSiteSummaryUi.floraLabel(fragment.requireContext(), p.flora), p.jars,
+                        com.apiculture.simulator.presentation.market.WorkshopFormatUi.label(fragment.requireContext(), p.format)));
+            }
+        }
+        boolean hasBulk = jarsVisible == android.view.View.VISIBLE;
+        boolean hasJars = packed.length() > 0;
+        d.tvWarehouseJars.setText(hasBulk ? R.string.map_warehouse_bulk
+                : hasJars ? R.string.map_warehouse_no_bulk : R.string.map_warehouse_empty);
+        d.tvWarehousePackedTitle.setVisibility(hasJars ? android.view.View.VISIBLE : android.view.View.GONE);
+        d.tvWarehousePacked.setVisibility(hasJars ? android.view.View.VISIBLE : android.view.View.GONE);
+        d.tvWarehousePacked.setText(packed.toString());
         int slots = FleetRules.truckSlots(level);
         int used = 0;
         for (FleetStore.Vehicle vehicle : FleetStore.vehicles(fragment.requireContext(), ownerId)) {
@@ -308,38 +329,19 @@ public final class WarehouseDialogs {
             dialog.dismiss();
             FleetDialogs.showTransfer(fragment, ownerId, hexId);
         });
-        // Cada almacén es un obrador: se abre el de este terreno.
-        if (hexId != null) {
-            d.btnWarehouseWorkshop.setVisibility(android.view.View.VISIBLE);
-            d.btnWarehouseWorkshop.setText(R.string.workshop_warehouse_open);
-            d.btnWarehouseWorkshop.setOnClickListener(v -> {
-                dialog.dismiss();
-                com.apiculture.simulator.presentation.workshop.WorkshopUi.open(fragment, hexId);
-            });
-        }
-        d.barWarehouseKg.setMax(1000);
-        d.barWarehouseKg.setProgress(cap <= 1e-9 ? 0 : (int) Math.round(1000.0 * Math.min(1.0, here / cap)));
-        int cost = WarehouseRules.upgradeCostB(level);
-        d.btnWarehouseUpgrade.setText(fragment.getString(R.string.map_warehouse_upgrade, level + 1, (double) cost));
-        boolean canUpgrade = level < Math.max(1, playerLevel);
-        d.btnWarehouseUpgrade.setEnabled(canUpgrade);
-        d.btnWarehouseUpgrade.setAlpha(canUpgrade ? 1f : 0.45f);
-        d.btnWarehouseUpgrade.setOnClickListener(v -> {
-            if (ownerId == null || hexId == null) {
+        // Botón principal: entrar al obrador en 3D. Ampliarlo se hace con Ramón, en el patio.
+        d.btnWarehouseWorkshop.setVisibility(hexId != null && ownerId != null ? android.view.View.VISIBLE : android.view.View.GONE);
+        d.btnWarehouseWorkshop.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (hexId == null || ownerId == null) {
                 return;
             }
-            viewModel.upgradeWarehouse(ownerId, hexId, msg -> {
-                if (!fragment.isAdded()) {
-                    return;
-                }
-                if (msg == null) {
-                    dialog.dismiss();
-                    GameNotice.showSuccess(fragment.requireContext(), R.string.map_warehouse_upgrade_ok);
-                } else {
-                    GameNotice.show(fragment.requireContext(), msg);
-                }
-            });
+            com.apiculture.simulator.unity.UnityBridge.prepareWorkshop(fragment.requireContext(), ownerId,
+                    warehouseName, hexId);
+            com.apiculture.simulator.unity.Apiary3DActivity.open(fragment.requireContext());
         });
+        d.barWarehouseKg.setMax(1000);
+        d.barWarehouseKg.setProgress(cap <= 1e-9 ? 0 : (int) Math.round(1000.0 * Math.min(1.0, here / cap)));
         String sellSite = row != null && row.siteId != null ? row.siteId : siteId;
         d.btnWarehouseSell.setOnClickListener(v -> {
             dialog.dismiss();

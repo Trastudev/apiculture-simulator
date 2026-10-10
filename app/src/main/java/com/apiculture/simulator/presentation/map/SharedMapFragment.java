@@ -2913,10 +2913,11 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
                         climateLabel,
                         plantations,
                         null,
-                        getString(R.string.hex_open_apiary_yard),
-                        () -> openApiaryYard(hexId, site, false),
-                        getString(R.string.map_plant_flora_button),
-                        () -> showPlantAdditionalFloraDialog(hexId),
+                        getString(R.string.hex_open_apiary_3d),
+                        () -> openApiaryYard(hexId, site, false, true),
+                        // Sembrar se hace con Pep, el payés, dentro del apiario.
+                        null,
+                        null,
                         null,
                         null,
                         getString(R.string.map_sell_apiary),
@@ -4191,6 +4192,11 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
     }
 
     private void openApiaryYard(@Nullable String hexId, @Nullable String siteId, boolean contractYard) {
+        openApiaryYard(hexId, siteId, contractYard, false);
+    }
+
+    private void openApiaryYard(@Nullable String hexId, @Nullable String siteId, boolean contractYard,
+            boolean open3d) {
         if (hexId == null || hexId.isEmpty() || !isAdded()) {
             return;
         }
@@ -4216,6 +4222,7 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
         args.putString("siteId", wantSite);
         args.putString("parcelName", name);
         args.putBoolean("contractYard", contractYard);
+        args.putBoolean(com.apiculture.simulator.presentation.hive.ApiaryYardFragment.ARG_OPEN_3D, open3d);
         NavHostFragment.findNavController(this).navigate(R.id.apiaryYardFragment, args);
     }
 

@@ -87,6 +87,23 @@ public final class WorkshopScheduler {
         return best;
     }
 
+    /**
+     * Tutorial: la tanda acaba ya en la máquina en la que está y pasa a la siguiente.
+     * @return true si estaba en una máquina y ha avanzado.
+     */
+    public static boolean finishCurrentStage(@NonNull WorkshopState s, @NonNull String batchId, long nowMs) {
+        advance(s, nowMs);
+        Batch b = s.batch(batchId);
+        if (b == null || !b.inMachine) {
+            return false;
+        }
+        long span = Math.max(0L, b.endAt - b.startAt);
+        b.endAt = nowMs;
+        b.startAt = nowMs - span;
+        advance(s, nowMs);
+        return true;
+    }
+
     /** Tras comprar o mejorar: lo que esperaba a esa máquina cuenta desde ahora. */
     public static void setLevel(@NonNull WorkshopState s, @NonNull Machine m, int level, long nowMs) {
         advance(s, nowMs);
