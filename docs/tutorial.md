@@ -101,14 +101,34 @@ Lo ven también quienes ya jugaban antes de esta versión.
 | 5 | Cualquiera | Recorrido de la tanda, cola por máquina y tiempo con la app cerrada. | Siguiente |
 | 6 | Cualquiera | Ya puedes cosechar. El camión lleva las alzas al obrador. | Siguiente |
 
-**Capítulo 10. Primera tanda.** Sale cuando hay alguna tanda en el obrador.
+**Capítulo 10. Primera tanda.** Sale cuando hay alguna tanda en el obrador. Explica cada máquina y,
+esta primera vez, el botón Adelantar acaba ya la máquina en la que está la primera tanda (en la app,
+sin servidor), para que el jugador no tenga que esperar horas.
 
 | # | Pantalla | Qué dice Ramón | Cómo se avanza |
 |---|---|---|---|
-| 1 | Barra de abajo, pestaña Obradores | Cuando Toni te necesita sale un punto rojo en Obradores y en la tarjeta del obrador. | Siguiente |
-| 2 | Obradores, botón Entrar al obrador | Hablar con Toni y repartir la tanda: tarros de 1 kg, 500 g y 250 g, y el resto a granel. Los tarros pagan más, y más por kilo cuanto más pequeños, pero tardan más. | Reparto elegido |
-| 3 | Cualquiera | Los tarros se venden en el mercado o en las comandas que los piden. Cera a 9 B/kg. | Siguiente |
-| 4 | Cualquiera | Toni también mejora las máquinas: cada nivel acorta el tiempo y sube los kilos por tanda; el madurador suma depósitos. | Siguiente |
+| 1 | Cualquiera | Ha llegado la primera tanda; te explico cada máquina y te adelanto los tiempos. | Siguiente |
+| 2 | Cualquiera | Sala de recepción: las alzas reposan unas 2 h. | Adelantar |
+| 3 | Cualquiera | Desoperculadora: quita la cera; Toni la vende a 9 B/kg. | Adelantar |
+| 4 | Cualquiera | Extractor: centrifuga los cuadros. | Adelantar |
+| 5 | Cualquiera | Madurador: reposo en depósitos, lo más largo (unas 4 h). | Adelantar |
+| 6 | Obradores, botón Entrar al obrador | La tanda espera en la envasadora (punto rojo). Repartirla con Toni: tarros de 1 kg, 500 g y 250 g, y el resto a granel. | Reparto elegido |
+| 7 | Cualquiera | Envasadora: llena tarros y bidones. Desde ahora cada máquina tarda lo suyo. | Adelantar |
+| 8 | Cualquiera | Los tarros se venden en el mercado o en las comandas que los piden. Cera a 9 B/kg. | Siguiente |
+| 9 | Cualquiera | Toni también mejora las máquinas: cada nivel acorta el tiempo y sube los kilos por tanda; el madurador suma depósitos. | Siguiente |
+
+**Capítulos 11 y 12. Primera recogida y primera venta.** Solo para quien hace el capítulo 1 con esta
+versión. Salen cuando hay en marcha la primera recogida de alzas (11) o el primer viaje de venta al
+por mayor o de comanda (12). El botón Adelantar pide al servidor que el viaje llegue ya
+(`POST /tutorial/fast-trip`): solo viajes del propio jugador y una vez por grupo («collect» y «sale»),
+apuntado en `player_stores` (`<jugador>:tutorial-fast`).
+
+| # | Pantalla | Qué dice Ramón | Cómo se avanza |
+|---|---|---|---|
+| 11.1 | Cualquiera | El camión va a por las alzas y las lleva al obrador; tarda horas, esta vez te lo adelanto. | Adelantar |
+| 11.2 | Cualquiera | Desde ahora los viajes tardan lo suyo, aunque cierres la app. | Siguiente |
+| 12.1 | Cualquiera | El camión lleva la miel al comprador; esta vez te adelanto el viaje. | Adelantar |
+| 12.2 | Cualquiera | Venta hecha: el dinero está en tu saldo y el camión ha vuelto. | Siguiente |
 
 Los 45.000 B iniciales cubren el capítulo 1 y los 16.500 B del obrador básico.
 

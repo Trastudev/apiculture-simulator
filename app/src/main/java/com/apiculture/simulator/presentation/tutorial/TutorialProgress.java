@@ -43,6 +43,18 @@ public final class TutorialProgress {
         edit.putBoolean(key(uid, "migrated"), true).apply();
     }
 
+    /**
+     * Capítulos 11 y 12 (primera recogida y primera venta adelantadas): solo para quien hace el
+     * capítulo 1 con esta versión; a quien ya llevaba tiempo jugando no se le ofrecen.
+     */
+    public boolean fastTripsEligible(@NonNull String uid) {
+        return prefs.getBoolean(key(uid, "fast_trips"), false);
+    }
+
+    public void setFastTripsEligible(@NonNull String uid) {
+        prefs.edit().putBoolean(key(uid, "fast_trips"), true).apply();
+    }
+
     public boolean isDone(@NonNull String uid, @NonNull TutorialChapter chapter) {
         return prefs.getBoolean(doneKey(uid, chapter), false);
     }

@@ -382,9 +382,11 @@ public final class TutorialController implements TutorialBus.Listener {
         weather.setVisibility(step.vignette == 3 && step.chapter == TutorialChapter.FIRST_APIARY
                 ? View.VISIBLE : View.GONE);
         boolean simulate = step.advance == Advance.SIMULATE_DAY;
-        boolean reading = step.advance == Advance.NEXT || simulate || alreadySatisfied(step);
+        boolean fast = step.advance == Advance.FAST_TRIP || step.advance == Advance.FAST_STAGE;
+        boolean reading = step.advance == Advance.NEXT || simulate || fast || alreadySatisfied(step);
         next.setVisibility(reading ? View.VISIBLE : View.GONE);
-        next.setText(simulate ? R.string.tutorial_day : R.string.tutorial_next);
+        next.setEnabled(true);
+        next.setText(simulate ? R.string.tutorial_day : fast ? R.string.tutorial_fast : R.string.tutorial_next);
         if (step.chapter == TutorialChapter.FIRST_APIARY && step.advance != Advance.NEXT) {
             skip.setText(R.string.tutorial_skip_step);
         } else if (step.chapter == TutorialChapter.FIRST_APIARY) {
@@ -805,6 +807,14 @@ public final class TutorialController implements TutorialBus.Listener {
             simulateDay();
             return;
         }
+        if (step.advance == Advance.FAST_TRIP) {
+            fastTrip(step.event == TutorialEvent.FIRST_COLLECT_TRIP ? "collect" : "sale");
+            return;
+        }
+        if (step.advance == Advance.FAST_STAGE) {
+            fastStage();
+            return;
+        }
         if (step.advance == Advance.NEXT || alreadySatisfied(step)) {
             advance();
         }
@@ -885,6 +895,112 @@ public final class TutorialController implements TutorialBus.Listener {
         progress.consumeOnce(uid, "contracts_from_2");
         progress.setDone(uid, TutorialChapter.ORDERS, false);
         offer(TutorialChapter.ORDERS, null);
+    }
+
+    // ---------- Capítulos 10, 11 y 12: esta primera vez no hay que esperar ----------
+
+    private final java.util.concurrent.ExecutorService fastIo = java.util.concurrent.Executors.newSingleThreadExecutor();
+
+    /**
+     * Mira si hay en marcha una recogida o una venta para ofrecer los capítulos 11 y 12. Lo llama la
+     * actividad cada poco (los viajes se crean en muchos sitios).
+     */
+    public void checkTrips() {
+        if (!booted || uid == null || !progress.fastTripsEligible(uid)) {
+            return;
+        }
+        boolean wantCollect = !progress.isDone(uid, TutorialChapter.FIRST_COLLECT);
+        boolean wantSale = !progress.isDone(uid, TutorialChapter.FIRST_SALE);
+        if (!wantCollect && !wantSale) {
+            return;
+        }
+        String owner = uid;
+        android.content.Context app = activity.getApplicationContext();
+        fastIo.execute(() -> {
+            boolean collect = liveTrip(app, owner, "collect") != null;
+            boolean sale = liveTrip(app, owner, "sale") != null;
+            activity.runOnUiThread(() -> {
+                if (collect && wantCollect) {
+                    onEvent(TutorialEvent.FIRST_COLLECT_TRIP, null);
+                }
+                if (sale && wantSale) {
+                    onEvent(TutorialEvent.FIRST_SALE_TRIP, null);
+                }
+            });
+        });
+    }
+
+    /** Viaje propio en marcha del grupo: "collect" (recogida) o "sale" (mercado o comanda). */
+    @Nullable
+    private static String liveTrip(@NonNull android.content.Context app, @NonNull String owner, @NonNull String group) {
+        java.util.List<com.apiculture.simulator.data.local.entity.CargoTripEntity> trips =
+                com.apiculture.simulator.data.local.AppDatabase.getInstance(app).cargoTripDao().getAllSync();
+        if (trips == null) {
+            return null;
+        }
+        com.apiculture.simulator.data.local.entity.CargoTripEntity best = null;
+        for (com.apiculture.simulator.data.local.entity.CargoTripEntity t : trips) {
+            if (t == null || !owner.equals(t.ownerId) || t.kind == null) {
+                continue;
+            }
+            boolean match = "collect".equals(group)
+                    ? com.apiculture.simulator.data.local.entity.CargoTripEntity.KIND_COLLECT.equals(t.kind)
+                    : com.apiculture.simulator.data.local.entity.CargoTripEntity.KIND_WHOLESALE.equals(t.kind)
+                            || com.apiculture.simulator.data.local.entity.CargoTripEntity.KIND_ORDER.equals(t.kind);
+            if (match && (best == null || t.startEpochMs < best.startEpochMs)) {
+                best = t;
+            }
+        }
+        return best != null ? best.id : null;
+    }
+
+    /** El servidor hace llegar ya el viaje (una vez por grupo); luego se trae el resultado. */
+    private void fastTrip(@NonNull String group) {
+        String owner = uid;
+        if (owner == null) {
+            return;
+        }
+        next.setEnabled(false);
+        android.content.Context app = activity.getApplicationContext();
+        fastIo.execute(() -> {
+            String tripId = liveTrip(app, owner, group);
+            boolean ok = tripId != null && com.apiculture.simulator.data.repository.GameServer.tutorialFastTrip(tripId, group);
+            if (ok) {
+                com.apiculture.simulator.data.repository.GameServer.syncBlocking(app);
+                ApicultureApp game = (ApicultureApp) app;
+                try {
+                    com.apiculture.simulator.data.repository.TruckLiveTrips.completeDue(app);
+                    com.apiculture.simulator.data.repository.HoneyLogistics.completeDue(app,
+                            game.getEconomyRepository(), game.getMarketRepository());
+                } catch (RuntimeException ignored) {
+                    // Si algo queda a medias, el reloj normal lo cierra después.
+                }
+            }
+            activity.runOnUiThread(() -> {
+                next.setEnabled(true);
+                if (!ok) {
+                    GameNotice.show(activity, R.string.tutorial_fast_failed);
+                }
+                advance();
+            });
+        });
+    }
+
+    /** La primera tanda termina ya la máquina en la que está. */
+    private void fastStage() {
+        String owner = uid;
+        if (owner == null) {
+            return;
+        }
+        next.setEnabled(false);
+        android.content.Context app = activity.getApplicationContext();
+        fastIo.execute(() -> {
+            com.apiculture.simulator.data.repository.WorkshopStore.tutorialFinishStage(app, owner);
+            activity.runOnUiThread(() -> {
+                next.setEnabled(true);
+                advance();
+            });
+        });
     }
 
     private void simulateDay() {
@@ -969,6 +1085,10 @@ public final class TutorialController implements TutorialBus.Listener {
 
     private void finishChapter() {
         if (uid != null && active != null) {
+            if (active == TutorialChapter.FIRST_APIARY) {
+                // Quien empieza con esta versión verá adelantados su primer viaje de recogida y de venta.
+                progress.setFastTripsEligible(uid);
+            }
             if (active == TutorialChapter.CLIMATE && activeDetail != null) {
                 progress.markClimate(uid, activeDetail);
             } else {
@@ -1051,6 +1171,10 @@ public final class TutorialController implements TutorialBus.Listener {
                 return TutorialChapter.INTERNATIONAL;
             case WORKSHOP_BATCH:
                 return TutorialChapter.WORKSHOP_PACKING;
+            case FIRST_COLLECT_TRIP:
+                return TutorialChapter.FIRST_COLLECT;
+            case FIRST_SALE_TRIP:
+                return TutorialChapter.FIRST_SALE;
             case APIARY_INSTALLED:
             case HIVE_BOUGHT:
             case WAREHOUSE_BOUGHT:

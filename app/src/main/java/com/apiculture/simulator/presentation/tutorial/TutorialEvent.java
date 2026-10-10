@@ -60,5 +60,9 @@ public enum TutorialEvent {
     /** Capítulo 10. Hay al menos una tanda en el obrador. */
     WORKSHOP_BATCH,
     /** Capítulo 10. El jugador ha elegido el envase de una tanda. */
-    WORKSHOP_FORMAT
+    WORKSHOP_FORMAT,
+    /** Hay en marcha una recogida de alzas (capítulo 11). */
+    FIRST_COLLECT_TRIP,
+    /** Hay en marcha un viaje de venta o de comanda (capítulo 12). */
+    FIRST_SALE_TRIP
 }

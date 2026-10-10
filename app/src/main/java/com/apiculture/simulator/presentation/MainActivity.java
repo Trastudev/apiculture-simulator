@@ -363,6 +363,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             refreshObradoresAlert();
+            // Capítulos 11 y 12: primera recogida y primera venta, con el viaje adelantado.
+            if (tutorial != null) {
+                tutorial.checkTrips();
+            }
             obradorAlertHandler.postDelayed(this, OBRADOR_ALERT_EVERY_MS);
         }
     };

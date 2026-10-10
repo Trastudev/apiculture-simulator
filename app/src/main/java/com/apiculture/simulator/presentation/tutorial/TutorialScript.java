@@ -28,7 +28,11 @@ public final class TutorialScript {
         /** Un {@link TutorialEvent}. */
         EVENT,
         /** El botón adelanta un día de producción y entonces sigue. */
-        SIMULATE_DAY
+        SIMULATE_DAY,
+        /** Capítulos 11 y 12. El botón hace llegar ya el viaje en marcha (una vez) y sigue. */
+        FAST_TRIP,
+        /** Capítulo 10. El botón acaba ya la máquina en la que está la primera tanda y sigue. */
+        FAST_STAGE
     }
 
     public enum Anchor {
@@ -262,19 +266,52 @@ public final class TutorialScript {
                 step(TutorialChapter.WORKSHOP, 6, R.string.tutorial_c9_v06),
         });
 
-        // Capítulo 10. Primera tanda. Sale cuando entra la primera tanda en el obrador.
+        // Capítulo 10. Primera tanda. Sale cuando entra la primera tanda en el obrador. Se explica cada
+        // máquina y, esta primera vez, el botón adelanta su tiempo.
         STEPS.put(TutorialChapter.WORKSHOP_PACKING, new Step[] {
-                // Capítulo 10, viñeta 1. El punto rojo de Obradores: Toni te necesita.
-                step(TutorialChapter.WORKSHOP_PACKING, 1, R.string.tutorial_c10_v01,
-                        Screen.ANY, Anchor.TAB_OBRADORES, Advance.NEXT, null),
-                // Capítulo 10, viñeta 2. Entrar y repartir la tanda con Toni.
-                step(TutorialChapter.WORKSHOP_PACKING, 2, R.string.tutorial_c10_v02,
+                // Capítulo 10, viñeta 1. Primera tanda: te adelanto los tiempos.
+                step(TutorialChapter.WORKSHOP_PACKING, 1, R.string.tutorial_c10_v01),
+                // Capítulo 10, viñeta 2. Sala de recepción.
+                step(TutorialChapter.WORKSHOP_PACKING, 2, R.string.tutorial_c10_v05,
+                        Screen.ANY, Anchor.NONE, Advance.FAST_STAGE, null),
+                // Capítulo 10, viñeta 3. Desoperculadora y cera.
+                step(TutorialChapter.WORKSHOP_PACKING, 3, R.string.tutorial_c10_v06,
+                        Screen.ANY, Anchor.NONE, Advance.FAST_STAGE, null),
+                // Capítulo 10, viñeta 4. Extractor.
+                step(TutorialChapter.WORKSHOP_PACKING, 4, R.string.tutorial_c10_v07,
+                        Screen.ANY, Anchor.NONE, Advance.FAST_STAGE, null),
+                // Capítulo 10, viñeta 5. Madurador: lo más largo.
+                step(TutorialChapter.WORKSHOP_PACKING, 5, R.string.tutorial_c10_v08,
+                        Screen.ANY, Anchor.NONE, Advance.FAST_STAGE, null),
+                // Capítulo 10, viñeta 6. Repartir la tanda con Toni (punto rojo en Obradores).
+                step(TutorialChapter.WORKSHOP_PACKING, 6, R.string.tutorial_c10_v02,
                         Screen.OBRADORES, Anchor.OBRADOR_ENTER, Advance.EVENT, TutorialEvent.WORKSHOP_FORMAT),
-                // Capítulo 10, viñeta 3. Tarros y cera.
-                step(TutorialChapter.WORKSHOP_PACKING, 3, R.string.tutorial_c10_v03,
+                // Capítulo 10, viñeta 7. Envasadora.
+                step(TutorialChapter.WORKSHOP_PACKING, 7, R.string.tutorial_c10_v09,
+                        Screen.ANY, Anchor.NONE, Advance.FAST_STAGE, null),
+                // Capítulo 10, viñeta 8. Tarros y cera.
+                step(TutorialChapter.WORKSHOP_PACKING, 8, R.string.tutorial_c10_v03,
                         Screen.ANY, Anchor.NONE, Advance.NEXT, null),
-                // Capítulo 10, viñeta 4. Mejoras.
-                step(TutorialChapter.WORKSHOP_PACKING, 4, R.string.tutorial_c10_v04),
+                // Capítulo 10, viñeta 9. Mejoras con Toni.
+                step(TutorialChapter.WORKSHOP_PACKING, 9, R.string.tutorial_c10_v04),
+        });
+
+        // Capítulo 11. Primera recogida. Sale cuando hay en marcha la primera recogida de alzas.
+        STEPS.put(TutorialChapter.FIRST_COLLECT, new Step[] {
+                // Capítulo 11, viñeta 1. El camión va a por las alzas: esta vez llega ya.
+                step(TutorialChapter.FIRST_COLLECT, 1, R.string.tutorial_c11_v01,
+                        Screen.ANY, Anchor.NONE, Advance.FAST_TRIP, TutorialEvent.FIRST_COLLECT_TRIP),
+                // Capítulo 11, viñeta 2. Desde ahora los viajes tardan lo suyo.
+                step(TutorialChapter.FIRST_COLLECT, 2, R.string.tutorial_c11_v02),
+        });
+
+        // Capítulo 12. Primera venta. Sale cuando hay en marcha el primer viaje de venta o de comanda.
+        STEPS.put(TutorialChapter.FIRST_SALE, new Step[] {
+                // Capítulo 12, viñeta 1. El camión lleva la miel al comprador: esta vez llega ya.
+                step(TutorialChapter.FIRST_SALE, 1, R.string.tutorial_c12_v01,
+                        Screen.ANY, Anchor.NONE, Advance.FAST_TRIP, TutorialEvent.FIRST_SALE_TRIP),
+                // Capítulo 12, viñeta 2. Cobrado; desde ahora cada viaje tarda lo suyo.
+                step(TutorialChapter.FIRST_SALE, 2, R.string.tutorial_c12_v02),
         });
     }
 

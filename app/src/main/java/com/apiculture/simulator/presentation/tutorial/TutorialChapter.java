@@ -24,5 +24,9 @@ public enum TutorialChapter {
     /** Capítulo 9. Obrador: construirlo y comprar las máquinas básicas. Sale al acabar el capítulo 1. */
     WORKSHOP,
     /** Capítulo 10. Primera tanda: elegir envase, tarros y cera. Sale cuando llega la primera tanda. */
-    WORKSHOP_PACKING
+    WORKSHOP_PACKING,
+    /** Capítulo 11. Primera recogida: el camión trae las alzas y esta vez llega al momento. */
+    FIRST_COLLECT,
+    /** Capítulo 12. Primera venta (mercado o comanda): esta vez el viaje llega al momento. */
+    FIRST_SALE
 }
