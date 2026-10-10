@@ -68,6 +68,15 @@ public class ApiariesFragment extends Fragment {
     private HiveViewModel viewModel;
     private String sessionOwnerId = "";
     private List<HiveEntity> cachedHives = Collections.emptyList();
+    /** Contexto de la app: los hilos de fondo lo usan aunque la pantalla ya no esté. */
+    @Nullable
+    private Context appContext;
+
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        appContext = context.getApplicationContext();
+    }
     private List<HexParcelOwnershipEntity> cachedOwnerships = Collections.emptyList();
     private List<PollinationContractEntity> cachedOpenContracts = Collections.emptyList();
     /** Terrenos con frutales a los que ya les toca la poda y el abonado. */
@@ -643,7 +652,8 @@ public class ApiariesFragment extends Fragment {
         if (contract || siteId == null || siteId.isEmpty()) {
             return true;
         }
-        HexParcel parcel = IberiaHexOverlayStore.findById(requireContext(), hexId);
+        Context ctx = appContext;
+        HexParcel parcel = ctx != null ? IberiaHexOverlayStore.findById(ctx, hexId) : null;
         return HexApiary.hiveOnSite(h, hexId, siteId, parcel, sitesOnHex(hexId));
     }
 
