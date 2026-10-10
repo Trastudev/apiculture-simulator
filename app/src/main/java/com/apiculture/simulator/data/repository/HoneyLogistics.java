@@ -3,6 +3,7 @@ package com.apiculture.simulator.data.repository;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -10,8 +11,10 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 
 import com.apiculture.simulator.ApicultureApp;
+import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.AppDatabase;
 import com.apiculture.simulator.data.local.dao.CargoTripDao;
+import com.apiculture.simulator.data.local.dao.HexParcelOwnershipDao;
 import com.apiculture.simulator.data.local.entity.CargoTripEntity;
 import com.apiculture.simulator.data.local.entity.HoneyOrderEntity;
 import com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity;
@@ -35,6 +38,8 @@ import com.apiculture.simulator.domain.map.ProvincialMarket;
 import com.apiculture.simulator.domain.map.ProvincialMarketCatalog;
 import com.apiculture.simulator.domain.map.RoadPath;
 import com.apiculture.simulator.domain.map.SeaRoute;
+import com.apiculture.simulator.domain.workshop.JarMix;
+import com.apiculture.simulator.domain.workshop.WorkshopRules;
 import com.apiculture.simulator.domain.map.Seaport;
 import com.apiculture.simulator.domain.map.SeaportCatalog;
 import com.apiculture.simulator.domain.parcel.HexApiary;
@@ -55,7 +60,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -128,7 +136,7 @@ public final class HoneyLogistics {
             this.hiveLabel = hiveLabel != null ? hiveLabel : "Apiario";
             this.warehouse = warehouse;
             this.warehouseHexId = warehouse != null ? warehouse.id : "";
-            this.warehouseLabel = warehouseLabel != null ? warehouseLabel : "Almacén";
+            this.warehouseLabel = warehouseLabel != null ? warehouseLabel : "Obrador";
             this.cargo = cargo == null
                     ? Collections.emptyMap()
                     : Collections.unmodifiableMap(new LinkedHashMap<>(cargo));
@@ -519,7 +527,7 @@ public final class HoneyLogistics {
             return Result.FAILED;
         }
         if (!liveTrips(context) && !GameServer.enabled()) {
-            creditCargo(context, ownerId, warehouse.id, economy, cargo);
+            creditHarvest(context, ownerId, warehouse.id, economy, cargo, hiveCollectLabel(context, hive));
             return Result.INSTANT;
         }
         FleetStore.Vehicle truck;
@@ -1051,7 +1059,8 @@ public final class HoneyLogistics {
                     continue;
                 }
                 if (!liveTrips(context) && !GameServer.enabled()) {
-                    creditCargo(context, ownerId, preview.warehouseHexId, economy, loaded);
+                    creditHarvest(context, ownerId, preview.warehouseHexId, economy, loaded,
+                            preview.hiveLabel);
                 } else if (preview.warehouse != null) {
                     FleetStore.Vehicle truck = FleetStore.vehicle(context, ownerId, preview.truckId);
                     if (truck == null) {
@@ -1091,6 +1100,8 @@ public final class HoneyLogistics {
         trip.returnLng = dock[1];
         trip.returnLabel = trip.originLabel;
         trip.returnHexId = warehouse.id;
+        // Cada almacén es un obrador: las alzas vuelven a su recepción.
+        boolean workshop = WorkshopRules.REQUIRED_FOR_HARVEST;
         if (stops.size() > 1) {
             try {
                 JSONObject o = new JSONObject(trip.cargoJson);
@@ -1122,6 +1133,15 @@ public final class HoneyLogistics {
         if (stops.size() > 1) {
             stampCollectTour(context, trip, stops, true);
             packCollectTour(trip);
+        }
+        if (workshop) {
+            try {
+                JSONObject o = new JSONObject(trip.cargoJson != null ? trip.cargoJson : "{}");
+                o.put("_workshop", warehouse.id);
+                o.put("_source", first.label);
+                trip.cargoJson = o.toString();
+            } catch (JSONException ignored) {
+            }
         }
         stampHiveCount(trip, hiveCount);
         HarvestReceipts.stage(context, trip.id, cargo, hiveCount);
@@ -1564,7 +1584,7 @@ public final class HoneyLogistics {
         public WholesalePreview(String warehouseLabel, double distanceKm, long durationMs,
                 boolean missingWarehouse, boolean usedGeodesic, double travelCostB,
                 @Nullable String itinerary, @Nullable String blockReason) {
-            this.warehouseLabel = warehouseLabel != null ? warehouseLabel : "Almacén";
+            this.warehouseLabel = warehouseLabel != null ? warehouseLabel : "Obrador";
             this.distanceKm = Math.max(0.0, distanceKm);
             this.durationMs = Math.max(0L, durationMs);
             this.missingWarehouse = missingWarehouse;
@@ -1725,6 +1745,98 @@ public final class HoneyLogistics {
         return Result.STARTED;
     }
 
+    /** Tarros del obrador al mercado más cercano con demanda, a precio de tarro. */
+    public static void dispatchJarSale(@NonNull Context context, @Nullable String ownerId,
+            @Nullable String obradorHex, @NonNull String floraKey, @NonNull WorkshopRules.Format format,
+            int jars, @NonNull EconomyRepository economy, @NonNull MarketRepository market,
+            @Nullable Consumer<Result> done) {
+        Context app = context.getApplicationContext();
+        IO.execute(() -> {
+            Result r = dispatchJarSaleNow(app, ownerId, obradorHex, floraKey, format, jars, economy, market);
+            if (done != null) {
+                MAIN.post(() -> done.accept(r));
+            }
+        });
+    }
+
+    @NonNull
+    private static Result dispatchJarSaleNow(@NonNull Context context, @Nullable String ownerId,
+            @Nullable String obradorHex, @NonNull String floraKey, @NonNull WorkshopRules.Format format,
+            int jars, @NonNull EconomyRepository economy, @NonNull MarketRepository market) {
+        if (jars <= 0 || format == WorkshopRules.Format.BULK) {
+            return Result.FAILED;
+        }
+        HexParcel shop = obradorHex == null ? null : parcelFor(context, ownerId, obradorHex);
+        if (shop == null) {
+            return Result.FAILED;
+        }
+        double kg = jars * format.jarKg;
+        ProvincialMarket dest = pickWholesaleMarket(context, shop, market, floraKey, kg);
+        if (dest == null || market.remainingCapacityKg(dest, floraKey) + 1e-6 < kg) {
+            return Result.NO_DEMAND;
+        }
+        double unitPrice = Math.round(market.priceEurPerKgForFlora(floraKey, dest)
+                * format.priceFactor * 100.0) / 100.0;
+        boolean moving = liveTrips(context) || GameServer.enabled();
+        FleetStore.Vehicle truck = moving ? freeTruckAt(context, ownerId, shop.id, kg) : null;
+        if (moving && truck == null) {
+            return Result.NO_FLEET;
+        }
+        if (WorkshopStore.takePacked(context, ownerId, shop.id, floraKey, format, jars) <= 1e-9) {
+            return Result.FAILED;
+        }
+        double[] dock = warehouseDock(context, ownerId, shop);
+        RoadPath path = LocalGraphHopper.route(context, dock[0], dock[1], dest.lat, dest.lng);
+        maybeRouteWarn(context, path);
+        double km = path != null && path.distanceKm > 1e-6 ? path.distanceKm : travelKm(shop, dest.lat, dest.lng);
+        double travel = CargoFreightRules.costB(kg, km);
+        if (travel > 0 && !economy.trySpend(travel, "Transporte de " + jars + " tarros de miel de "
+                + floraKey + " al mercado")) {
+            WorkshopStore.returnJars(context, ownerId, shop.id, floraKey, format, jars);
+            return Result.NO_CASH;
+        }
+        market.recordSaleVolume(floraKey, kg, dest);
+        if (!moving) {
+            economy.creditSaleProceeds(floraKey, kg, unitPrice,
+                    EconomyRepository.saleConcept("en el mercado", floraKey, kg));
+            grantSaleXp(context, ownerId, false, kg);
+            return Result.INSTANT;
+        }
+        Map<String, Double> cargo = new LinkedHashMap<>();
+        cargo.put(floraKey, kg);
+        CargoTripEntity trip = baseTrip(ownerId, CargoTripEntity.KIND_WHOLESALE, cargo);
+        stampJars(trip, format, jars);
+        trip.phase = CargoTripEntity.PHASE_OUT;
+        trip.unitPrice = unitPrice;
+        trip.priceLocked = 1;
+        trip.floraKey = floraKey;
+        trip.vehicleId = truck.id;
+        trip.originLabel = context.getString(R.string.workshop_name);
+        trip.destLabel = dest.name != null ? dest.name : "Mercado";
+        trip.originHexId = shop.id;
+        trip.destHexId = dest.hexId;
+        trip.returnLat = dock[0];
+        trip.returnLng = dock[1];
+        trip.returnLabel = trip.originLabel;
+        trip.returnHexId = shop.id;
+        CargoTripRules.applyPath(trip, path, dock[0], dock[1], dest.lat, dest.lng);
+        applyVehicleSpeed(context, trip, path);
+        RoadPath back = LocalGraphHopper.route(context, dest.lat, dest.lng, dock[0], dock[1]);
+        rememberReturnRoad(trip, back, dest.lat, dest.lng, dock[0], dock[1],
+                FleetRules.durationMs(back.distanceKm, FleetRules.speedKmh(truck.rulesKind(), truck.level)));
+        try {
+            saveTrip(context, trip);
+        } catch (RuntimeException ex) {
+            WorkshopStore.returnJars(context, ownerId, shop.id, floraKey, format, jars);
+            if (travel > 0) {
+                economy.addToBalance(travel, "Devolución del transporte al mercado");
+            }
+            return Result.FAILED;
+        }
+        FleetStore.bindCargo(context, ownerId, truck.id, trip.id);
+        return Result.STARTED;
+    }
+
     public static void dispatchOrder(@NonNull Context context, @Nullable String ownerId,
             @NonNull HoneyOrder order, @NonNull EconomyRepository economy,
             @Nullable Consumer<Result> done) {
@@ -1751,9 +1863,15 @@ public final class HoneyLogistics {
 
     public static void orderTruckOptions(@NonNull Context context, @Nullable String ownerId,
             @NonNull HoneyOrder order, @Nullable Consumer<OrderTruckChoice> done) {
+        orderTruckOptions(context, ownerId, order, null, done);
+    }
+
+    public static void orderTruckOptions(@NonNull Context context, @Nullable String ownerId,
+            @NonNull HoneyOrder order, @Nullable String warehouseHexId,
+            @Nullable Consumer<OrderTruckChoice> done) {
         Context app = context.getApplicationContext();
         IO.execute(() -> {
-            OrderTruckChoice choice = orderTruckChoice(app, ownerId, order);
+            OrderTruckChoice choice = orderTruckChoice(app, ownerId, order, warehouseHexId);
             if (done != null) {
                 MAIN.post(() -> done.accept(choice));
             }
@@ -1771,7 +1889,7 @@ public final class HoneyLogistics {
 
     private static void failOrder(@NonNull String message) {
         orderFailDetail = message;
-        android.util.Log.w("OrderDispatch", message);
+        Log.w("OrderDispatch", message);
     }
 
     @NonNull
@@ -1810,32 +1928,44 @@ public final class HoneyLogistics {
                 return Result.FAILED;
             }
         }
-        if (!economy.takeHoney(order.floraKey, order.kg)) {
+        if (order.wantsJars()) {
+            // Los tarros salen del obrador que los tiene; con camión, del obrador del camión.
+            if (!moving) {
+                HexParcel stocked = obradorWithMix(context, ownerId, order);
+                if (stocked != null) {
+                    warehouse = stocked;
+                }
+            }
+            if (!WorkshopStore.hasMix(context, ownerId, warehouse.id, order.floraKey, order.mix)) {
+                failOrder(context.getString(R.string.market_order_fail_jars));
+                return Result.FAILED;
+            }
+        }
+        if (!takeOrderStock(context, ownerId, economy, order, warehouse.id)) {
+            if (order.wantsJars()) {
+                failOrder(context.getString(R.string.market_order_fail_jars));
+            }
             return Result.FAILED;
         }
-        long tripMs = travelDurationMs(warehouse, order.destLat, order.destLng);
-        if (order.expireEpochMs > 0L && now + tripMs > order.expireEpochMs) {
-            economy.addHoney(order.floraKey, order.kg);
-            return Result.TOO_SLOW;
-        }
+        boolean bulk = !order.wantsJars();
         double travel = travelCostB(warehouse, order.destLat, order.destLng, order.kg);
         if (travel > 0 && !economy.trySpend(travel,
                 "Transporte de la comanda de " + order.floraKey)) {
-            economy.addHoney(order.floraKey, order.kg);
+            returnOrderStock(context, ownerId, economy, order, null, warehouse.id);
             return Result.NO_CASH;
         }
-        if (moving && !WarehouseHoneyStore.take(context, ownerId, warehouse.id, order.floraKey, order.kg)) {
+        if (bulk && moving
+                && !WarehouseHoneyStore.take(context, ownerId, warehouse.id, order.floraKey, order.kg)) {
             economy.addHoney(order.floraKey, order.kg);
             if (travel > 0) {
                 economy.addToBalance(travel, "Devolución del transporte de la comanda");
             }
+            failOrder(context.getString(R.string.market_order_fail_stock));
             return Result.FAILED;
         }
+        String stockHex = bulk && moving ? warehouse.id : null;
         if (!claimOrder(context, order.id, ownerId)) {
-            economy.addHoney(order.floraKey, order.kg);
-            if (moving) {
-                WarehouseHoneyStore.add(context, ownerId, warehouse.id, order.floraKey, order.kg);
-            }
+            returnOrderStock(context, ownerId, economy, order, stockHex, warehouse.id);
             if (travel > 0) {
                 economy.addToBalance(travel, "Devolución del transporte de la comanda");
             }
@@ -1843,6 +1973,10 @@ public final class HoneyLogistics {
                 failOrder(claimFailureText());
             }
             return Result.FAILED;
+        }
+        HoneyOrderEntity live = AppDatabase.getInstance(context).honeyOrderDao().getById(order.id);
+        if (live != null) {
+            order = HoneyOrder.fromEntity(live);
         }
         // En modo servidor no se liquida una comanda localmente aunque el modo
         // visual de camiones esté desactivado: el viaje y su precio los resuelve
@@ -1852,16 +1986,22 @@ public final class HoneyLogistics {
                     EconomyRepository.saleConcept("vía comanda", order.floraKey, order.kg));
             HoneyOrderStore.finish(context, order.id);
             grantSaleXp(context, ownerId, true, order.kg);
+            OrderReceipts.publishInstant(context, order);
             return Result.INSTANT;
         }
         Map<String, Double> cargo = new LinkedHashMap<>();
         cargo.put(order.floraKey, order.kg);
         CargoTripEntity trip = baseTrip(ownerId, CargoTripEntity.KIND_ORDER, cargo);
+        if (order.wantsJars()) {
+            stampMix(trip, order.mix);
+        }
         trip.phase = CargoTripEntity.PHASE_OUT;
         trip.unitPrice = order.unitPrice;
         trip.npcName = order.npcName;
+        trip.floraKey = order.floraKey;
         trip.orderId = order.id;
         trip.vehicleId = truck.id;
+        stampOrderPortrait(trip, order.portraitIndex);
         double[] dock = warehouseDock(context, ownerId, warehouse);
         trip.originLabel = warehouseLabel(context, ownerId, warehouse);
         trip.destLabel = order.destLabel;
@@ -1879,21 +2019,9 @@ public final class HoneyLogistics {
         double kmh = FleetRules.speedKmh(truck.rulesKind(), truck.level);
         rememberReturnRoad(trip, back, order.destLat, order.destLng, dock[0], dock[1],
                 FleetRules.durationMs(back.distanceKm, kmh));
-        if (order.expireEpochMs > 0L && trip.startEpochMs + trip.durationMs > order.expireEpochMs) {
-            HoneyOrderStore.release(context, order.id);
-            economy.addHoney(order.floraKey, order.kg);
-            if (moving) {
-                WarehouseHoneyStore.add(context, ownerId, warehouse.id, order.floraKey, order.kg);
-            }
-            if (travel > 0) {
-                economy.addToBalance(travel, "Devolución del transporte de la comanda");
-            }
-            return Result.TOO_SLOW;
-        }
         if (orderTripId(context, order.id) != null) {
             HoneyOrderStore.release(context, order.id);
-            economy.addHoney(order.floraKey, order.kg);
-            WarehouseHoneyStore.add(context, ownerId, warehouse.id, order.floraKey, order.kg);
+            returnOrderStock(context, ownerId, economy, order, stockHex, warehouse.id);
             if (travel > 0) {
                 economy.addToBalance(travel, "Devolución del transporte de la comanda");
             }
@@ -1904,14 +2032,18 @@ public final class HoneyLogistics {
             saveTrip(context, trip);
         } catch (RuntimeException ex) {
             HoneyOrderStore.release(context, order.id);
-            economy.addHoney(order.floraKey, order.kg);
-            WarehouseHoneyStore.add(context, ownerId, warehouse.id, order.floraKey, order.kg);
+            returnOrderStock(context, ownerId, economy, order, stockHex, warehouse.id);
             if (travel > 0) {
                 economy.addToBalance(travel, "Devolución del transporte de la comanda");
             }
+            String why = ex.getMessage();
+            failOrder(why != null && !why.isEmpty()
+                    ? why
+                    : "El servidor no ha aceptado el viaje de la comanda.");
             return Result.FAILED;
         }
         FleetStore.bindCargo(context, ownerId, truck.id, trip.id);
+        OrderReceipts.stage(context, trip.id, order);
         return Result.STARTED;
     }
 
@@ -2014,21 +2146,55 @@ public final class HoneyLogistics {
 
     private static boolean warehouseCoversOrder(@NonNull Context context, @Nullable String ownerId,
             @Nullable String hexId, @NonNull HoneyOrder order) {
+        if (order.wantsJars()) {
+            return hexId != null && WorkshopStore.hasMix(context, ownerId, hexId, order.floraKey, order.mix);
+        }
         return WarehouseHoneyStore.kg(context, ownerId, hexId, order.floraKey) + 1e-6 >= order.kg;
+    }
+
+    /** Saca de su sitio lo que pide la comanda. */
+    private static boolean takeOrderStock(@NonNull Context context, @Nullable String ownerId,
+            @NonNull EconomyRepository economy, @NonNull HoneyOrder order, @Nullable String obradorHex) {
+        if (order.wantsJars()) {
+            return WorkshopStore.takeMix(context, ownerId, obradorHex, order.floraKey, order.mix) > 1e-9;
+        }
+        return economy.takeHoney(order.floraKey, order.kg);
+    }
+
+    private static void returnOrderStock(@NonNull Context context, @Nullable String ownerId,
+            @NonNull EconomyRepository economy, @NonNull HoneyOrder order,
+            @Nullable String warehouseHexId, @Nullable String obradorHex) {
+        if (order.wantsJars()) {
+            WorkshopStore.returnMix(context, ownerId, obradorHex, order.floraKey, order.mix);
+            return;
+        }
+        economy.addHoney(order.floraKey, order.kg);
+        if (warehouseHexId != null) {
+            WarehouseHoneyStore.add(context, ownerId, warehouseHexId, order.floraKey, order.kg);
+        }
     }
 
     @NonNull
     private static OrderTruckChoice orderTruckChoice(@NonNull Context context, @Nullable String ownerId,
             @NonNull HoneyOrder order) {
+        return orderTruckChoice(context, ownerId, order, null);
+    }
+
+    @NonNull
+    private static OrderTruckChoice orderTruckChoice(@NonNull Context context, @Nullable String ownerId,
+            @NonNull HoneyOrder order, @Nullable String warehouseHexId) {
         if (!liveTrips(context) && !GameServer.enabled()) {
             return new OrderTruckChoice(true, Collections.emptyList());
         }
         Context app = context.getApplicationContext();
         settleHoney(app, ownerId);
+        String requiredHome = warehouseHexId != null && !warehouseHexId.isEmpty() ? warehouseHexId : null;
         List<HexParcelOwnershipEntity> rows = AppDatabase.getInstance(app)
                 .hexParcelOwnershipDao().getWarehousesForOwnerSync(ownerId);
         boolean anyStock = false;
-        if (rows != null) {
+        if (requiredHome != null) {
+            anyStock = warehouseCoversOrder(context, ownerId, requiredHome, order);
+        } else if (rows != null) {
             for (HexParcelOwnershipEntity row : rows) {
                 if (row != null && warehouseCoversOrder(context, ownerId, row.hexId, order)) {
                     anyStock = true;
@@ -2040,6 +2206,9 @@ public final class HoneyLogistics {
         for (FleetStore.Vehicle truck : freeTrucks(context, ownerId)) {
             double capacity = FleetRules.honeyKg(FleetRules.Kind.TRUCK, truck.level);
             if (capacity + 1e-6 < order.kg) {
+                continue;
+            }
+            if (requiredHome != null && !requiredHome.equals(truck.homeId)) {
                 continue;
             }
             HexParcel home = parcelFor(app, ownerId, truck.homeId);
@@ -2163,6 +2332,88 @@ public final class HoneyLogistics {
         }
     }
 
+    /** Da la vuelta al camión desde donde esté. La carga se devuelve al llegar. */
+    public static void cancelTrip(@NonNull Context context, @NonNull String tripId,
+            @NonNull Consumer<String> onMain) {
+        IO.execute(() -> {
+            String err = cancelTripBlocking(context.getApplicationContext(), tripId);
+            MAIN.post(() -> onMain.accept(err));
+        });
+    }
+
+    @Nullable
+    private static String cancelTripBlocking(@NonNull Context context, @NonNull String tripId) {
+        CargoTripEntity trip = dao(context).getById(tripId);
+        if (trip == null) {
+            return context.getString(R.string.trip_cancel_already);
+        }
+        if (CargoTripEntity.PHASE_RETURN.equals(trip.phase) || isCancelled(trip)) {
+            return context.getString(R.string.trip_cancel_already);
+        }
+        long now = System.currentTimeMillis();
+        Map<String, Double> carrying = CargoTripEntity.KIND_COLLECT.equals(trip.kind)
+                ? new LinkedHashMap<>(carriedNow(trip, now))
+                : new LinkedHashMap<>(cargoOf(trip));
+        double homeLat = Math.abs(trip.returnLat) > 1e-8 ? trip.returnLat : trip.originLat;
+        double homeLng = Math.abs(trip.returnLng) > 1e-8 ? trip.returnLng : trip.originLng;
+        String homeHex = trip.returnHexId != null && !trip.returnHexId.isEmpty()
+                ? trip.returnHexId : trip.originHexId;
+        String homeLabel = trip.returnLabel != null && !trip.returnLabel.isEmpty()
+                ? trip.returnLabel
+                : (trip.originLabel != null ? trip.originLabel : "Obrador");
+        double[] here = CargoTripRules.position(trip, now);
+        String shipment = trip.shipmentId;
+        if (shipment != null && !shipment.isEmpty()) {
+            List<CargoTripEntity> rows = dao(context).getAllSync();
+            if (rows != null) {
+                for (CargoTripEntity other : rows) {
+                    if (other != null && shipment.equals(other.shipmentId)
+                            && !trip.id.equals(other.id)) {
+                        dao(context).delete(other.id);
+                    }
+                }
+            }
+        }
+        try {
+            JSONObject kept = new JSONObject();
+            kept.put("_cancelled", 1);
+            for (Map.Entry<String, Double> e : carrying.entrySet()) {
+                if (e.getKey() != null && e.getValue() != null && e.getValue() > 1e-9) {
+                    kept.put(e.getKey(), e.getValue());
+                }
+            }
+            trip.cargoJson = kept.toString();
+        } catch (JSONException ignored) {
+            trip.cargoJson = "{\"_cancelled\":1}";
+        }
+        trip.phase = CargoTripEntity.PHASE_RETURN;
+        trip.legRole = CargoTripEntity.LEG_HAUL_TRUCK;
+        trip.originLabel = "En ruta";
+        trip.destLabel = homeLabel;
+        trip.destHexId = homeHex;
+        RoadPath path = LocalGraphHopper.route(context, here[0], here[1], homeLat, homeLng);
+        CargoTripRules.applyPath(trip, path, here[0], here[1], homeLat, homeLng);
+        applyVehicleSpeed(context, trip, path);
+        try {
+            saveTrip(context, trip);
+        } catch (RuntimeException e) {
+            return e.getMessage() != null ? e.getMessage()
+                    : context.getString(R.string.trip_cancel_already);
+        }
+        return null;
+    }
+
+    private static boolean isCancelled(@Nullable CargoTripEntity trip) {
+        if (trip == null || trip.cargoJson == null) {
+            return false;
+        }
+        try {
+            return new JSONObject(trip.cargoJson).optInt("_cancelled", 0) == 1;
+        } catch (JSONException e) {
+            return false;
+        }
+    }
+
     public static void completeDue(@NonNull Context context, @NonNull EconomyRepository economy,
             @NonNull MarketRepository market) {
         if (GameServer.enabled()) {
@@ -2178,7 +2429,8 @@ public final class HoneyLogistics {
             long now = System.currentTimeMillis();
             boolean moved = false;
             for (CargoTripEntity trip : rows) {
-                if (GameServer.enabled() && CargoTripEntity.KIND_ORDER.equals(trip.kind)) {
+                if (GameServer.enabled() && CargoTripEntity.KIND_ORDER.equals(trip.kind)
+                        && !isCancelled(trip)) {
                     continue;
                 }
                 if (!tourClockDone(trip, now)) {
@@ -2186,10 +2438,27 @@ public final class HoneyLogistics {
                 }
                 // Con servidor, la recogida se abona allí. Liquidarla aquí la duplica
                 // o la pierde si el almacén local rechaza la miel.
-                if (GameServer.enabled() && CargoTripEntity.KIND_COLLECT.equals(trip.kind)) {
+                if (GameServer.enabled() && CargoTripEntity.KIND_COLLECT.equals(trip.kind)
+                        && !isCancelled(trip)) {
                     continue;
                 }
                 moved = true;
+                if (isCancelled(trip)) {
+                    if (returnCancelledJars(context, trip)) {
+                        FleetStore.releaseVehicle(context, trip.ownerId, trip.vehicleId);
+                        trips.delete(trip.id);
+                        continue;
+                    }
+                    if (toWorkshop(trip)) {
+                        creditHarvest(context, trip.ownerId, trip.destHexId, economy, parseCargo(trip),
+                                trip.originLabel);
+                    } else {
+                        creditCargo(context, trip.ownerId, trip.destHexId, economy, parseCargo(trip));
+                    }
+                    FleetStore.releaseVehicle(context, trip.ownerId, trip.vehicleId);
+                    trips.delete(trip.id);
+                    continue;
+                }
                 if (CargoTripEntity.KIND_DELIVERY.equals(trip.kind)) {
                     FleetStore.releaseVehicle(context, trip.ownerId, trip.vehicleId);
                     trips.delete(trip.id);
@@ -2311,7 +2580,7 @@ public final class HoneyLogistics {
             trip.cargoJson = left.toString();
         } catch (JSONException ignored) {
         }
-        trip.destLabel = trip.chainLabel != null ? trip.chainLabel : "Almacén";
+        trip.destLabel = trip.chainLabel != null ? trip.chainLabel : "Obrador";
         trip.destHexId = trip.chainHexId;
         trip.chainLat = 0;
         trip.chainLng = 0;
@@ -2368,7 +2637,7 @@ public final class HoneyLogistics {
         trip.phase = CargoTripEntity.PHASE_RETURN;
         trip.originLabel = fromLabel;
         trip.originHexId = fromHex;
-        trip.destLabel = trip.returnLabel != null ? trip.returnLabel : "Almacén";
+        trip.destLabel = trip.returnLabel != null ? trip.returnLabel : "Obrador";
         trip.destHexId = trip.returnHexId;
         RoadPath planned = null;
         try {
@@ -2415,7 +2684,11 @@ public final class HoneyLogistics {
             String warehouseHex = trip.returnHexId != null && !trip.returnHexId.isEmpty()
                     ? trip.returnHexId : trip.destHexId;
             Map<String, Double> collected = collectCargo(trip);
-            creditCargo(context, trip.ownerId, warehouseHex, economy, collected);
+            if (toWorkshop(trip)) {
+                creditHarvest(context, trip.ownerId, warehouseHex, economy, collected, trip.originLabel);
+            } else {
+                creditCargo(context, trip.ownerId, warehouseHex, economy, collected);
+            }
             HarvestReceipts.publish(context, trip.id, collected, hiveCountOf(trip));
             return;
         }
@@ -2456,10 +2729,48 @@ public final class HoneyLogistics {
             HoneyOrderStore.finish(context, trip.orderId);
             if (creditedKg > 1e-9) {
                 grantSaleXp(context, trip.ownerId, true, creditedKg);
+                String flora = trip.floraKey;
+                if ((flora == null || flora.isEmpty()) && !cargo.isEmpty()) {
+                    flora = cargo.keySet().iterator().next();
+                }
+                String npc = trip.npcName;
+                int portrait = portraitIndexOf(trip);
+                if ((npc == null || npc.isEmpty() || flora == null || flora.isEmpty() || portrait <= 0) && trip.orderId != null) {
+                    HoneyOrderEntity saved = AppDatabase.getInstance(context).honeyOrderDao().getById(trip.orderId);
+                    if (saved != null) {
+                        if (npc == null || npc.isEmpty()) npc = saved.npcName;
+                        if (flora == null || flora.isEmpty()) flora = saved.floraKey;
+                        if (portrait <= 0) portrait = saved.portraitIndex;
+                    }
+                }
+                OrderReceipts.publish(context, trip.id, trip.orderId, npc, portrait, flora,
+                        creditedKg, creditedKg * trip.unitPrice);
             }
         } else if (CargoTripEntity.KIND_WHOLESALE.equals(trip.kind) && creditedKg > 1e-9) {
             grantSaleXp(context, trip.ownerId, false, creditedKg);
         }
+    }
+
+    private static void stampOrderPortrait(@NonNull CargoTripEntity trip, int portraitIndex) {
+        try {
+            JSONObject o = new JSONObject(trip.cargoJson != null ? trip.cargoJson : "{}");
+            o.put("_portraitIndex", portraitIndex);
+            trip.cargoJson = o.toString();
+        } catch (JSONException ignored) {
+        }
+    }
+
+    private static int portraitIndexOf(@NonNull CargoTripEntity trip) {
+        if (trip.cargoJson != null) {
+            try {
+                JSONObject o = new JSONObject(trip.cargoJson);
+                if (o.has("_portraitIndex")) {
+                    return o.optInt("_portraitIndex", 0);
+                }
+            } catch (JSONException ignored) {
+            }
+        }
+        return 0;
     }
 
     private static void stampHiveCount(@NonNull CargoTripEntity trip, int hiveCount) {
@@ -2612,7 +2923,7 @@ public final class HoneyLogistics {
     private static HexParcel nearestWarehouse(@NonNull Context context, @Nullable String ownerId,
             @NonNull PlayableMapRegion region, double destLat, double destLng) {
         Context app = context.getApplicationContext();
-        com.apiculture.simulator.data.local.dao.HexParcelOwnershipDao own =
+        HexParcelOwnershipDao own =
                 AppDatabase.getInstance(app).hexParcelOwnershipDao();
         List<HexParcelOwnershipEntity> rows = own.getWarehousesForOwnerSync(ownerId);
         return pickNearestInRegion(app, rows, region, destLat, destLng);
@@ -2925,13 +3236,13 @@ public final class HoneyLogistics {
         Map<String, Double> cargo = parseCargo(trip);
         if (cargo.size() == 1) {
             Map.Entry<String, Double> e = cargo.entrySet().iterator().next();
-            return String.format(Locale.getDefault(), "%.1f kg %s", e.getValue(), e.getKey());
+            return String.format(Locale.getDefault(), "%.2f kg %s", e.getValue(), e.getKey());
         }
-        return String.format(Locale.getDefault(), "%.1f kg", trip.kg);
+        return String.format(Locale.getDefault(), "%.2f kg", trip.kg);
     }
 
     @NonNull
-    private static <T> T offMain(@NonNull java.util.concurrent.Callable<T> work, @NonNull T fallback) {
+    private static <T> T offMain(@NonNull Callable<T> work, @NonNull T fallback) {
         if (Looper.getMainLooper() != Looper.myLooper()) {
             try {
                 return work.call();
@@ -2956,6 +3267,118 @@ public final class HoneyLogistics {
         } else {
             MAIN.post(() -> RouteErrorDialog.show(app, LocalGraphHopper.lastDiag()));
         }
+    }
+
+    /** Obrador (almacén) con los tarros de la comanda, o null si ninguno los tiene. */
+    @Nullable
+    private static HexParcel obradorWithMix(@NonNull Context context, @Nullable String ownerId,
+            @NonNull HoneyOrder order) {
+        for (com.apiculture.simulator.domain.workshop.WorkshopState s : WorkshopStore.all(context, ownerId)) {
+            if (s.hexId != null && WorkshopStore.hasMix(context, ownerId, s.hexId, order.floraKey, order.mix)) {
+                HexParcel p = parcelFor(context, ownerId, s.hexId);
+                if (p != null) {
+                    return p;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** No hay ningún obrador (almacén) y la recogida lo exige. */
+    public static boolean harvestNeedsWorkshop(@NonNull Context context, @Nullable String ownerId) {
+        return WorkshopRules.REQUIRED_FOR_HARVEST && !WorkshopStore.built(context, ownerId);
+    }
+
+    /** La miel recién cosechada entra en el obrador del almacén al que llega; si no se puede, al almacén. */
+    private static void creditHarvest(@NonNull Context context, @Nullable String ownerId,
+            @Nullable String warehouseHexId, @NonNull EconomyRepository economy,
+            @NonNull Map<String, Double> cargo, @Nullable String source) {
+        if (WorkshopRules.REQUIRED_FOR_HARVEST && warehouseHexId != null
+                && WorkshopStore.receiveLines(context, ownerId, warehouseHexId, cargo, source) == null) {
+            return;
+        }
+        creditCargo(context, ownerId, warehouseHexId, economy, cargo);
+    }
+
+    private static boolean toWorkshop(@Nullable CargoTripEntity trip) {
+        if (trip == null || !CargoTripEntity.KIND_COLLECT.equals(trip.kind) || trip.cargoJson == null) {
+            return false;
+        }
+        try {
+            return new JSONObject(trip.cargoJson).has("_workshop");
+        } catch (JSONException e) {
+            return false;
+        }
+    }
+
+    private static void stampJars(@NonNull CargoTripEntity trip, @NonNull WorkshopRules.Format format,
+            int jars) {
+        try {
+            JSONObject o = new JSONObject(trip.cargoJson != null ? trip.cargoJson : "{}");
+            o.put("_format", format.name());
+            o.put("_jars", jars);
+            trip.cargoJson = o.toString();
+        } catch (JSONException ignored) {
+        }
+    }
+
+    /** El camión de una comanda lleva su mezcla de tarros, para devolverla si se cancela. */
+    private static void stampMix(@NonNull CargoTripEntity trip, @Nullable JarMix mix) {
+        if (mix == null) {
+            return;
+        }
+        try {
+            JSONObject o = new JSONObject(trip.cargoJson != null ? trip.cargoJson : "{}");
+            o.put("_mix", mix.encode());
+            o.put("_jars", mix.total());
+            trip.cargoJson = o.toString();
+        } catch (JSONException ignored) {
+        }
+    }
+
+    /** Un viaje de tarros cancelado devuelve los tarros al obrador. */
+    private static boolean returnCancelledJars(@NonNull Context context, @NonNull CargoTripEntity trip) {
+        if (trip.cargoJson == null || trip.kg <= 1e-9) {
+            return false;
+        }
+        try {
+            JSONObject o = new JSONObject(trip.cargoJson);
+            JarMix mix = JarMix.parse(o.optString("_mix", ""));
+            WorkshopRules.Format format = WorkshopRules.Format.parse(o.optString("_format", ""));
+            int jars = o.optInt("_jars", 0);
+            if (mix == null && (format == null || format == WorkshopRules.Format.BULK || jars <= 0)) {
+                return false;
+            }
+            String flora = trip.floraKey;
+            if (flora == null || flora.isEmpty()) {
+                Iterator<String> keys = o.keys();
+                while (keys.hasNext()) {
+                    String k = keys.next();
+                    if (!k.startsWith("_")) {
+                        flora = k;
+                        break;
+                    }
+                }
+            }
+            if (flora == null) {
+                return false;
+            }
+            // Los tarros vuelven al obrador del que salió el camión.
+            String hex = trip.originHexId;
+            return mix != null ? WorkshopStore.returnMix(context, trip.ownerId, hex, flora, mix)
+                    : WorkshopStore.returnJars(context, trip.ownerId, hex, flora, format, jars);
+        } catch (JSONException e) {
+            return false;
+        }
+    }
+
+    /** Hay existencias para la comanda: tarros en el obrador o miel a granel en el almacén. */
+    public static boolean hasStockForOrder(@NonNull Context context, @Nullable String ownerId,
+            @NonNull EconomyRepository economy, @NonNull HoneyOrder order) {
+        if (order.wantsJars()) {
+            return obradorWithMix(context, ownerId, order) != null;
+        }
+        return economy.getHoneyStockForFlora(order.floraKey) + 1e-9 >= order.kg;
     }
 
     static void creditCargo(@NonNull Context context, @Nullable String ownerId,
@@ -3349,8 +3772,8 @@ public final class HoneyLogistics {
         return out;
     }
 
-    private static final java.util.Set<String> STRAIGHT_GAVE_UP =
-            java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private static final Set<String> STRAIGHT_GAVE_UP =
+            ConcurrentHashMap.newKeySet();
 
     private static void repairCargoGeometryBlocking(@NonNull Context context,
             @Nullable List<CargoTripEntity> rows) {
@@ -3489,7 +3912,7 @@ public final class HoneyLogistics {
                     trip.returnLat, trip.returnLng);
             long backMs = legDuration(context, trip, back);
             putTourLeg(tour, prevLabel, prevHex, false,
-                    trip.returnLabel != null ? trip.returnLabel : "Almacén",
+                    trip.returnLabel != null ? trip.returnLabel : "Obrador",
                     trip.returnHexId, true,
                     prevLat, prevLng, trip.returnLat, trip.returnLng,
                     back.encoded, back.edgeKinds, backMs, null, null);
@@ -3864,7 +4287,7 @@ public final class HoneyLogistics {
         List<TourLeg> out = new ArrayList<>();
         double prevLat = trip.originLat;
         double prevLng = trip.originLng;
-        String prevLabel = trip.originLabel != null ? trip.originLabel : "Almacén";
+        String prevLabel = trip.originLabel != null ? trip.originLabel : "Obrador";
         boolean fromWarehouse = true;
         for (int i = 0; i < stops.size(); i++) {
             CollectStop stop = stops.get(i);
@@ -3882,7 +4305,7 @@ public final class HoneyLogistics {
         long back = FleetRules.durationMs(
                 TranshumanceRules.haversineKm(prevLat, prevLng, trip.returnLat, trip.returnLng), 70);
         out.add(new TourLeg(prevLabel,
-                trip.returnLabel != null ? trip.returnLabel : "Almacén",
+                trip.returnLabel != null ? trip.returnLabel : "Obrador",
                 false, true, back, false, false, "", "",
                 prevLat, prevLng, trip.returnLat, trip.returnLng, null, null));
         return out;
@@ -3938,7 +4361,7 @@ public final class HoneyLogistics {
         if (warehouse.placeName != null && !warehouse.placeName.trim().isEmpty()) {
             return warehouse.placeName.trim();
         }
-        return "Almacén";
+        return "Obrador";
     }
 
     /** Elimina una fila local de carga ya resuelta por un efecto del servidor. */
@@ -3953,7 +4376,7 @@ public final class HoneyLogistics {
         if (GameServer.enabled() && !GameServer.pushCargo(context, trip)) {
             if (!existed) {
                 throw new IllegalStateException(
-                        "No hay conexión con el servidor. No se puede realizar esta acción.");
+                        "El servidor no ha aceptado el viaje de la comanda.");
             }
             return;
         }

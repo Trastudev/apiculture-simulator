@@ -120,6 +120,20 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <TextView
+                    android:id="@+id/tv_shop_treat_warn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="#D32F2F"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:text="@string/shop_insufficient_beecoins" />
+
+                <include
+                    android:id="@+id/qty_treat"
+                    layout="@layout/include_shop_qty" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_buy_treat"
                     android:layout_width="match_parent"
@@ -214,6 +228,20 @@
                             tools:text="Tienes: 7" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_shop_feed_warn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="#D32F2F"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:text="@string/shop_insufficient_beecoins" />
+
+                <include
+                    android:id="@+id/qty_feed"
+                    layout="@layout/include_shop_qty" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_buy_feed"
@@ -321,6 +349,20 @@
                     android:textSize="13sp"
                     tools:text="1. Calidad 82%" />
 
+                <TextView
+                    android:id="@+id/tv_shop_queen_warn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="#D32F2F"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:text="@string/shop_insufficient_beecoins" />
+
+                <include
+                    android:id="@+id/qty_queen"
+                    layout="@layout/include_shop_qty" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_buy_queen"
                     android:layout_width="match_parent"
@@ -336,6 +378,7 @@
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_shop_truck"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="12dp"
@@ -413,6 +456,16 @@
                             android:textSize="12sp" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_shop_truck_warn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="#D32F2F"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:text="@string/shop_insufficient_beecoins" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_buy_truck"
@@ -506,6 +559,16 @@
                             android:textSize="12sp" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_shop_ship_warn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="#D32F2F"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    android:text="@string/shop_insufficient_beecoins" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_buy_ship"

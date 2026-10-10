@@ -145,7 +145,7 @@ public final class DailySummaryDialog {
                 iv.setImageResource(HiveSiteSummaryUi.floraHoneyJarIcon(e.getKey()));
                 tvFlora.setText(e.getKey());
                 tvKg.setText(activity.getString(R.string.startup_sim_summary_honey_kg,
-                        String.format(Locale.getDefault(), "%.1f", e.getValue())));
+                        String.format(Locale.getDefault(), "%.2f", e.getValue())));
                 honeyRows.addView(row);
                 if (i < entries.size() - 1) {
                     View divider = new View(activity);
@@ -161,9 +161,9 @@ public final class DailySummaryDialog {
         if (fromNeighbors > 0.0005 || takenByNeighbors > 0.0005) {
             forageMelee.setVisibility(View.VISIBLE);
             tvFromNeighbors.setText(activity.getString(R.string.startup_sim_summary_forage_from_neighbors,
-                    String.format(Locale.getDefault(), "%.1f", fromNeighbors)));
+                    String.format(Locale.getDefault(), "%.2f", fromNeighbors)));
             tvTakenByNeighbors.setText(activity.getString(R.string.startup_sim_summary_forage_taken_by_neighbors,
-                    String.format(Locale.getDefault(), "%.1f", takenByNeighbors)));
+                    String.format(Locale.getDefault(), "%.2f", takenByNeighbors)));
             tvFromNeighbors.setVisibility(fromNeighbors > 0.0005 ? View.VISIBLE : View.GONE);
             tvTakenByNeighbors.setVisibility(takenByNeighbors > 0.0005 ? View.VISIBLE : View.GONE);
             View fromRow = (View) tvFromNeighbors.getParent();

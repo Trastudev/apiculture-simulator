@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="10dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_shop_less"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:padding="0dp"
+        android:text="−"
+        android:textColor="@color/event_ink"
+        android:textSize="18sp"
+        app:strokeColor="@color/event_gold_stroke" />
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/slider_shop_qty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginHorizontal="8dp"
+        android:stepSize="1.0"
+        app:haloColor="@color/event_gold"
+        app:thumbColor="@color/event_gold_dark"
+        app:trackColorActive="@color/event_gold"
+        app:trackColorInactive="@color/event_gold_stroke" />
+
+    <TextView
+        android:id="@+id/tv_shop_qty"
+        android:layout_width="48dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textColor="@color/event_ink"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        tools:text="1" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_shop_more"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:padding="0dp"
+        android:text="+"
+        android:textColor="@color/event_ink"
+        android:textSize="18sp"
+        app:strokeColor="@color/event_gold_stroke" />
+</LinearLayout>

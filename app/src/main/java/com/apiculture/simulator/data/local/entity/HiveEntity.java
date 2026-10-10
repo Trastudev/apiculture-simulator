@@ -59,11 +59,11 @@ public class HiveEntity {
     public int firstProductionDayKey;
     /**
      * Resumen del último tick diario aplicado a esta colmena ({@code dayKey} del calendario del juego).
-     * Salud/varroa: diferencia respecto al inicio del día. {@link #lastSummaryDeltaBees}: solo emergencias.
+     * Salud/varroa: diferencia respecto al inicio del día. {@link #lastSummaryDeltaBees}: neto de adultas.
      */
     public int lastSummaryDayKey;
     public double lastSummaryHoneyKg;
-    /** Nuevas obreras ese día (emergencias pupa → adulta), no huevos ni total de colonia. */
+    /** Neto de obreras adultas ese día (emergencias − muertes). */
     public int lastSummaryDeltaBees;
     public int lastSummaryDeltaHealth;
     public double lastSummaryDeltaVarroa;

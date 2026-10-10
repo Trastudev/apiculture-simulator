@@ -425,6 +425,13 @@ public final class HivePopulationState {
         if (!truncated && !missingBrood && !legacyGap) {
             return;
         }
+        if (s.lastDayEggsLaid > 0) {
+            s.applyEstimatedBroodFromDailyLaying(s.lastDayEggsLaid);
+            return;
+        }
+        if (missingBrood && !truncated && !legacyGap) {
+            return;
+        }
         int tot = Math.max(500, s.totalBees());
         if (tot < 200) {
             return;

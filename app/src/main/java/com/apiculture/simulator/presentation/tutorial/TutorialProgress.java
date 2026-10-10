@@ -32,7 +32,10 @@ public final class TutorialProgress {
         SharedPreferences.Editor edit = prefs.edit();
         if (hasParcels) {
             for (TutorialChapter chapter : TutorialChapter.values()) {
-                if (chapter != TutorialChapter.CLIMATE && chapter != TutorialChapter.ORDERS) {
+                // El obrador es nuevo también para quien ya jugaba.
+                if (chapter != TutorialChapter.CLIMATE && chapter != TutorialChapter.ORDERS
+                        && chapter != TutorialChapter.WORKSHOP
+                        && chapter != TutorialChapter.WORKSHOP_PACKING) {
                     edit.putBoolean(doneKey(uid, chapter), true);
                 }
             }

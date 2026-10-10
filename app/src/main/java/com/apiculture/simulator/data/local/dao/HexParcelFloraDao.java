@@ -21,6 +21,9 @@ public interface HexParcelFloraDao {
     @Query("DELETE FROM hex_parcel_flora WHERE hexId = :hexId AND floraKey = :floraKey")
     void deleteByHexAndKey(String hexId, String floraKey);
 
+    @Query("DELETE FROM hex_parcel_flora WHERE hexId = :hexId AND floraKey = :floraKey AND siteId = :siteId")
+    void deleteByHexKeySite(String hexId, String floraKey, String siteId);
+
     @Query("DELETE FROM hex_parcel_flora WHERE hexId = :hexId")
     void deleteAllForHex(String hexId);
 }

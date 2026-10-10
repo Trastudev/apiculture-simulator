@@ -70,6 +70,8 @@ public class ApiariesFragment extends Fragment {
     private List<HiveEntity> cachedHives = Collections.emptyList();
     private List<HexParcelOwnershipEntity> cachedOwnerships = Collections.emptyList();
     private List<PollinationContractEntity> cachedOpenContracts = Collections.emptyList();
+    /** Terrenos con frutales a los que ya les toca la poda y el abonado. */
+    private Set<String> maintenanceHexes = Collections.emptySet();
 
     private ApiaryAdapter adapter;
     private int skyFetchGen;
@@ -124,6 +126,7 @@ public class ApiariesFragment extends Fragment {
             }
             cachedOwnerships = mine;
             refreshOpenContract();
+            refreshMaintenance();
             scheduleRefreshCards();
         });
         viewModel.hives(ownerId).observe(getViewLifecycleOwner(), hives -> {
@@ -142,6 +145,26 @@ public class ApiariesFragment extends Fragment {
             cachedOpenContracts = rows != null ? rows : Collections.emptyList();
             scheduleRefreshCards();
         });
+    }
+
+    private void refreshMaintenance() {
+        if (!isAdded() || "guest".equals(sessionOwnerId)) {
+            return;
+        }
+        ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
+        app.getHiveRepository().hexesNeedingMaintenanceAsync(sessionOwnerId, hexes -> {
+            if (!isAdded() || hexes.equals(maintenanceHexes)) {
+                return;
+            }
+            maintenanceHexes = hexes;
+            scheduleRefreshCards();
+        });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        refreshMaintenance();
     }
 
     private void scheduleRefreshCards() {
@@ -231,6 +254,10 @@ public class ApiariesFragment extends Fragment {
         List<HiveEntity> hives = hivesOnCard(card);
         if (hives.isEmpty()) {
             GameNotice.show(requireContext(), R.string.dashboard_harvest_all_none);
+            return;
+        }
+        if (com.apiculture.simulator.presentation.workshop.WorkshopUi.blocksHarvest(requireContext(), sessionOwnerId)) {
+            com.apiculture.simulator.presentation.workshop.WorkshopUi.showNeedWorkshop(this);
             return;
         }
         HoneyLogistics.previewHarvestAll(requireContext(), sessionOwnerId, hives, plan -> {
@@ -378,10 +405,7 @@ public class ApiariesFragment extends Fragment {
             if (!seen.add(h.hexId)) {
                 continue;
             }
-            HexParcel parcel = IberiaHexOverlayStore.findById(requireContext(), h.hexId);
-            if (NpcContractCatalog.isNpcFarm(parcel)) {
-                n++;
-            }
+            n++;
         }
         for (String hex : openContractHexes()) {
             if (!seen.contains(hex) && !owned.contains(hex)) {
@@ -449,7 +473,7 @@ public class ApiariesFragment extends Fragment {
                     floraTypes,
                     YardClimate.resolve(requireContext(), o.hexId, sample),
                     YardClimate.yesterdaySky(o.hexId, sample, parcel),
-                    hexHasAlert(o.hexId, o.siteId),
+                    hexHasAlert(o.hexId, o.siteId) || maintenanceHexes.contains(o.hexId),
                     false,
                     null,
                     0,
@@ -466,9 +490,6 @@ public class ApiariesFragment extends Fragment {
                 continue;
             }
             HexParcel parcel = IberiaHexOverlayStore.findById(requireContext(), h.hexId);
-            if (!NpcContractCatalog.isNpcFarm(parcel)) {
-                continue;
-            }
             String npc = NpcContractCatalog.npcNameFor(parcel);
             String estate = NpcContractCatalog.estateNameFor(parcel);
             HiveEntity sample = sampleHive(h.hexId, null);
@@ -655,6 +676,24 @@ public class ApiariesFragment extends Fragment {
         return new double[]{0, 0};
     }
 
+    private void promptRename(@NonNull ApiaryCard card) {
+        String uid = com.apiculture.simulator.data.session.PlayerAuth.getInstance().getUid();
+        if (uid == null || uid.isEmpty() || !isAdded()) {
+            return;
+        }
+        ApiaryNameDialog.show(this, card.name, name -> {
+            ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
+            app.getHexParcelRepository().renameApiary(card.hexId, uid, card.siteId, name, msg -> {
+                if (!isAdded()) {
+                    return;
+                }
+                if (msg != null) {
+                    com.apiculture.simulator.presentation.common.GameNotice.show(requireContext(), msg);
+                }
+            });
+        });
+    }
+
     static String terrainDisplayTitle(@NonNull HexParcelOwnershipEntity o) {
         String name;
         if (o.parcelName != null && !o.parcelName.trim().isEmpty()) {
@@ -670,7 +709,7 @@ public class ApiariesFragment extends Fragment {
             }
         }
         if (o.isPrimary && o.hasWarehouse && WarehouseRules.isApiarySite(o)) {
-            return name + " · Almacén";
+            return name + " · Obrador";
         }
         return name;
     }
@@ -772,6 +811,11 @@ public class ApiariesFragment extends Fragment {
                         itemView.getContext(), R.color.event_gold_stroke));
             }
             b.tvApiaryName.setText(card.name);
+            if (!card.contract && card.hexId != null && !card.hexId.isEmpty()) {
+                b.tvApiaryName.setOnClickListener(v -> promptRename(card));
+            } else {
+                b.tvApiaryName.setOnClickListener(null);
+            }
             if (card.contract) {
                 b.tvApiaryClimate.setText(card.npcName != null
                         ? getString(R.string.apiary_card_contract_owner, card.npcName)

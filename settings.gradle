@@ -16,3 +16,24 @@ dependencyResolutionManagement {
 
 rootProject.name = "ApicultureSimulator"
 include(":app")
+
+// Escena 3D del apiario: módulo exportado desde Unity (proyecto hermano apiculture-3d,
+// menú «Apiario/Exportar para la app Android»).
+def unityExport = file("../apiculture-3d/Build/AndroidExport")
+include(":unityLibrary")
+project(":unityLibrary").projectDir = new File(unityExport, "unityLibrary")
+
+def unityProps = new Properties()
+def unityPropsFile = new File(unityExport, "gradle.properties")
+if (unityPropsFile.exists()) {
+    unityPropsFile.withInputStream { unityProps.load(it) }
+}
+gradle.beforeProject { p ->
+    if (p.path == ":unityLibrary") {
+        unityProps.each { k, v ->
+            if (k.toString().startsWith("unity")) {
+                p.ext.set(k.toString(), v)
+            }
+        }
+    }
+}

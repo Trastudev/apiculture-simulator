@@ -128,4 +128,9 @@
         android:id="@+id/shopFragment"
         android:name="com.apiculture.simulator.presentation.shop.ShopFragment"
         android:label="@string/shop_title" />
+
+    <fragment
+        android:id="@+id/workshopFragment"
+        android:name="com.apiculture.simulator.presentation.workshop.WorkshopFragment"
+        android:label="@string/workshop_name" />
 </navigation>

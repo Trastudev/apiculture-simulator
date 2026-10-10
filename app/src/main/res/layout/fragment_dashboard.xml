@@ -617,6 +617,45 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_workshop"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="@color/dash_card_bg"
+                    app:cardCornerRadius="18dp"
+                    app:cardElevation="3dp"
+                    tools:visibility="visible">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="14dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:letterSpacing="0.08"
+                            android:text="@string/workshop_name"
+                            android:textAllCaps="true"
+                            android:textColor="@color/dash_muted"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+
+                        <LinearLayout
+                            android:id="@+id/ll_workshop_lines"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <include
                     android:id="@+id/global_event"
                     layout="@layout/include_global_event_card"
@@ -701,6 +740,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="104dp"
                                 android:layout_marginStart="6dp"
+                                android:layout_marginEnd="6dp"
                                 android:layout_weight="1"
                                 android:background="@drawable/bg_quick_tile_orange"
                                 android:clickable="true"
@@ -726,6 +766,42 @@
                                         android:layout_marginTop="6dp"
                                         android:gravity="center"
                                         android:text="@string/dashboard_sell"
+                                        android:textColor="@color/dash_text_card"
+                                        android:textSize="13sp"
+                                        android:textStyle="bold" />
+                                </LinearLayout>
+                            </FrameLayout>
+
+                            <FrameLayout
+                                android:id="@+id/tile_quick_workshop"
+                                android:layout_width="0dp"
+                                android:layout_height="104dp"
+                                android:layout_marginStart="6dp"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_quick_tile_green"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:foreground="?attr/selectableItemBackgroundBorderless">
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="match_parent"
+                                    android:gravity="center"
+                                    android:orientation="vertical"
+                                    android:padding="8dp">
+
+                                    <ImageView
+                                        android:layout_width="44dp"
+                                        android:layout_height="44dp"
+                                        android:contentDescription="@string/workshop_name"
+                                        android:src="@drawable/ic_deco_honey_jar" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:layout_marginTop="6dp"
+                                        android:gravity="center"
+                                        android:text="@string/workshop_name"
                                         android:textColor="@color/dash_text_card"
                                         android:textSize="13sp"
                                         android:textStyle="bold" />

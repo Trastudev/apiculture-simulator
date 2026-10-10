@@ -35,6 +35,7 @@ import com.apiculture.simulator.data.local.entity.HiveEntity;
 import com.apiculture.simulator.data.repository.TickAppliedDayResult;
 import com.apiculture.simulator.data.repository.GameServer;
 import com.apiculture.simulator.data.repository.HarvestReceipts;
+import com.apiculture.simulator.data.repository.OrderReceipts;
 import com.apiculture.simulator.databinding.ActivityMainBinding;
 import com.apiculture.simulator.domain.health.HiveAlertBadge;
 import com.apiculture.simulator.notification.DailyProductionAlarmScheduler;
@@ -44,6 +45,7 @@ import com.apiculture.simulator.presentation.common.DailySummaryDialog;
 import com.apiculture.simulator.presentation.common.GameLoadingDialog;
 import com.apiculture.simulator.presentation.common.TruckLivePrompt;
 import com.apiculture.simulator.presentation.hive.HarvestCollectDialogs;
+import com.apiculture.simulator.presentation.market.HoneyOrderDialogs;
 import com.apiculture.simulator.presentation.tutorial.TutorialBus;
 import com.apiculture.simulator.presentation.tutorial.TutorialController;
 import com.apiculture.simulator.data.session.PlayerAuth;
@@ -51,6 +53,8 @@ import com.apiculture.simulator.data.session.SignedInUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.SetOptions;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
+import org.json.JSONObject;
 
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -89,9 +93,7 @@ public class MainActivity extends AppCompatActivity {
     @Nullable
     private AlertDialog serverUnavailableDialog;
     private final GameServer.ConnectionListener serverConnectionListener =
-            available -> runOnUiThread(() -> {
-                dismissServerUnavailableDialog();
-            });
+            available -> runOnUiThread(() -> onServerAvailabilityChanged(available));
 
     private ActivityResultLauncher<String> notificationPermissionLauncher;
     @Nullable
@@ -116,6 +118,10 @@ public class MainActivity extends AppCompatActivity {
      */
     private void navigateToBottomNavTab(int targetId) {
         if (navController == null || binding == null) {
+            return;
+        }
+        if (GameServer.enabled() && !GameServer.isAvailable()) {
+            showServerUnavailableDialog();
             return;
         }
         pendingBottomNavTarget = targetId;
@@ -237,6 +243,7 @@ public class MainActivity extends AppCompatActivity {
                 boolean onAdminEvents = destination.getId() == R.id.adminEventsFragment;
                 boolean onAdminGrants = destination.getId() == R.id.adminGrantsFragment;
                 boolean onShop = destination.getId() == R.id.shopFragment;
+                boolean onWorkshop = destination.getId() == R.id.workshopFragment;
                 if (tutorial != null) {
                     tutorial.onDestination(destination.getId());
                 }
@@ -244,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
                 // Sin barra superior en estas pantallas (más espacio; mercado sin título en toolbar)
                 binding.toolbar.setVisibility(
                         onLogin || onProfileSetup || onDashboard || onHives || onApiaryYard || onHiveDetail || onMap || onMarket
-                                || onAdminEvents || onAdminGrants || onShop
+                                || onAdminEvents || onAdminGrants || onShop || onWorkshop
                                 ? View.GONE : View.VISIBLE);
                 binding.bottomNav.setVisibility(onLogin || onProfileSetup ? View.GONE : View.VISIBLE);
                 applySystemBarInsets();
@@ -369,9 +376,12 @@ public class MainActivity extends AppCompatActivity {
         GameServer.checkServerAsync();
         HarvestReceipts.setListener(this::showPendingHarvestReceipts);
         showPendingHarvestReceipts();
+        OrderReceipts.setListener(this::showPendingOrderReceipts);
+        showPendingOrderReceipts();
     }
 
     private boolean harvestReceiptShowing;
+    private boolean orderReceiptShowing;
 
     private void showPendingHarvestReceipts() {
         if (harvestReceiptShowing || isFinishing() || isDestroyed()) {
@@ -388,6 +398,42 @@ public class MainActivity extends AppCompatActivity {
                     harvestReceiptShowing = false;
                     showPendingHarvestReceipts();
                 });
+    }
+
+    private void showPendingOrderReceipts() {
+        if (orderReceiptShowing || isFinishing() || isDestroyed()) {
+            return;
+        }
+        OrderReceipts.Receipt receipt = OrderReceipts.peek(this);
+        if (receipt == null) {
+            return;
+        }
+        orderReceiptShowing = true;
+        HoneyOrderDialogs.showDeliverySummary(this, receipt, () -> {
+            OrderReceipts.drop(this, receipt.id);
+            orderReceiptShowing = false;
+            showPendingOrderReceipts();
+        });
+    }
+
+    private void onServerAvailabilityChanged(boolean available) {
+        if (isFinishing() || isDestroyed() || binding == null) {
+            return;
+        }
+        if (!GameServer.enabled()) {
+            dismissServerUnavailableDialog();
+            return;
+        }
+        binding.bottomNav.setEnabled(available);
+        binding.navHostFragment.setAlpha(available ? 1f : 0.35f);
+        if (available) {
+            dismissServerUnavailableDialog();
+            if (activityResumed) {
+                maybeEnterSession();
+            }
+        } else {
+            showServerUnavailableDialog();
+        }
     }
 
     private void showServerUnavailableDialog() {
@@ -454,6 +500,10 @@ public class MainActivity extends AppCompatActivity {
         if (onAuthScreens()) {
             return;
         }
+        if (GameServer.enabled() && !GameServer.isAvailable()) {
+            showServerUnavailableDialog();
+            return;
+        }
         DailyProductionAlarmScheduler.markSessionActive(this, true);
         if (GameStartupWarmup.isReady()) {
             runDailyTick(user);
@@ -500,7 +550,7 @@ public class MainActivity extends AppCompatActivity {
         String uid = user.getUid();
         new Thread(() -> {
             try {
-                org.json.JSONObject profile = new org.json.JSONObject();
+                JSONObject profile = new JSONObject();
                 profile.put("timeZoneId", timeZoneId);
                 GameServer.savePlayer(uid, profile);
             } catch (Exception ignored) {
@@ -565,6 +615,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         activityResumed = false;
         HarvestReceipts.setListener(null);
+        OrderReceipts.setListener(null);
         CalculatingDailyDialog.dismiss();
         super.onPause();
         SignedInUser user = PlayerAuth.getInstance().getCurrentUser();
@@ -598,6 +649,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_events) {
+            if (GameServer.enabled() && !GameServer.isAvailable()) {
+                showServerUnavailableDialog();
+                return true;
+            }
             if (navController != null) {
                 navController.navigate(R.id.eventsFragment);
             }

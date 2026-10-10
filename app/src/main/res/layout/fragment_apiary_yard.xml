@@ -69,6 +69,19 @@
                 tools:src="@drawable/npc_face_00"
                 tools:visibility="visible" />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_yard_3d"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:text="@string/apiary_3d_open"
+                android:textAllCaps="false"
+                android:textColor="@color/event_gold_dark"
+                android:textSize="13sp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
             <ImageView
                 android:id="@+id/iv_yard_weather"
                 android:layout_width="28dp"
@@ -77,6 +90,23 @@
                 android:contentDescription="@null"
                 android:src="@drawable/ic_sol_prado" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_yard_maint_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_dash_event_alert"
+            android:drawableStart="@drawable/ic_maint_dot"
+            android:drawablePadding="8dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            android:text="@string/apiary_yard_maint_banner"
+            android:textColor="#B71C1C"
+            android:textSize="13sp"
+            android:visibility="gone"
+            tools:visibility="visible" />
     </LinearLayout>
 
     <TextView

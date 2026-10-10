@@ -21,7 +21,7 @@ import java.util.Map;
 public class EconomyRepository {
 
     /** Saldo inicial al registrar o reiniciar (sin terrenos ni colmenas). */
-    public static final double DEFAULT_STARTING_BALANCE_EUR = 20_000.0;
+    public static final double DEFAULT_STARTING_BALANCE_EUR = 45_000.0;
 
     private static final String PREFS = "economy_prefs";
     private static final String KEY_BALANCE = "balance";
@@ -92,6 +92,9 @@ public class EconomyRepository {
         try {
             org.json.JSONObject body = new org.json.JSONObject();
             body.put(key, value);
+            if ("economyHoneyBucketsJson".equals(key)) {
+                body.put("honeyStockSeq", honeyStockSeq());
+            }
             if (!GameServer.savePlayer(user.getUid(), body)) {
                 blocked = OFFLINE_ACTION;
                 return false;
@@ -164,11 +167,8 @@ public class EconomyRepository {
 
     @NonNull
     public static String formatKg(double kg) {
-        double rounded = Math.round(kg * 10.0) / 10.0;
-        if (Math.abs(rounded - Math.rint(rounded)) < 0.05) {
-            return String.format(Locale.forLanguageTag("es"), "%.0f", rounded);
-        }
-        return String.format(Locale.forLanguageTag("es"), "%.1f", rounded);
+        double rounded = Math.round(kg * 100.0) / 100.0;
+        return String.format(Locale.getDefault(), "%.2f", rounded);
     }
 
     /**

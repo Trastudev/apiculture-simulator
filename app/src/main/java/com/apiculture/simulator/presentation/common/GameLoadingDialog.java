@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.Gravity;
 import android.view.Window;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -76,7 +77,8 @@ public final class GameLoadingDialog {
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(0xCC1C140C));
             window.setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT);
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+            window.setGravity(Gravity.CENTER);
             window.setDimAmount(0.72f);
         }
         ProgressBar bar = dialog.findViewById(R.id.pb_game_loading);

@@ -8,7 +8,6 @@ import androidx.annotation.Nullable;
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.TruckTripEntity;
 import com.apiculture.simulator.data.repository.TruckLiveTrips;
-import com.apiculture.simulator.domain.game.TranshumanceRules;
 import com.apiculture.simulator.domain.game.TruckTripRules;
 import com.apiculture.simulator.presentation.common.GameNotice;
 
@@ -59,12 +58,6 @@ public final class TruckTripUi {
 
     public static void showTravelOutcome(@Nullable Context ctx, @Nullable String msg) {
         if (ctx == null || msg == null || msg.isEmpty()) {
-            return;
-        }
-        if (TranshumanceRules.ERR_AFTER_DAILY_TICK.equals(msg)) {
-            GameNotice.show(ctx,
-                    R.string.map_transhumance_day_change_title,
-                    R.string.map_transhumance_day_change_message);
             return;
         }
         GameNotice.show(ctx, msg);

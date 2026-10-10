@@ -103,14 +103,6 @@ public final class TruckTripRules {
         return Math.max(0L, etaEpochMs(trip) - nowMs);
     }
 
-    public static boolean arrivesAfterNextDailyTick(long startEpochMs, long durationMs) {
-        return startEpochMs + Math.max(0L, durationMs) > GameCalendar.nextProductionEpochMs(startEpochMs);
-    }
-
-    public static boolean arrivesAfterNextDailyTick(@Nullable TruckTripEntity trip) {
-        return trip != null && arrivesAfterNextDailyTick(trip.startEpochMs, trip.durationMs);
-    }
-
     /** El destino del viaje es el apiario actual de la colmena (vuelta al origen). */
     public static boolean isHeadingHome(@Nullable TruckTripEntity trip, @Nullable HiveEntity hive) {
         if (trip == null || hive == null) {

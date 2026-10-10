@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">ApiSim</string>
     <string name="server_unavailable_title">Zerbitzaria ez dago erabilgarri</string>
-    <string name="server_unavailable_message">Ez dago zerbitzarirako konexiorik. Ezin izan da ekintza egin.</string>
+    <string name="server_unavailable_message">Ez dago zerbitzarirako konexiorik. Saiatu berriro konektatu arte; gabe ezin da jokatu.</string>
     <string name="server_retry">Saiatu berriro konektatzen</string>
     <string name="cd_app_logo">Jokoaren logotipoa</string>
     <string name="dashboard_default_player">Erlezaina</string>
@@ -61,15 +61,15 @@
     <string name="dashboard_view_map">Ikusi mapa</string>
     <string name="dashboard_harvest">Bildu</string>
     <string name="dashboard_sell">Saldu</string>
-    <string name="map_buy_warehouse">Biltegia erosi (300.00 B)</string>
-    <string name="map_buy_warehouse_title">Biltegia erosi</string>
-    <string name="map_buy_warehouse_info">1. mailako biltegia: 50 kg. Gorde zure jokalari mailako eztia. Kamioia hemendik abiatzen da.</string>
-    <string name="map_buy_warehouse_ok">Biltegia erosita.</string>
+    <string name="map_buy_warehouse">Lantegia erosi (300.00 B)</string>
+    <string name="map_buy_warehouse_title">Lantegia erosi</string>
+    <string name="map_buy_warehouse_info">1. mailako lantegia: 50 kg. Gorde zure jokalari mailako eztia. Kamioia hemendik abiatzen da.</string>
+    <string name="map_buy_warehouse_ok">Lantegia erosita.</string>
     <string name="map_build_choice_title">Zer eraiki nahi duzu?</string>
     <string name="map_build_choice_hive">Erosi erlauntza</string>
     <string name="map_install_choice_title">Zer instalatu nahi duzu?</string>
     <string name="map_install_choice_apiary">Erletegi bat instalatu</string>
-    <string name="map_install_choice_warehouse">Biltegi bat instalatu.</string>
+    <string name="map_install_choice_warehouse">Lantegi bat instalatu.</string>
     <string name="map_install_choice_hq">Egoitza nagusia ezarri</string>
     <string name="map_hq_title">Egoitza nagusia</string>
     <string name="map_hq_region">%1$s-ren egoitza nagusia</string>
@@ -81,26 +81,26 @@
     <string name="map_hq_move_message">Baduzu dagoeneko sukurtsal bat %1$s helbidean. Kokapen honetara eramango duzu?</string>
     <string name="map_hq_info">Mapa hemen zentratuta dago lurralde honetan sartzean. Sakatu lursail huts batean eta hautatu "Egoitza nagusia instalatu" mugitzeko.</string>
     <string name="map_other_apiary_kicker">Beste jokalari baten erletegia</string>
-    <string name="map_tap_warehouse_exists">Biltegi bat dago hemen. Sakatu bere ikonoa ikusteko.</string>
+    <string name="map_tap_warehouse_exists">Lantegi bat dago hemen. Sakatu bere ikonoa ikusteko.</string>
     <string name="map_apiary_placed">Erletegia jarrita.</string>
-    <string name="harvest_need_warehouse_title">Biltegi bat behar duzu.</string>
-    <string name="harvest_need_warehouse_message">Eztia biltzeko, biltegi bat behar da eremu honetan. Kamioia handik abiatuko da uztarekin.</string>
+    <string name="harvest_need_warehouse_title">Lantegi bat behar duzu.</string>
+    <string name="harvest_need_warehouse_message">Eztia biltzeko, lantegi bat behar da eremu honetan. Kamioia handik abiatuko da uztarekin.</string>
     <string name="harvest_need_warehouse_go_map">Joan mapara</string>
     <string name="harvest_trips_title">Berretsi bilduma</string>
-    <string name="harvest_trips_subtitle">Aukeratu kamioia. Bere biltegitik irteten da.</string>
-    <string name="harvest_trips_plan">Kamioi bakoitza bere biltegitik irten eta erlezaintzara doa biderik laburrenetik.</string>
+    <string name="harvest_trips_subtitle">Aukeratu kamioia. Bere lantegitik irteten da.</string>
+    <string name="harvest_trips_plan">Kamioi bakoitza bere lantegitik irten eta erlezaintzara doa biderik laburrenetik.</string>
     <string name="harvest_trips_truck_level">Maila %1$d</string>
     <string name="harvest_trips_route">%1$s %2$s-tik ateratzen da</string>
-    <string name="harvest_trips_meta">%1$.1f kg · %2$s joan-etorriko bidaia</string>
-    <string name="harvest_trips_meta_km">%1$.1f kg · %2$.1f km-tik %3$s-ra</string>
-    <string name="harvest_trips_meta_instant">%1$.1f kg · bidaia luzea: eguneroko tik-takarekin batera iristen da</string>
+    <string name="harvest_trips_meta">%1$.2f kg · %2$s joan-etorriko bidaia</string>
+    <string name="harvest_trips_meta_km">%1$.2f kg · %2$.1f km-tik %3$s-ra</string>
+    <string name="harvest_trips_meta_instant">%1$.2f kg · bidaia luzea: eguneroko tik-takarekin batera iristen da</string>
     <string name="harvest_trips_confirm">Bidali kamioiak</string>
     <string name="harvest_trips_confirm_one">Bidali kamioia</string>
     <string name="harvest_trips_cancel">Ezeztatu</string>
-    <string name="harvest_trips_skipped">%1$d erlauntzak ez dira biltzen: ez dago biltegiratzerik haien lurraldean.</string>
-    <string name="harvest_trips_left">Erlauntzak %1$d geratzen dira: ez dira kamioian edo biltegian sartzen.</string>
+    <string name="harvest_trips_skipped">%1$d erlauntzak ez dira biltzen: ez dago lantegiratzerik haien lurraldean.</string>
+    <string name="harvest_trips_left">Erlauntzak %1$d geratzen dira: ez dira kamioian edo lantegian sartzen.</string>
     <string name="harvest_no_truck">Ez dago kamioirik eskuragarri. Mesedez, itxaron bidean dagoena itzultzeko.</string>
-    <string name="harvest_warehouse_full">Biltegiak ez du lekurik. Eztia erlauntzetan geratzen da.</string>
+    <string name="harvest_warehouse_full">Lantegiak ez du lekurik. Eztia erlauntzetan geratzen da.</string>
     <string name="map_market_title">%1$s-ren merkatua</string>
     <string name="map_market_local_kicker">Tokiko merkatua</string>
     <string name="map_market_capital_kicker">Kapital merkatua</string>
@@ -113,7 +113,7 @@
     <string name="map_market_competition_note">Lehiaketa %1$s · %2$.1f %% oinarriaren aurka</string>
     <string name="map_market_empty_stock">Ez duzu eztirik hemen saltzeko.</string>
     <string name="map_market_review">Berrikusi bidalketa</string>
-    <string name="map_market_no_warehouse">Biltegi bat behar duzu lurralde honetan.</string>
+    <string name="map_market_no_warehouse">Lantegi bat behar duzu lurralde honetan.</string>
     <string name="map_market_demand_label">Merkatuaren profila eta eztia</string>
     <string name="map_market_profile_row">%1$s liburukia · %2$s konp.</string>
     <string name="map_market_band_high">altuera</string>
@@ -134,7 +134,7 @@
     <string name="truck_confirm_send">Bidali kamioia</string>
     <string name="truck_confirm_back">Itzuli</string>
     <string name="truck_confirm_instant">Kamioi bizirik ez: ordainketa baieztapenean egin behar da.</string>
-    <string name="map_warehouse_title">Biltegia</string>
+    <string name="map_warehouse_title">Lantegia</string>
     <string name="map_warehouse_kg">%1$.1f / %2$.0f kg</string>
     <string name="map_warehouse_jars">Eztia gordeta</string>
     <string name="map_warehouse_level">Maila %1$d</string>
@@ -142,20 +142,20 @@
     <string name="map_warehouse_unlock_next">Hurrengoa: %1$s</string>
     <string name="map_warehouse_unlock_none">Beste ezti motarik ez</string>
     <string name="map_warehouse_upgrade">Igo %1$d mailara (%2$.2f B)</string>
-    <string name="map_warehouse_upgrade_ok">Biltegi hobetua.</string>
+    <string name="map_warehouse_upgrade_ok">Lantegi hobetua.</string>
     <string name="map_sell_apiary">Erletegia saldu</string>
-    <string name="map_sell_warehouse">Biltegia saldu.</string>
+    <string name="map_sell_warehouse">Lantegia saldu.</string>
     <string name="map_sell_confirm">Saldu!</string>
     <string name="map_sell_apiary_confirm">%1$.2f B jasoko duzu (instalazio prezioaren 50 %%). Ekintza hau ezin da desegin.</string>
     <string name="map_sell_warehouse_confirm">%1$.2f B jasoko duzu (erosketa prezioaren %50 %% eta edozein hobekuntza). Ekintza hau ezin da desegin.</string>
     <string name="map_sell_apiary_ok">Erletegia salduta. +%1$.2f B</string>
-    <string name="map_sell_warehouse_ok">Biltegia salduta. +%1$.2f B</string>
-    <string name="map_sell_warehouse_missing">Ez dago biltegirik toki honetan.</string>
+    <string name="map_sell_warehouse_ok">Lantegia salduta. +%1$.2f B</string>
+    <string name="map_sell_warehouse_missing">Ez dago lantegirik toki honetan.</string>
     <string name="map_sell_apiary_blocked_title">Erletegia ez dago hutsik</string>
-    <string name="map_sell_apiary_blocked_hives">Erlauntza %1$d daude erletegia honetan. Hustu erletegia (transhumantzia edo biltegiratzea) saldu aurretik.</string>
+    <string name="map_sell_apiary_blocked_hives">Erlauntza %1$d daude erletegia honetan. Hustu erletegia (transhumantzia edo lantegiratzea) saldu aurretik.</string>
     <string name="map_sell_apiary_blocked_hives_generic">Erlauntzak daude erlezaintza honetan. Hustu erlezaintza saldu aurretik.</string>
     <string name="map_sell_warehouse_blocked_title">Bidaiak martxan daude</string>
-    <string name="map_sell_warehouse_blocked_trips">Mesedez, itxaron biltegi honetara edo biltegi honetatik bidaiak amaitu arte:</string>
+    <string name="map_sell_warehouse_blocked_trips">Mesedez, itxaron lantegi honetara edo lantegi honetatik bidaiak amaitu arte:</string>
     <string name="map_sell_trip_kind_collect">Bilketa (irteerakoa)</string>
     <string name="map_sell_trip_kind_collect_back">Bilketa (itzulera)</string>
     <string name="map_sell_trip_kind_wholesale">Handizkako salmenta</string>
@@ -171,7 +171,7 @@
     <string name="harvest_pick_apiary_sub">Aukeratu erletegia. Kargatu daitekeen ezti kopurua adierazten da.</string>
     <string name="harvest_pick_truck_title">Kamioia</string>
     <string name="harvest_pick_truck_sub">Lurralde honetatik libre dauden kamioiak, hurbilenetik urrunenera.</string>
-    <string name="harvest_pick_apiary_kg">%1$.1f kg</string>
+    <string name="harvest_pick_apiary_kg">%1$.2f kg</string>
     <string name="harvest_pick_truck_line">Maila %1$d · %2$.0f km · gehienez %3$.0f kg</string>
     <string name="harvest_region_iberia">Iberia</string>
     <string name="harvest_region_madagascar">Madagaskar</string>
@@ -180,10 +180,10 @@
     <string name="dashboard_harvest_all_session">Saio baliogabea. Mesedez, hasi saioa berriro.</string>
     <string name="dashboard_harvest_summary_title">Eztia bilduta.</string>
     <string name="dashboard_harvest_summary_subtitle">%1$d erlauntzetatik · 3 kg erreserba geratzen dira bakoitzean</string>
-    <string name="dashboard_harvest_summary_total">Guztira: %1$.1f kg</string>
-    <string name="dashboard_harvest_summary_kg">+%1$.1f kg</string>
+    <string name="dashboard_harvest_summary_total">Guztira: %1$.2f kg</string>
+    <string name="dashboard_harvest_summary_kg">+%1$.2f kg</string>
     <string name="dashboard_sell_all_ok">%1$.2f kg salgai jarri dituzu merkatuan. Diru-sarrerak: %2$.0f B.</string>
-    <string name="dashboard_sell_all_none">Ez dago eztirik biltegian saltzeko. Bildu lehenengo.</string>
+    <string name="dashboard_sell_all_none">Ez dago eztirik lantegian saltzeko. Bildu lehenengo.</string>
     <string name="dashboard_sell_all_partial">Saldua %1$.2f kg (%2$.0f B). Gainerakoa ezin izan da saldu: %3$s</string>
     <string name="dashboard_sell_all_market">Merkatua ez dago prest. Saiatu berriro segundo batzuk barru.</string>
     <string name="game_notice_kicker">Erletegia</string>
@@ -240,16 +240,16 @@
     <string name="admin_events_title">Mundu mailako gertaerak</string>
     <string name="admin_back">Itzuli</string>
     <string name="admin_trips_title">Bidaiak martxan</string>
-    <string name="admin_trips_subtitle">Aukeratu bidaia bat. Orain salmenta, bilketa edo entregak egiten ditu, eta kamioia bere biltegira itzultzen da.</string>
+    <string name="admin_trips_subtitle">Aukeratu bidaia bat. Orain salmenta, bilketa edo entregak egiten ditu, eta kamioia bere lantegira itzultzen da.</string>
     <string name="admin_trips_empty">Ez dago bidaiarik martxan.</string>
     <string name="admin_trips_finish">Amaitu orain</string>
     <string name="admin_trips_confirm_title">Bidaia hau amaitzeko?</string>
-    <string name="admin_trips_confirm_work">Orain bidean geratzen dena egingo du (eztia saldu, bildu edo utzi) eta kamioia bere biltegira itzuliko da.</string>
-    <string name="admin_trips_confirm_home">Bidaia hau itzuliko da. Orain biltegira iritsiko da.</string>
+    <string name="admin_trips_confirm_work">Orain bidean geratzen dena egingo du (eztia saldu, bildu edo utzi) eta kamioia bere lantegira itzuliko da.</string>
+    <string name="admin_trips_confirm_home">Bidaia hau itzuliko da. Orain lantegira iritsiko da.</string>
     <string name="admin_trips_confirm_hive">Erlauntza orain bere helmugara iritsiko da.</string>
     <string name="admin_trips_ok_hive">Erlauntza dagoeneko bere helmugan dago.</string>
-    <string name="admin_trips_ok_return">Eginda. Kamioia bere biltegira itzultzen da.</string>
-    <string name="admin_trips_ok_home">Kamioia dagoeneko biltegian dago.</string>
+    <string name="admin_trips_ok_return">Eginda. Kamioia bere lantegira itzultzen da.</string>
+    <string name="admin_trips_ok_home">Kamioia dagoeneko lantegian dago.</string>
     <string name="admin_trips_fail">Bidaia ezin izan zen osatu.</string>
     <string name="admin_trips_kind_collect">Bilketa</string>
     <string name="admin_trips_kind_wholesale">Salmenta</string>
@@ -299,7 +299,7 @@
     <string name="admin_grants_remote_ok">Eginda. Jokalariak jokoa sinkronizatzen duenean ikusiko du.</string>
     <string name="admin_grants_all_ok">Jokalari guztientzat egina.</string>
     <string name="admin_grants_balance">Oreka: %1$.0f B</string>
-    <string name="admin_grants_honey_stock">Eztia biltegian: %1$.1f kg</string>
+    <string name="admin_grants_honey_stock">Eztia lantegian: %1$.1f kg</string>
     <string name="admin_grants_xp_line">Maila %1$d · %2$d / %3$d XP</string>
     <string name="admin_grants_coins_title">Gehitu BeeCoin-ak</string>
     <string name="admin_grants_coins_hint">Kantitatea (B)</string>
@@ -317,13 +317,13 @@
     <string name="admin_hive_honey_add">Gehitu markatutakoetara</string>
     <string name="admin_hive_honey_need">Markatu gutxienez erlauntza-erlauntza bat.</string>
     <string name="admin_hive_honey_line">%1$s · %2$s · %3$.1f kg</string>
-    <string name="admin_hive_honey_stored">erlauntzaren biltegian</string>
+    <string name="admin_hive_honey_stored">erlauntzaren lantegian</string>
     <string name="admin_hive_honey_ok">+%1$.1f kg %2$s %3$d erlauntzetan.</string>
     <string name="admin_hive_honey_partial">Ez zegoen eztiarentzako lekurik %1$d erlauntzetan.</string>
     <string name="admin_hive_honey_full">Erlauntza horiek dagoeneko ezti-errendimendu maximoan daude.</string>
     <string name="admin_grants_need_amount">0 baino handiagoa den kantitate bat adierazten du.</string>
     <string name="admin_grants_coins_ok">+%1$.0f B gehitu da. Saldoa: %2$.0f B</string>
-    <string name="admin_grants_honey_ok">+%1$.1f kg-ko %2$s. Biltegia: %3$.1f kg</string>
+    <string name="admin_grants_honey_ok">+%1$.1f kg-ko %2$s. Lantegia: %3$.1f kg</string>
     <string name="admin_grants_xp_ok">+%1$d XP. Maila %2$d (%3$d / %4$d)</string>
     <string name="admin_global_reset_title">Joko globalaren berrezarpena</string>
     <string name="admin_global_reset_subtitle">Hodeiko jokalari (eta bot) guztien erlauntzak, lurrak, ekonomia, inbentarioa eta sailkapenak ezabatzen ditu. Jokalariaren izena eta marka mantentzen ditu. Gailu bakoitza automatikoki berrabiarazten da aplikazioa irekitzean; bot-ak hurrengo markaketan berrabiarazten dira.</string>
@@ -332,7 +332,7 @@
     <string name="admin_global_reset_confirm_message">Ekintza hau ezin da desegin. Firestore-ko jokoaren aurrerapen guztia ezabatuko da. Profilak (izena/marka) mantenduko dira.</string>
     <string name="admin_global_reset_busy">Berrezarpen orokorra egiten…</string>
     <string name="admin_global_reset_local_ok">Zure tokiko jokoa ere berrabiarazi da.</string>
-    <string name="admin_global_reset_forced_notice">Administratzaile batek jokoak berrezarri ditu. 20.000,00 beecoinekin zerotik hasten zara.</string>
+    <string name="admin_global_reset_forced_notice">Administratzaile batek jokoak berrezarri ditu. 45.000,00 beecoinekin zerotik hasten zara.</string>
     <string name="dashboard_global_event_kicker">Mundu mailako ekitaldia</string>
     <string name="dashboard_global_event_live">Martxan</string>
     <string name="dashboard_global_event_ended_badge">Amaituta</string>
@@ -371,13 +371,13 @@
     <string name="dashboard_global_event_velutina">Asiako liztorren erasoa: −%1$.0f%% langileen artean hautatutako klimatan.</string>
     <string name="dashboard_menu_reset_game">Berrabiarazi jokoa</string>
     <string name="dashboard_reset_confirm_title">Jokoa berrabiarazi?</string>
-    <string name="dashboard_reset_confirm_message">Zure erlauntzak, lurrak, bidaiak, kontratuak, eskaerak, landaketak, inbentarioa, egoitza nagusia, eztia, maila eta ekitaldiko ekarpenak ezabatuko dira. Zure profila (izena eta marka) mantenduko da. 20.000,00 erle-monekin hasten zara.</string>
+    <string name="dashboard_reset_confirm_message">Zure erlauntzak, lurrak, bidaiak, kontratuak, eskaerak, landaketak, inbentarioa, egoitza nagusia, eztia, maila eta ekitaldiko ekarpenak ezabatuko dira. Zure profila (izena eta marka) mantenduko da. 45.000,00 erle-monekin hasten zara.</string>
     <string name="dashboard_reset_choose">Zure jokoa bakarrik edo guztion jokoa berrabiarazi dezakezu, bot-ak barne. Zure profila (izena eta marka) gordetzen da. Ez da erlauntza, lur, bidaia edo ekitaldietako ekarpenen arrastorik geratzen.</string>
     <string name="dashboard_reset_mine">Nire irteera bakarrik.</string>
     <string name="dashboard_reset_all">Denak, bot-ak barne</string>
     <string name="dashboard_reset_all_title">Guztiak berrezarri?</string>
-    <string name="dashboard_reset_all_message">Jokalari eta bot bakoitzaren gordetako datuak ezabatzen dira: erlauntzak, lurrak, sailkapenak, eguneroko merkatua eta ekitaldiko ekarpenak. Profilak mantentzen dira. Jokalari bakoitzak berriro hasten du 20.000,00 beecoinekin.</string>
-    <string name="dashboard_reset_done">Jokoa berrabiarazi da: 20.000,00 erle-txanpon, ez lurrik ez erlauntzarik.</string>
+    <string name="dashboard_reset_all_message">Jokalari eta bot bakoitzaren gordetako datuak ezabatzen dira: erlauntzak, lurrak, sailkapenak, eguneroko merkatua eta ekitaldiko ekarpenak. Profilak mantentzen dira. Jokalari bakoitzak berriro hasten du 45.000,00 beecoinekin.</string>
+    <string name="dashboard_reset_done">Jokoa berrabiarazi da: 45.000,00 erle-txanpon, ez lurrik ez erlauntzarik.</string>
     <string name="dashboard_reset_error">Ezin izan da jokoa berrabiarazi.</string>
     <string name="privacy_policy">Pribatutasun-politika</string>
     <string name="account_delete">Ezabatu kontua eta datuak</string>
@@ -425,8 +425,8 @@
     <string name="market_picker_south_africa_locked_title">Hegoafrika blokeatuta</string>
     <string name="market_picker_south_africa_locked">Hegoafrika 40. mailan desblokeatzen da.</string>
     <string name="market_picker_locked_close">Ulertuta</string>
-    <string name="market_picker_warehouse">zure biltegia</string>
-    <string name="market_picker_no_origin">biltegirik ez</string>
+    <string name="market_picker_warehouse">zure lantegia</string>
+    <string name="market_picker_no_origin">lantegirik ez</string>
     <string name="market_picker_provincial">Probintziako merkatua</string>
     <string name="market_picker_local">Tokiko merkatua</string>
     <string name="market_picker_international">Nazioarteko merkatua</string>
@@ -473,11 +473,11 @@
         <item>Eguneroko lore-bilketa 8:00etan kalkulatzen da. Eztia erlauntzan uzten baduzu, erleek erreserbetatik jaten dute.</item>
         <item>Lur saturatuak gutxiago ematen du: banatu erlauntzak edo bilatu loraldi berria.</item>
         <item>Polinizazio-kontratuak erlategitik onartzen dira. Kamioia programatutako eguneko 8:00etan irteten da.</item>
-        <item>Bildu eztia biltegira eta saldu merkatuan, edo bete eskaerak prezio hobeagatik.</item>
+        <item>Bildu eztia lantegira eta saldu merkatuan, edo bete eskaerak prezio hobeagatik.</item>
         <item>Varroak hazi egiten da kumearekin eta beroarekin. Tratatu garaiz eta zaindu erreginaren osasuna.</item>
         <item>Klima bakoitzak (Iberia, Hegoafrika, Madagaskar) loraldi desberdinak ditu: bidaiatu zona desblokeatzen duzunean.</item>
         <item>Erlekume-arriskurik badago, zatitu erlauntza populazioa galdu aurretik.</item>
-        <item>Biltegiak eztia motaka gordetzen du. Eskaerek mota jakin bat eskatzen dute: ez nahastu itsu-itsuan.</item>
+        <item>Lantegiak eztia motaka gordetzen du. Eskaerek mota jakin bat eskatzen dute: ez nahastu itsu-itsuan.</item>
     </string-array>
     <string name="hive_detail_prev">Erletegiko aurreko erlauntza</string>
     <string name="hive_detail_next">Hurrengo erlauntza erletegian</string>
@@ -488,7 +488,7 @@
     <string name="market_tab_wholesale">Merkatua</string>
     <string name="market_tab_contracts">Kontratuak</string>
     <string name="market_tab_orders">Eskaerak</string>
-    <string name="market_orders_hint">Denden eta partikularren ezti-eskaerak. Kamioia biltegitik irteten da bezeroaren herrira.</string>
+    <string name="market_orders_hint">Denden eta partikularren ezti-eskaerak. Kamioia lantegitik irteten da bezeroaren herrira.</string>
     <string name="market_orders_empty">Ez dago eskaerarik inguruan gaur.</string>
     <string name="market_orders_prev">Aurreko eskaera orria</string>
     <string name="market_orders_next">Hurrengo eskaeren orrialdea</string>
@@ -500,11 +500,11 @@
     <string name="market_order_en_route">Kamioia bidean.</string>
     <string name="market_order_ok">Kamioia %1$s aldera doa</string>
     <string name="market_order_instant">Ziurtatutako entrega: %1$.0f B</string>
-    <string name="market_order_fail_stock">Ez dago ezti mota horretako nahikorik biltegian.</string>
-    <string name="market_order_fail_truck">Ez dago eskaera hau eraman dezakeen kamioirik libre biltegian.</string>
+    <string name="market_order_fail_stock">Hautatutako lantegian ez dago ezti mota horretako nahikorik.</string>
+    <string name="market_order_fail_truck">Ez dago eskaera hau eraman dezakeen kamioirik libre lantegian.</string>
     <string name="market_order_fail">Eskaera ezin izan da onartu</string>
     <string name="order_truck_title">Aukeratu kamioia.</string>
-    <string name="order_truck_subtitle">Eskaerarekin bere biltegitik irteten da.</string>
+    <string name="order_truck_subtitle">Eskaerarekin bere lantegitik irteten da.</string>
     <string name="market_sell_truck_subtitle">Aukeratu zein kamioik eramaten duen eztia merkatura.</string>
     <string name="order_truck_meta">Kutxa %1$.0f kg · %2$.1f km · %3$.0f B</string>
     <string name="order_truck_level_here">Maila %1$d · eztia hemen dago</string>
@@ -519,6 +519,36 @@
     <string name="market_order_distance_label">Distantzia</string>
     <string name="market_order_distance">%1$.2f km</string>
     <string name="market_order_travel">−%1$.2f</string>
+    <string name="orders_sort_label">Eskariak ordenatu</string>
+    <string name="orders_sort_distance">Distantziaren arabera</string>
+    <string name="orders_sort_flora_distance">Flora eta distantziaren arabera</string>
+    <string name="order_delivery_title">Agindua emanda</string>
+    <string name="order_delivery_thanks">Eskerrik asko!</string>
+    <string name="order_delivery_npc_speech">«Eskerrik asko bidalketagatik!»</string>
+    <string-array name="order_delivery_thanks_lines">
+        <item>Eskerrik asko!</item>
+        <item>Ze puntualtasun!</item>
+        <item>Garaiz!</item>
+        <item>Bikain!</item>
+        <item>Miragarria!</item>
+        <item>Ze usain!</item>
+        <item>Ezin hobea!</item>
+        <item>Hurrengora arte!</item>
+    </string-array>
+    <string-array name="order_delivery_speech_lines">
+        <item>«Eskerrik asko bidalketagatik!»</item>
+        <item>«Ze puntualtasun. Ezti honek usain zoragarria du.»</item>
+        <item>«Behar nuena, hain zuzen. Eskerrik asko!»</item>
+        <item>«Nire bezeroak txundituta geratuko dira.»</item>
+        <item>«Honelako poto bat ez da egunero aurkitzen.»</item>
+        <item>«Ze usain. Itxarotea merezi izan du.»</item>
+        <item>«Ezin hobeto iritsi da. Kontatu nirekin berriz.»</item>
+        <item>«Zorretan nago. Ezti hau bikaina da.»</item>
+    </string-array>
+    <string name="order_delivery_sold_title">Saldutako kg-ak</string>
+    <string name="order_delivery_sold_amount">%1$.1f kg (%2$s)</string>
+    <string name="order_delivery_earned_title">Lortutako Beecoin-ak</string>
+    <string name="order_delivery_earned_amount">+%1$.2f B</string>
     <string name="market_sell_truck">Kamioia merkatutik irteten da %1$.1f kg-rekin</string>
     <string name="hive_harvest_ok_truck">Bildutakoa: %1$.2f kg. Kamioiak jasotzera doa.</string>
     <string name="dashboard_trips_title">Bidaia</string>
@@ -528,10 +558,17 @@
     <string name="dashboard_place_dest">Helmuga</string>
     <string name="dashboard_trip_hive">Erlauntzaren lekualdaketa</string>
     <string name="dashboard_trip_collect">Ezti-bilketa</string>
-    <string name="dashboard_trip_collect_return">Eztia biltegira.</string>
+    <string name="dashboard_trip_collect_return">Eztia lantegira.</string>
     <string name="dashboard_trip_wholesale">Handizkako salmenta</string>
     <string name="dashboard_trip_order">Agindua</string>
     <string name="dashboard_trip_route">%1$s → %2$s</string>
+    <string name="trip_cancel_cd">Bidaiaren ezeztapena</string>
+    <string name="trip_cancel_title">Berretsi bidaiaren ezeztapena</string>
+    <string name="trip_cancel_message">Ziur zaude bidaia hau ezeztatu nahi duzula? Kamioiak buelta emango du dagoen tokitik. Daraman zama eta erlauntzak iristean beren tokira itzuliko dira.</string>
+    <string name="trip_cancel_keep">Jarraitu bidaia</string>
+    <string name="trip_cancel_ok">Ezeztatu bidaia</string>
+    <string name="trip_cancel_done">Kamioia itzultzen ari da. Zama iristean itzuliko da.</string>
+    <string name="trip_cancel_already">Bidaia hori itzultzen ari da jada.</string>
     <string name="dashboard_trip_leg_out">Joan</string>
     <string name="dashboard_trip_leg_back">Etorri</string>
     <string name="dashboard_trip_eta">Geratzen den denbora: %1$s</string>
@@ -605,7 +642,7 @@
     <string name="market_contract_need_hive">Aukeratu gutxienez erlauntz bat.</string>
     <string name="market_contract_need_hive_or_buy">Aukeratu gutxienez erlauntz bat.</string>
     <string name="market_contract_buy_section">Erosi jabetza honetarako</string>
-    <string name="market_contract_buy_hint">Erlauntza berriak kontratatutako lurretan instalatzen dira. Amaitutakoan, biltegira (gune nagusira) eramaten dira.</string>
+    <string name="market_contract_buy_hint">Erlauntza berriak kontratatutako lurretan instalatzen dira. Amaitutakoan, lantegira (gune nagusira) eramaten dira.</string>
     <string name="market_contract_buy_add">Gehitu eskaerari</string>
     <string name="market_contract_buy_cart_empty">Eskaera hutsa. Gehitu nukleoak banan-banan edo kantitatearen arabera.</string>
     <string name="market_contract_buy_cart_line">%1$d × %2$s · %3$.2f B</string>
@@ -628,8 +665,8 @@
     <string name="cd_stat_honey">Stockean</string>
     <string name="cd_stat_honey_harvested">Eztia bilduta</string>
     <string name="cd_stat_bees">Emakumezko langile helduak</string>
-    <string name="cd_stat_warehouse">Erlauntzak biltegian</string>
-    <string name="stock_hive_dialog_title">Erlauntzaren biltegiratzea</string>
+    <string name="cd_stat_warehouse">Erlauntzak lantegian</string>
+    <string name="stock_hive_dialog_title">Erlauntzaren lantegiratzea</string>
     <string name="stock_hive_empty">Ez dago erlauntzarik stockean.</string>
     <string name="stock_hive_place">Jarri hemen</string>
     <string name="stock_hive_stat_pop">Biztanleria</string>
@@ -638,10 +675,10 @@
     <string name="stock_hive_stat_health">Osasuna</string>
     <string name="stock_hive_stat_varroa">Varroa</string>
     <string name="stock_hive_placed_ok">Erlauntza erletegian jarrita.</string>
-    <string name="hex_mark_primary">Markatu biltegi gisa</string>
-    <string name="hex_primary_already">Biltegi nagusia</string>
-    <string name="hex_primary_ok">Lur hau zure biltegia da orain.</string>
-    <string name="hex_own_parcel_kicker_primary">Zure jabetza nagusia · biltegia</string>
+    <string name="hex_mark_primary">Markatu lantegi gisa</string>
+    <string name="hex_primary_already">Lantegi nagusia</string>
+    <string name="hex_primary_ok">Lur hau zure lantegia da orain.</string>
+    <string name="hex_own_parcel_kicker_primary">Zure jabetza nagusia · lantegia</string>
     <string name="hive_card_obreras_label">Emakumezko langileak</string>
     <string name="hive_card_obreras_line">Emakumezko langileak %1$s</string>
     <string name="hive_detail_pop_headline_obreras">%1$s helduen langileak</string>
@@ -750,7 +787,7 @@
     <string name="transhumance_ok">Transhumantzia martxan.</string>
     <string name="apiary_card_orphans">Esleitutako lurrik gabe</string>
     <string name="apiary_yard_buy_hive">Erlauntza berria</string>
-    <string name="apiary_yard_place_stock">Biltegitik jarri</string>
+    <string name="apiary_yard_place_stock">Lantegitik jarri</string>
     <string name="apiary_yard_empty">Erlategi honek oraindik ez du erlauntzarik. Jarri lehenengoa belardian.</string>
     <string name="apiary_yard_visit_title">%2$s(r)en %1$s erlategia</string>
     <string name="apiary_yard_visit_empty">Erlategi honek ez du ikusgai dagoen erlauntzarik.</string>
@@ -820,9 +857,9 @@
     <string name="map_hive_dialog_subtitle">Zer egin nahi duzu erlauntza honekin?</string>
     <string name="hex_purchase_title">Erlategia instalatu</string>
     <string name="hex_purchase_kicker">Erlategi berria</string>
-    <string name="hex_purchase_warehouse_title">Biltegia instalatu</string>
-    <string name="hex_purchase_warehouse_kicker">Biltegi berria</string>
-    <string name="hex_purchase_ok_warehouse">Lurra eta biltegia instalatuta.</string>
+    <string name="hex_purchase_warehouse_title">Lantegia instalatu</string>
+    <string name="hex_purchase_warehouse_kicker">Lantegi berria</string>
+    <string name="hex_purchase_ok_warehouse">Lurra eta lantegia instalatuta.</string>
     <string name="hex_purchase_intro">Erlategi hau instalatzean erlauntzak jarri eta tokiko flora aprobetxa ditzakezu.</string>
     <string name="hex_purchase_price_chip">%1$.2f B</string>
     <string name="hex_purchase_flora_label">Flora basatia</string>
@@ -869,7 +906,7 @@
     <string name="map_road_comarcal">Eskualdekoa</string>
     <string name="map_road_other">Besteak</string>
     <string name="map_help_title">Nola jokatu mapan</string>
-    <string name="map_help_text">Sakatu hexagono libre bat erlategi, biltegi edo egoitza jartzeko. Egoitza bat dago Iberia, Madagascar eta Hegoafrika bakoitzeko: mapa hor zentratzen da sartzean.\n\nErlauntzak erlategiaren barruan erosten dira (Nire erlategiak). Txarteletik sartu, bildu, transhumantzia egin edo mapara itzul zaitezke.\n\nBerdea: lur librea. Gorria: klima oraindik blokeatuta. Morea: zurea. Grisa: beste jokalari batena, begiratu soilik. Horia: kontratu-finka; ez da erosten, Merkatuan onartzen da. Laranja: erreserba-finka; sakatuta fitxa ikusten duzu.\n\nHexagonoaren ertza klima da (klimen legenda). Ikonoek denda, merkatua, erlategia, biltegia, eskaera, kontratua, portua eta nazioarteko merkatua markatzen dituzte.\n\nKamioiaren ibilbideak errepidea jarraitzen du: urdina autobidea, gorria nazionala, horia eskualdekoa, grisa beste bideak.\n\nFlora-iragazkiak landare hori duten lurrak soilik uzten ditu.</string>
+    <string name="map_help_text">Sakatu hexagono libre bat erlategi, lantegi edo egoitza jartzeko. Egoitza bat dago Iberia, Madagascar eta Hegoafrika bakoitzeko: mapa hor zentratzen da sartzean.\n\nErlauntzak erlategiaren barruan erosten dira (Nire erlategiak). Txarteletik sartu, bildu, transhumantzia egin edo mapara itzul zaitezke.\n\nBerdea: lur librea. Gorria: klima oraindik blokeatuta. Morea: zurea. Grisa: beste jokalari batena, begiratu soilik. Horia: kontratu-finka. Ez da erosten. Kontratua mapan agertzen da dagokionean, zure mailaren eta loratzearen arabera.\n\nHexagonoaren ertza klima da (klimen legenda). Ikonoek denda, merkatua, erlategia, lantegia, eskaera, kontratua, portua eta nazioarteko merkatua markatzen dituzte.\n\nKamioiaren ibilbideak errepidea jarraitzen du: urdina autobidea, gorria nazionala, horia eskualdekoa, grisa beste bideak.\n\nFlora-iragazkiak landare hori duten lurrak soilik uzten ditu.</string>
     <string name="map_cd_move_flora_filter">Flora-iragazkia mugitu</string>
     <string name="map_flora_filter_title">Flora</string>
     <string name="map_flora_filter_all">Guztiak</string>
@@ -882,7 +919,8 @@
     <string name="hex_purchase_native_note">Ez dago ereinik ez itxaronik: lurrak jada flora mota hori dakar.</string>
     <string name="hex_purchase_name_label">Erlategiaren izena</string>
     <string name="hex_purchase_name_hint">Adib. Nire iparraldeko erlategia</string>
-    <string name="hex_purchase_name_required">Idatzi erlategiaren izen bat</string>
+    <string name="hex_purchase_name_required">Idatzi gutxienez 2 letra</string>
+    <string name="apiary_rename_title">Erlategiaren izena</string>
     <string name="flora_display_romero">Erromeroa</string>
     <string name="flora_display_tomillo">Ezkaia</string>
     <string name="flora_display_bosque">Basoa</string>
@@ -893,6 +931,7 @@
     <string name="flora_display_neret">Neret</string>
     <string name="flora_display_arboc">Gurbitza</string>
     <string name="flora_display_naranjos">Laranjondo-lorea</string>
+    <string name="crop_name_naranjos">Laranjondoa</string>
     <string name="flora_display_almendros">Arbendolondoa</string>
     <string name="flora_display_cerezos">Gereziondoa</string>
     <string name="hive_sell_button">Erlauntza saldu (%1$.2f B)</string>
@@ -911,7 +950,7 @@
     <string name="map_legend_shop">Denda</string>
     <string name="map_legend_market">Merkatua</string>
     <string name="map_legend_apiary">Erlategia</string>
-    <string name="map_legend_warehouse">Biltegia</string>
+    <string name="map_legend_warehouse">Lantegia</string>
     <string name="map_legend_order">Eskaera</string>
     <string name="map_legend_contract">Kontratua</string>
     <string name="map_legend_port">Portua</string>
@@ -944,8 +983,8 @@
     <string name="flora_display_sisal">Sisala</string>
     <string name="hex_purchase_confirm">Instalatu</string>
     <string name="hex_purchase_ok">Erlategia instalatuta.</string>
-    <string name="hex_purchase_also_warehouse">Biltegia ere erosi (300,00 B)</string>
-    <string name="hex_purchase_ok_with_warehouse">Erlategia eta biltegia instalatuta.</string>
+    <string name="hex_purchase_also_warehouse">Lantegia ere erosi (300,00 B)</string>
+    <string name="hex_purchase_ok_with_warehouse">Erlategia eta lantegia instalatuta.</string>
     <string name="hex_open_apiary_yard">Erlategia ireki</string>
     <string name="dashboard_flora_plantings_section">Abian diren flora-ereintzak</string>
     <string name="map_plant_flora_button">Labore bat erein</string>
@@ -965,7 +1004,7 @@
     <string name="map_transhumance_cancelled">Transhumantzia bertan behera utzita.</string>
     <string name="map_transhumance_confirm_title">Transhumantzia baieztatu</string>
     <string name="map_transhumance_confirm_ok">Lekualdatu</string>
-    <string name="map_transhumance_confirm_message">Kostua: %1$.2f B. Eguneko kalkuluaren 8:00ak baino lehen iritsi behar du. Hotz muturrekoan edo bero handian koloniak osasuna eta erleak galtzen ditu; klima epelak berreskuratzen ditu.</string>
+    <string name="map_transhumance_confirm_message">Kostua: %1$.2f B. Hotz muturrekoan edo bero handian koloniak osasuna eta erleak galtzen ditu; klima epelak berreskuratzen ditu.</string>
     <string name="map_transhumance_contract_confirm_message">Kostua: %1$.2f B. Kontratuaren lehen egunerako programatuko da; ordu arte erlauntzak dagoen tokian jarraitzen du lore-bilketan.</string>
     <string name="map_transhumance_busy">Erlauntza hau oraindik bidean dago.</string>
     <string name="map_transhumance_day_change_title">Egun-aldaketa</string>
@@ -1020,6 +1059,19 @@
     <string name="cd_worker_trend_up">Langileen hazkundea</string>
     <string name="cd_worker_trend_down">Langileen jaitsiera</string>
     <string name="hive_split_ok">Erlauntza zatituta: nukleoa lursail berean dago.</string>
+    <string name="hive_split_full_title">Erlategia beteta</string>
+    <string name="hive_split_full_message">Erlategi honek 10 erlauntza ditu jada. Aukeratu beste bat tokiarekin. Erlauntza berria hara joango da. Gertuenak lehenengo.</string>
+    <string name="hive_split_dest_row">%1$s · %2$d libre · %3$.0f km</string>
+    <string name="hive_split_no_room">Ez duzu beste erlategirik toki librearekin.</string>
+    <string name="hive_split_truck_title">Aukeratu kamioia</string>
+    <string name="hive_split_truck_message">Kamioiak erlauntza %1$s-ra eramateko tokiarekin. Gertuenak lehenengo.</string>
+    <string name="hive_split_truck_row">%1$s · %2$d toki · %3$.0f km</string>
+    <string name="hive_split_no_truck">Ez dago kamioi librerik erlauntza baterako tokiarekin.</string>
+    <string name="hive_split_send_title">Berretsi bidalketa</string>
+    <string name="hive_split_send_message">Erlauntza sortu eta %1$s-ra bidali %2$s kamioiarekin?</string>
+    <string name="hive_split_sent">Erlauntza sortuta. Kamioiak aukeratutako erlategira eramaten du.</string>
+    <string name="hive_split_truck_taken">Kamioi horretan ez dago tokirik. Erlauntza helmugako erlategian dago jada.</string>
+    <string name="hive_split_too_late">Bidaia ez da sartzen eguna itxi aurretik. Erlauntza helmugako erlategian geratzen da.</string>
     <string name="dashboard_no_event_title">Gertaera aktiborik gabe</string>
     <string name="dashboard_no_event_subtitle">Laster gertaera bereziak gehituko ditugu.</string>
     <string name="dashboard_swarm_risk_title">Erlekume-arriskua</string>
@@ -1069,8 +1121,10 @@
     <string name="shop_title">Denda</string>
     <string name="shop_balance">Saldoa: %1$.0f B</string>
     <string name="shop_buy">Erosi</string>
+    <string name="shop_bought_units">%1$d unitate erosita.</string>
     <string name="shop_price_eur">%1$.2f B</string>
     <string name="shop_owned">Dituzu: %1$d</string>
+    <string name="shop_insufficient_beecoins">Ez duzu nahiko BeeCoin erosteko</string>
     <string name="shop_item_treat">Varroa-kontrako tratamendua</string>
     <string name="shop_item_treat_desc">7 eguneko tratamendua. Erlauntza batean aplikatzean gastatzen da.</string>
     <string name="shop_item_feed">Erlauntza-elikagaia</string>
@@ -1156,12 +1210,12 @@
     <string name="truck_live_ask_message">Transhumantzia-kamioia mapan denbora errealean (~70 km/h) ikusi nahi duzu? Aplikazioak berak deskargatu eta instalatzen ditu Iberia (~160 MB), Hegoafrika eta Madagaskarreko errepide-mapak jokoaren karpetan: ez da ezer deskonprimitu behar. Bidaia mugikorrean kalkulatzen da.</string>
     <string name="truck_live_ask_yes">Bai, kamioia ikusi</string>
     <string name="truck_live_ask_no">Orain ez</string>
-    <string name="truck_live_download_title">Errepideak instalatzen</string>
+    <string name="truck_live_download_title">Mapak deskargatzen</string>
     <string name="truck_live_download_title_region">Errepideak instalatzen (%1$s)</string>
     <string name="truck_live_download_desc">Grahoa jokoaren karpetan gordetzen…</string>
     <string name="truck_live_download_started">Aplikazioa errepide-mapa bigarren planoan instalatzen ari da. Ez duzu ezer deskonprimitu behar.</string>
     <string name="truck_live_install_kicker">Mapa</string>
-    <string name="truck_live_install_wait">Itxaron instalazioa amaitu arte. Kamioiak errepide hauek erabiliko ditu mapan.</string>
+    <string name="truck_live_install_wait">Iberia, Hegoafrika eta Madagaskarreko errepide-mapak deskargatzen ari dira. Kamioiak bidaietan erabiliko ditu.</string>
     <string name="truck_live_install_connecting">Konektatzen…</string>
     <string name="truck_live_install_percent">%1$d %%</string>
     <string name="truck_live_install_bytes">%1$s / %2$s MB</string>
@@ -1178,7 +1232,7 @@
     <string name="truck_route_error_copy">Kopiatu</string>
     <string name="truck_route_error_copied">Errorea kopiatuta. Bidali berrikusteko.</string>
     <string name="fleet_shop_title">Flota</string>
-    <string name="fleet_shop_hint">Kamioiak biltegietan eta itsasontziak portuetan. Mailak karga eta abiadura igotzen ditu.</string>
+    <string name="fleet_shop_hint">Kamioiak lantegietan eta itsasontziak portuetan. Mailak karga eta abiadura igotzen ditu.</string>
     <string name="fleet_buy_truck">Kamioia erosi (1.200 B)</string>
     <string name="fleet_buy_ship">Itsasontzia erosi (6.000 B)</string>
     <string name="fleet_none">Oraindik ez duzu ibilgailurik.</string>
@@ -1189,13 +1243,13 @@
     <string name="fleet_ship_line">Itsasontzia m.%1$d · %2$.0f kg · %3$.0f km/h · %4$s</string>
     <string name="fleet_upgrade">Igo %1$d. mailara (%2$d B)</string>
     <string name="fleet_level_max">Gehienezko maila</string>
-    <string name="fleet_warehouse_trucks">Biltegi honetako kamioiak</string>
-    <string name="fleet_bought_truck">Kamioia dendatik biltegira irteten da.</string>
+    <string name="fleet_warehouse_trucks">Lantegi honetako kamioiak</string>
+    <string name="fleet_bought_truck">Kamioia dendatik lantegira irteten da.</string>
     <string name="fleet_item_truck">Kamioia</string>
-    <string name="fleet_item_truck_desc">Denda honetatik irteten da eta aukeratzen duzun biltegian geratzen da.</string>
+    <string name="fleet_item_truck_desc">Denda honetatik irteten da eta aukeratzen duzun lantegian geratzen da.</string>
     <string name="fleet_item_ship">Itsasontzia</string>
     <string name="fleet_item_ship_desc">Aukeratzen duzun portuan ainguratuta geratzen da. Ez du dendatik bidaia egiten.</string>
-    <string name="fleet_none_trucks">Biltegi honek ez du kamioirik.</string>
+    <string name="fleet_none_trucks">Lantegi honek ez du kamioirik.</string>
     <string name="fleet_none_ships">Ez dago itsasontzirik portu honetan.</string>
     <string name="fleet_bought_ship">Itsasontzia portuan ainguratuta.</string>
     <string name="fleet_upgraded">Ibilgailua hobetuta.</string>
@@ -1231,7 +1285,7 @@
     <string name="fleet_port_buy">Atrakatzea erosi (%1$d B)</string>
     <string name="fleet_port_berth_ok">Atrakatzea erosita.</string>
     <string name="entity_name_hint">Izena</string>
-    <string name="fleet_buy_home_truck">Biltegia</string>
+    <string name="fleet_buy_home_truck">Lantegia</string>
     <string name="fleet_buy_home_ship">Portua</string>
     <string name="fleet_unnamed_truck">Kamioia</string>
     <string name="fleet_unnamed_ship">Itsasontzia</string>
@@ -1240,7 +1294,7 @@
     <string name="fleet_transfer_honey">Eztia</string>
     <string name="fleet_transfer_amount">Kopurua</string>
     <string name="fleet_transfer_kg">%1$.2f kg / %2$.2f kg</string>
-    <string name="fleet_transfer_dest">Helmugako biltegia</string>
+    <string name="fleet_transfer_dest">Helmugako lantegia</string>
     <string name="fleet_transfer_km">%1$.2f km</string>
     <string name="fleet_transfer_cost">%1$.2f B</string>
     <string name="fleet_transfer_discount">Garraio-tarifa, salmenta batena baino baxuagoa.</string>
@@ -1258,7 +1312,7 @@
     <string name="tutorial_skip_all">Saltatu tutoretza</string>
     <string name="tutorial_day">Egun bat aurreratu</string>
     <string name="tutorial_menu">Tutoretza</string>
-    <string name="tutorial_c1_v01">Ni Ramón naiz. Ustiapen hau zurea da. 10.000 B-rekin eta egunetik egunera aurreratzen den egutegiarekin hasten gara. Erleek lan egiten dute zu ez zaudenean.</string>
+    <string name="tutorial_c1_v01">Ni Ramón naiz. Ustiapen hau zurea da. 45.000 B-rekin eta egunetik egunera aurreratzen den egutegiarekin hasten gara. Erleek lan egiten dute zu ez zaudenean.</string>
     <string name="tutorial_c1_v02">Goian zure dirua eta maila daude. Mailaz igotzeak klima berriak irekitzen ditu. Eztia saltzeak, erlategiak instalatzeak eta erlauntzak erosteak esperientzia ematen dute.</string>
     <string name="tutorial_c1_v03">Eguneko klimak erabakitzen du zenbat nektar dagoen. Egun txar batek gutxiago ekoizten du. Koloniak aurrera jarraitzen du.</string>
     <string name="tutorial_c1_v04">Hasiera laburpena da. Erlategiak zure baserriak dira. Mapa instalatzen duzun tokia da. Merkatua eztia ateratzen den tokia da. Hasieratik ere merkatu bat aukeratu eta saldu dezakezu.</string>
@@ -1272,14 +1326,14 @@
     <string name="tutorial_c1_v10b">Aukeratu erleek nektarra aterako dioten lorea. Ukituz grafiko bat irekitzen da: ezti-aldiak eta lore hori urtean zehar erabilgarri dagoen. Orain ezti-aldia duen batekin geratu.</string>
     <string name="tutorial_c1_v11_open">Sakatu erlauntza erlategian.</string>
     <string name="tutorial_c1_v11">Goian eztia, erregina eta Varroa ikusten dituzu. Erreginak kumea markatzen du. Varroa igotzen bada, tratatu. Elikatzeak kontsumoa jaisten du egun eskasetan.</string>
-    <string name="tutorial_c1_v12">Hau Bildu da. Beti 3 kg geratzen dira barruan: erreserba hori koloniaaren janaria da.</string>
-    <string name="tutorial_c1_v16">Biltegirik gabe ez dago bidalketarik, eta uzta harantz doa. Instalatu zure hexagono morean: sakatu lursaila eta aukeratu biltegia. Han gordetzen da eztia eta handik irteten da kamioia.</string>
-    <string name="tutorial_c1_v16_choice">Sakatu Biltegia instalatu.</string>
+    <string name="tutorial_c1_v12">Hau Bildu da. Beti 3 kg geratzen dira barruan: erreserba hori koloniaaren janaria da.\nElikatzeak erleen eztia % 50 gutxiago kontsumitzea eragiten du iraun bitartean.\nVarroa tratatzeak akaroa 7 egunez gelditzen du. Tratamendua dendan erosten da.\nErregina aldatzeak oraingoa ordezten du: hazkuntza haren mende dago.\nTranshumantziak erlauntza beste erlategi batera eramaten du kamioiz. Prezioa distantziaren araberakoa da.</string>
+    <string name="tutorial_c1_v16">Lantegirik gabe ez dago bidalketarik, eta uzta harantz doa. Instalatu zure hexagono morean: sakatu lursaila eta aukeratu lantegia. Han gordetzen da eztia eta handik irteten da kamioia.</string>
+    <string name="tutorial_c1_v16_choice">Sakatu Lantegia instalatu.</string>
     <string name="tutorial_c1_v13">Egun bat aurreratzen dut zikloa ikus dezazun. Partida normalean eguna bakarrik doa.</string>
-    <string name="tutorial_c1_v14">Hasieran, sakatu Bildu. Eztia biltegira doa; gero sakatu Saldu eta aukeratu merkaturik hurbilena edo komeni zaizuna.</string>
+    <string name="tutorial_c1_v14">Hasieran, sakatu Bildu. Eztia lantegira doa; gero sakatu Saldu eta aukeratu merkaturik hurbilena edo komeni zaizuna.</string>
     <string name="tutorial_c1_v15_open">Ireki merkatua xehetasun gehiago ikusteko. Hasieratik ere merkatu bat aukeratu eta saldu dezakezu.</string>
-    <string name="tutorial_c1_v15">Mota bakoitzak bere prezioa eta eskaria ditu. Bidalketa biltegitik probintziako merkatura irteten da, kamioiak eztia jaso duenean. Eskaeretan entrega konkretuak daude. Kontratuetan erlauntzak beste baserri batera eramaten dituzu eta zerbitzuagatik kobratzen duzu.</string>
-    <string name="tutorial_c1_v18">Hori da ofizioa: erlategia, erlauntza, eguna, uzta, biltegia eta merkatua. Zerbait berria egiten duzunean, itzuliko naiz. Kapitulu hau panelaren menutik errepika dezakezu.</string>
+    <string name="tutorial_c1_v15">Mota bakoitzak bere prezioa eta eskaria ditu. Bidalketa lantegitik probintziako merkatura irteten da, kamioiak eztia jaso duenean. Eskaeretan entrega konkretuak daude. Kontratuetan erlauntzak beste baserri batera eramaten dituzu eta zerbitzuagatik kobratzen duzu.</string>
+    <string name="tutorial_c1_v18">Hori da ofizioa: erlategia, erlauntza, eguna, uzta, lantegia eta merkatua. Zerbait berria egiten duzunean, itzuliko naiz. Kapitulu hau panelaren menutik errepika dezakezu.</string>
     <string name="tutorial_c2_v01">Elikatzeak egun bat edo zazpi estaltzen ditu. Egun horietan koloniak ezti gutxiago kontsumitzen du.</string>
     <string name="tutorial_c2_v02">Varroa-kontrako tratamenduak 7 egun irauten du. Igotzen uzten baduzu, kolonia behera dator.</string>
     <string name="tutorial_c2_v03">Erregina berri batek kumearen kalitatea aldatzen du. 3 kg-ko erreserba ez da ukitzen biltzean.</string>
@@ -1287,7 +1341,7 @@
     <string name="tutorial_c3_v02">Laborea ereiten da, itxaroten du eta beste ezti mota bat ematen du.</string>
     <string name="tutorial_c4_v01">Erlauntzak errepidez bidaiatzen dute. Bidean dauden bitartean ez dute helmugan ekoizten.</string>
     <string name="tutorial_c4_v02">Loraldi bati jarraitzeko edo polinizazio-kontratu bat betetzeko balio du.</string>
-    <string name="tutorial_c5_v01">Eskaera bat biltegiko eztiarekin eta bezeroarainoko kamioiarekin betetzen da.</string>
+    <string name="tutorial_c5_v01">Eskaera bat lantegiko eztiarekin eta bezeroarainoko kamioiarekin betetzen da.</string>
     <string name="tutorial_c5_v02">Kontratu bat erlauntzak baserri horretako erlategira eramanez betetzen da. Zerbitzuagatik kobratzen duzu, ez eztiagatik.</string>
     <string name="tutorial_c5_v03">Ireki Merkatua menua.</string>
     <string name="tutorial_c5_v04">Sakatu Kontratuak.</string>
@@ -1299,11 +1353,11 @@
     <string name="tutorial_c5_v10">Bidaia erlauntza bakoitza eramateak balio duena da. Itzulera ez da kobratzen.</string>
     <string name="tutorial_c5_v11">Saria gutxienekoa betetzen baduzu jasotzen duzun ordainsaria da. Biltzen duten eztia zurea izaten jarraitzen du.</string>
     <string name="tutorial_c5_v12">Erlauntzak transhumatu-k baserrira doazenak aukeratzen ditu. Orain ez da egin behar.</string>
-    <string name="tutorial_c6_v01">Kamioiak eztia darama eta, mailaren arabera, erlauntzak. Plazak biltegiaren mailatik ateratzen dira.</string>
+    <string name="tutorial_c6_v01">Kamioiak eztia darama eta, mailaren arabera, erlauntzak. Plazak lantegiaren mailatik ateratzen dira.</string>
     <string name="tutorial_c6_v02">Irten aurretik jatorria, helmuga, kobratzea, bidaia-kostua eta neto ikusten dituzu. Ibilbidea mapan marraztuta geratzen da.</string>
     <string name="tutorial_c7_v01">%1$s klima irekita dago jada. Mapan, hexagono horiek gorrritik berdera pasatzen dira.</string>
     <string name="tutorial_c8_v01">30. mailatik aurrera portua erabil dezakezu. Kuota 10.000 B da. Han itsasontzi bat ainguratzen duzu. Atrakatzea zurea da eta 2.500 B balio du.</string>
-    <string name="tutorial_c8_v02">Itsasontziak eztia garraiatzen du eskualdeen artean. Ez du erlauntzarik garraiatzen. Kamioiak karga biltegitik portura eramaten du, eta itsasontziak itsasoz jarraitzen du.</string>
+    <string name="tutorial_c8_v02">Itsasontziak eztia garraiatzen du eskualdeen artean. Ez du erlauntzarik garraiatzen. Kamioiak karga lantegitik portura eramaten du, eta itsasontziak itsasoz jarraitzen du.</string>
     <string name="tutorial_c8_v03">Itsasontziaren ibilbidea mapan ikusten da, kamioia errepidean bezala.</string>
     <string name="tutorial_c8_v04">35. mailan 15.000 B ordaintzen dituzu nazioarteko merkatu bakoitzeko. Eztia gehiago balio duen tokian saltzen duzu, bidaia kenduta.</string>
     <string name="profile_language">Hizkuntza</string>
@@ -1349,12 +1403,12 @@
     <string name="hive_alerts_none">Alertarik gabe</string>
     <string name="hive_honey_in_hive">Erlauntzan: %1$s kg</string>
     <string name="fleet_name_length">Jarri 2 eta 32 letra arteko izena.</string>
-    <string name="fleet_need_warehouse">Lehenik eraiki biltegi bat.</string>
+    <string name="fleet_need_warehouse">Lehenik eraiki lantegi bat.</string>
     <string name="fleet_home_slots">%1$s · %2$d plaza</string>
-    <string name="fleet_unnamed_warehouse">Biltegia</string>
+    <string name="fleet_unnamed_warehouse">Lantegia</string>
     <string name="fleet_need_berth">Ordaindu portu baten kuota eta utzi atrakatze libre bat itsasontzia erosi aurretik.</string>
-    <string name="fleet_warehouse_no_honey">Biltegi honek ez du eztirik.</string>
-    <string name="fleet_no_dest_warehouse">Ez dago beste helmugako biltegirik.</string>
+    <string name="fleet_warehouse_no_honey">Lantegi honek ez du eztirik.</string>
+    <string name="fleet_no_dest_warehouse">Ez dago beste helmugako lantegirik.</string>
     <string name="transhumance_no_free">Ez dago erlauntza librerik transhumatzeko.</string>
     <string name="hive_unnamed">Erlauntza</string>
     <string name="rank_apprentice">Ikaslea</string>
@@ -1409,7 +1463,112 @@
     <string name="hive_health_band_critical">Kritikoa</string>
     <string name="hive_health_band_collapse">Hondamen hurbila</string>
     <string name="honey_reserves_title">Ezti erreserba</string>
-    <string name="honey_reserves_total">Guztira biltegietan: %1\$.1f kg</string>
+    <string name="honey_reserves_total">Guztira lantegietan: %1\$.1f kg</string>
     <string name="honey_reserves_empty">Ez dago eztirik erreserban gaur egun.</string>
     <string name="tutorial_c5_v13">Kontratuekin hasteko, gogoratu sasoi horretako loraldiak dituzten laboreak zure mailarako desblokeatuta egon behar dutela. Begiratu Madagaskar eta Iberia lurralde bakoitzaren urtaro meteorologikoaren arabera.</string>
+    <string name="apiary_3d_open">Ikusi 3Dn</string>
+    <string name="apiary_3d_use_hive_card">Ekintza hau erlauntzaren fitxatik egiten da.</string>
+    <string name="crop_tick_tree_due">%2$s(e)ko %1$s inausi eta ongarritu behar dira: sartu apiarioan 3Dn eta hitz egin nekazariarekin.</string>
+    <string name="apiary_yard_maint_banner">Zure fruta-arbolek mantentzea behar dute. Sartu 3Dn eta hitz egin nekazariarekin.</string>
+    <string name="apiary_3d_stung_locked">Gehiegi ziztatu zaituzte: ezin duzu apiario hau 3Dn bisitatu bihar arte.</string>
+    <string name="workshop_name">Lantegia</string>
+    <string name="workshop_format_bulk">bidoia</string>
+    <string name="workshop_format_jar_1000">1 kg-ko potea</string>
+    <string name="workshop_format_jar_500">500 g-ko potea</string>
+    <string name="workshop_format_jar_250">250 g-ko potea</string>
+    <string name="market_order_ask_jars">%1$d × %2$s (%3$s)</string>
+    <string name="market_order_ask_drum">%1$.2f kg %2$s bidoietan</string>
+    <string name="workshop_mix_part">%1$d × %2$s</string>
+    <string name="market_order_ask_mix">%2$s: %1$s</string>
+    <string name="market_order_fail_jars">Ez dago pote nahikorik. Poteak ontziratu ziren lantegitik ateratzen dira.</string>
+    <string name="harvest_need_workshop">Lantegi bat behar duzu eztia ateratzeko.</string>
+    <string name="workshop_subtitle">Abaraskak harreran, desoperkulatzean, erauzketan, heltzean eta ontziratzean igarotzen dira. Dena aurrera doa aplikazioa itxita egonda ere.</string>
+    <string name="workshop_build_title">Eraiki zure lantegia</string>
+    <string name="workshop_build_intro">Lantegi bakoitzak eztia gorde eta lantzen du. Harrera-gela dakar; gainerako makinak aparte erosten dira.</string>
+    <string name="workshop_build_here">Eraiki hemen: %1$s (%2$d B)</string>
+    <string name="workshop_build_no_warehouse">Lehenik lantegi bat behar duzu. Instalatu mapatik.</string>
+    <string name="workshop_go_map">Joan mapara</string>
+    <string name="workshop_built_at">Lantegia: %1$s</string>
+    <string name="workshop_change_obrador">aldatu lantegia</string>
+    <string name="workshop_machines">Makineria</string>
+    <string name="workshop_machine_reception">Harrera-gela</string>
+    <string name="workshop_machine_uncapper">Desoperkulagailua</string>
+    <string name="workshop_machine_extractor">Erauzgailua</string>
+    <string name="workshop_machine_maturer">Heltzeko depositua</string>
+    <string name="workshop_machine_packer">Ontziratzeko makina</string>
+    <string name="workshop_machine_missing">Erosi gabe</string>
+    <string name="workshop_machine_level">%1$d. maila (%2$d)</string>
+    <string name="workshop_machine_info_reception">%1$s atseden. Sorta-mugarik gabe.</string>
+    <string name="workshop_machine_info_time">%1$s %2$d kg bakoitzeko</string>
+    <string name="workshop_machine_info_packer">%1$d kg sorta bakoitzeko oinarrizko denboran</string>
+    <string name="workshop_machine_info_maturer">Deposituak: %1$d · %2$s atseden</string>
+    <string name="workshop_machine_buy">Erosi (%1$d B)</string>
+    <string name="workshop_machine_upgrade">Hobetu %1$d. mailara (%2$d B)</string>
+    <string name="workshop_machine_max">Gehienezko maila</string>
+    <string name="workshop_machine_bought">Makina prest.</string>
+    <string name="workshop_batches">Sortak</string>
+    <string name="workshop_batches_empty">Ez dago sortarik. Biltzen dituzun abaraskak hona iritsiko dira.</string>
+    <string name="workshop_batch_title">%1$s · %2$s kg</string>
+    <string name="workshop_batch_from">Jatorria: %1$s</string>
+    <string name="workshop_batch_running">%1$s · %2$s falta</string>
+    <string name="workshop_batch_queued">Ilaran: %1$s</string>
+    <string name="workshop_batch_no_machine">Geldirik: %1$s falta da</string>
+    <string name="workshop_batch_need_format">Aukeratu ontzia ontziratzeko</string>
+    <string name="workshop_batch_format">Ontzia: %1$s</string>
+    <string name="workshop_batch_choose">Aukeratu ontzia</string>
+    <string name="workshop_batch_change">Aldatu ontzia</string>
+    <string name="workshop_format_title">Nola ontziratzen dituzu %2$s-ko %1$s kg?</string>
+    <string name="workshop_format_option_bulk">%1$s · lantegira doa · prezioa ×%2$.2f</string>
+    <string name="workshop_format_option_jars">%1$s · %2$d pote · prezioa ×%3$.2f</string>
+    <string name="workshop_stock">Ontziratuta</string>
+    <string name="workshop_stock_empty">Oraindik ez dago poterik. Bidoia zuzenean lantegira doa.</string>
+    <string name="workshop_stock_row">%1$d × %2$s (%3$s)</string>
+    <string name="workshop_sell_jars">Saldu</string>
+    <string name="workshop_sell_title">Saldu %1$s (%2$s)</string>
+    <string name="workshop_sell_amount">%1$d / %2$d pote</string>
+    <string name="workshop_sell_hint">Lantegi honetako kamioi batek ezti hori eskatzen duen merkatu hurbilenera eramaten ditu.</string>
+    <string name="workshop_sell_confirm">Bidali merkatura</string>
+    <string name="workshop_sell_started">Kamioia merkatura abiatu da %1$d poterekin.</string>
+    <string name="workshop_sell_instant">%1$d pote salduta.</string>
+    <string name="workshop_sell_no_demand">Ez dago orain ezti hori eskatzen duen merkaturik.</string>
+    <string name="workshop_sell_no_cash">Ez duzu garraiorako BeeCoinik.</string>
+    <string name="workshop_sell_no_truck">Ez dago kamioi librerik lantegi honetan.</string>
+    <string name="workshop_sell_failed">Ezin izan da saldu.</string>
+    <string name="workshop_wax">Argizaria</string>
+    <string name="workshop_wax_kg">%1$.2f kg · %2$.0f B/kg ordaintzen da</string>
+    <string name="workshop_sell_wax">Saldu argizaria</string>
+    <string name="workshop_wax_sold">Argizaria salduta.</string>
+    <string name="workshop_built_ok">Lantegia eraikita.</string>
+    <string name="workshop_need_title">Lantegi bat behar duzu</string>
+    <string name="workshop_need_message">Eztia lantegi batean erauzten da. Erosi bat mapan bildu ahal izateko.</string>
+    <string name="workshop_need_go">Joan lantegira</string>
+    <string name="workshop_dash_build">Eraiki zure lantegia uzta biltzeko.</string>
+    <string name="workshop_dash_format">Ontziaren zain dauden sortak: %1$d</string>
+    <string name="workshop_dash_machine">%1$s falta da eta sortak zain daude.</string>
+    <string name="workshop_dash_running">Martxan dauden sortak: %1$d</string>
+    <string name="workshop_dash_stock">Saltzeko prest: %1$d pote</string>
+    <string name="workshop_dash_wax">Saltzeko argizaria: %1$.2f kg</string>
+    <string name="workshop_warehouse_open">Ireki lantegia</string>
+    <string name="workshop_warehouse_build">Eraiki lantegia hemen</string>
+    <string name="workshop_err_pick_parcel">Aukeratu zure lursail bat.</string>
+    <string name="workshop_err_already">Dagoeneko baduzu lantegi bat.</string>
+    <string name="workshop_err_need_warehouse">Lantegi bat behar duzu.</string>
+    <string name="workshop_err_login">Hasi saioa lantegia erabiltzeko.</string>
+    <string name="workshop_err_build_first">Lehenik eraiki lantegia.</string>
+    <string name="workshop_err_max">Makina hau gehienezko mailan dago.</string>
+    <string name="workshop_err_not_upgradable">Harrera-gela ezin da hobetu.</string>
+    <string name="workshop_err_none">Ez duzu lantegirik.</string>
+    <string name="workshop_err_packing">Sorta hau ontziratzen ari dira dagoeneko.</string>
+    <string name="workshop_err_no_wax">Ez duzu argizaririk saltzeko.</string>
+    <!-- Tutorialaren 9. eta 10. kapituluak: lantegia. -->
+    <string name="tutorial_c9_v01">Hemendik aurrera, biltzen duzun eztia lantegira doa. Han erauzi eta ontziratzen da. Lantegirik gabe ezin da bildu.</string>
+    <string name="tutorial_c9_v02">Sakatu Lantegia Hasieran.</string>
+    <string name="tutorial_c9_v03">Lantegi bakoitzak eztia gorde eta lantzen du. Harrera-gela dakar, eta ontziratzen duzuna hementxe geratzen da.</string>
+    <string name="tutorial_c9_v04">Erosi desoperkulagailua, erauzgailua, heltzeko depositua eta ontziratzeko makina. 10.500 B dira. Bat falta bada, sortak hor gelditzen dira.</string>
+    <string name="tutorial_c9_v05">Sorta bakoitza harreratik, desoperkulaziotik, erauzketatik, heltzetik eta ontziratzetik pasatzen da. Makina bakoitzak sorta bat lantzen du aldi berean, eta besteak ilaran zain daude. Denborak aurrera egiten du aplikazioa itxita egon arren.</string>
+    <string name="tutorial_c9_v06">Orain bil dezakezu. Kamioiak gorakinak lantegira eramaten ditu. Lehen sorta iristen denean, nola ontziratu erakutsiko dizut.</string>
+    <string name="tutorial_c10_v01">Zure lehen sorta iritsi da. Hemen ikusten duzu zein makinatan dagoen eta zenbat falta zaion.</string>
+    <string name="tutorial_c10_v02">Sakatu Aukeratu ontzia. Bidoia lantegira doa eta solte saltzen da. Poteak askoz hobeto ordaintzen dira, eta zenbat eta txikiagoa, orduan eta gehiago kiloko, baina gehiago behar dute ontziratzeko.</string>
+    <string name="tutorial_c10_v03">Poteak lantegian geratzen dira. Saldu merkatuan edo eraman poteak eskatzen dituzten eskaeretara. Argizaria desoperkulatzean ateratzen da eta 9 B/kg-an saltzen da.</string>
+    <string name="tutorial_c10_v04">Makina baten maila bakoitzak denbora laburtzen du eta sorta bakoitzean ezti gehiago sartzen da. Heltzeko depositu bat gehitzen da maila bakoitzean.</string>
 </resources>

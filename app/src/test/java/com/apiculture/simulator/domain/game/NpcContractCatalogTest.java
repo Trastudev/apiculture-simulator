@@ -44,21 +44,13 @@ public class NpcContractCatalogTest {
     }
 
     @Test
-    public void mountainIsSparserThanHuerta() {
-        int med = 0;
-        int mtn = 0;
-        for (int q = 0; q < 250; q++) {
-            HexParcel levante = parcel("hex_iberia_" + q + "_2", 39.4, -0.3, 20, false);
-            if (NpcContractCatalog.isNpcFarm(levante)) {
-                med++;
-            }
-            HexParcel gredos = parcel("hex_iberia_" + q + "_2", 40.25, -5.2, 2100, false);
-            if (NpcContractCatalog.isNpcFarm(gredos)) {
-                mtn++;
-            }
-        }
-        Assert.assertTrue("huerta should yield farms, got " + med, med > 0);
-        Assert.assertTrue("mountain should be sparser: med=" + med + " mtn=" + mtn, mtn <= med);
+    public void anyParcelCanHostAContract() {
+        HexParcel levante = parcel("hex_iberia_12_-3", 39.4, -0.3, 20, false);
+        HexParcel gredos = parcel("hex_iberia_9_2", 40.25, -5.2, 2100, false);
+        Assert.assertFalse(NpcContractCatalog.isNpcFarm(levante));
+        Assert.assertFalse(NpcContractCatalog.isNpcFarm(gredos));
+        Assert.assertFalse(NpcContractCatalog.farmsFor(levante).isEmpty());
+        Assert.assertFalse(NpcContractCatalog.farmsFor(gredos).isEmpty());
     }
 
     @Test
@@ -105,9 +97,6 @@ public class NpcContractCatalogTest {
         java.util.Set<String> crops = new java.util.HashSet<>();
         for (int q = 0; q < 80; q++) {
             HexParcel p = parcel("hex_iberia_" + q + "_3", 39.4, -0.3, 20, false);
-            if (!NpcContractCatalog.isNpcFarm(p)) {
-                continue;
-            }
             for (NpcContractFarm farm : NpcContractCatalog.farmsFor(p)) {
                 crops.add(farm.flora);
                 quarters.add(NpcContractCatalog.bloomQuarter(p, farm.flora));
@@ -124,14 +113,7 @@ public class NpcContractCatalogTest {
 
     @Test
     public void farmsFor_sixDistinctCropsCoverSeasonIncludingWinter() {
-        HexParcel iberia = null;
-        for (int q = 0; q < 200 && iberia == null; q++) {
-            HexParcel p = parcel("hex_iberia_" + q + "_4", 39.4, -0.3, 20, false);
-            if (NpcContractCatalog.isNpcFarm(p)) {
-                iberia = p;
-            }
-        }
-        Assert.assertNotNull(iberia);
+        HexParcel iberia = parcel("hex_iberia_0_4", 39.4, -0.3, 20, false);
         java.util.List<NpcContractFarm> iberiaFarms = NpcContractCatalog.farmsFor(iberia);
         Assert.assertEquals(NpcContractCatalog.CONTRACTS_PER_FARM, iberiaFarms.size());
         java.util.Set<String> iberiaCrops = new java.util.HashSet<>();
@@ -151,14 +133,7 @@ public class NpcContractCatalogTest {
         Assert.assertTrue("Iberia should span into late season, max=" + iberiaMax + " min=" + iberiaMin,
                 iberiaMax >= 170);
 
-        HexParcel za = null;
-        for (int q = 0; q < 200 && za == null; q++) {
-            HexParcel p = parcel("hex_za_" + q + "_-8", -25.7, 28.2, 1400, false);
-            if (NpcContractCatalog.isNpcFarm(p)) {
-                za = p;
-            }
-        }
-        Assert.assertNotNull(za);
+        HexParcel za = parcel("hex_za_0_-8", -25.7, 28.2, 1400, false);
         java.util.List<NpcContractFarm> zaFarms = NpcContractCatalog.farmsFor(za);
         Assert.assertEquals(NpcContractCatalog.CONTRACTS_PER_FARM, zaFarms.size());
         java.util.Set<String> zaCrops = new java.util.HashSet<>();
@@ -187,14 +162,7 @@ public class NpcContractCatalogTest {
 
     @Test
     public void openFarmsFor_onlyHorizonAndShortSlots() {
-        HexParcel iberia = null;
-        for (int q = 0; q < 200 && iberia == null; q++) {
-            HexParcel p = parcel("hex_iberia_" + q + "_4", 39.4, -0.3, 20, false);
-            if (NpcContractCatalog.isNpcFarm(p)) {
-                iberia = p;
-            }
-        }
-        Assert.assertNotNull(iberia);
+        HexParcel iberia = parcel("hex_iberia_0_4", 39.4, -0.3, 20, false);
         java.util.List<int[]> slots = NpcContractCatalog.packSlots(iberia, "Campo de girasoles");
         Assert.assertTrue("need several short tramos, got " + slots.size(), slots.size() >= 2);
         for (int[] slot : slots) {
@@ -236,14 +204,7 @@ public class NpcContractCatalogTest {
 
     @Test
     public void farmForSlot_matchesExactStartNotLaterTramo() {
-        HexParcel iberia = null;
-        for (int q = 0; q < 200 && iberia == null; q++) {
-            HexParcel p = parcel("hex_iberia_" + q + "_4", 39.4, -0.3, 20, false);
-            if (NpcContractCatalog.isNpcFarm(p)) {
-                iberia = p;
-            }
-        }
-        Assert.assertNotNull(iberia);
+        HexParcel iberia = parcel("hex_iberia_0_4", 39.4, -0.3, 20, false);
         java.util.List<int[]> slots = NpcContractCatalog.packSlots(iberia, "Campo de girasoles");
         Assert.assertTrue(slots.size() >= 2);
         NpcContractFarm first = NpcContractCatalog.farmForSlot(iberia, "Campo de girasoles", slots.get(0)[0]);

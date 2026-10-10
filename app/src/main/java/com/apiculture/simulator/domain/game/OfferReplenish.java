@@ -28,6 +28,8 @@ public final class OfferReplenish {
 
     /** Radio para considerar una oferta «cerca» de la sede al rellenar el pool. */
     public static final double NEAR_SPAWN_KM = 180.0;
+    /** Vida de una comanda desde que aparece. */
+    public static final long ORDER_LIFE_MS = 8L * 60L * 60L * 1000L;
 
     public static long utcDayEndEpochMs(int utcDayKey) {
         LocalDate day = GameCalendar.fromDayKey(utcDayKey);

@@ -1,5 +1,6 @@
 package com.apiculture.simulator.presentation.market;
 
+import android.app.Activity;
 import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -19,10 +20,13 @@ import androidx.fragment.app.Fragment;
 
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.repository.HoneyLogistics;
+import com.apiculture.simulator.data.repository.OrderReceipts;
 import com.apiculture.simulator.databinding.ItemHoneyOrderBinding;
 import com.apiculture.simulator.domain.game.HoneyOrder;
 import com.apiculture.simulator.domain.parcel.HexParcel;
 import com.apiculture.simulator.presentation.hive.FleetDialogs;
+import com.apiculture.simulator.presentation.hive.HiveSiteSummaryUi;
+import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -141,7 +145,7 @@ public final class HoneyOrderDialogs {
                 list.addView(divider);
             }
         }
-        com.google.android.material.button.MaterialButton ok =
+        MaterialButton ok =
                 dialog.findViewById(R.id.btn_harvest_trips_ok);
         ok.setText(R.string.order_truck_confirm);
         ok.setOnClickListener(v -> {
@@ -156,6 +160,76 @@ public final class HoneyOrderDialogs {
         dialog.findViewById(R.id.btn_harvest_trips_cancel).setOnClickListener(v -> dialog.dismiss());
         if (onClose != null) {
             dialog.setOnDismissListener(d -> onClose.run());
+        }
+        dialog.show();
+    }
+
+    public static void showDeliverySummary(@NonNull Activity activity,
+            @NonNull OrderReceipts.Receipt receipt,
+            @NonNull Runnable onDismiss) {
+        if (activity.isFinishing() || activity.isDestroyed()) {
+            onDismiss.run();
+            return;
+        }
+        Dialog dialog = new Dialog(activity);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_order_delivery_summary);
+        dialog.setCancelable(true);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        ImageView ivNpc = dialog.findViewById(R.id.iv_order_npc_portrait);
+        TextView tvNpcName = dialog.findViewById(R.id.tv_order_npc_name);
+        ImageView ivJar = dialog.findViewById(R.id.iv_order_honey_jar);
+        TextView tvSoldAmount = dialog.findViewById(R.id.tv_order_sold_amount);
+        ImageView ivCoin = dialog.findViewById(R.id.iv_order_beecoin);
+        TextView tvEarnedAmount = dialog.findViewById(R.id.tv_order_earned_amount);
+
+        if (ivNpc != null) {
+            ivNpc.setImageResource(NpcPortraitUi.faceDrawable(receipt.portraitIndex));
+        }
+        if (tvNpcName != null) {
+            tvNpcName.setText(receipt.npcName != null && !receipt.npcName.trim().isEmpty()
+                    ? receipt.npcName : activity.getString(R.string.order_delivery_title));
+        }
+        if (ivJar != null) {
+            ivJar.setImageResource(HiveSiteSummaryUi.floraHoneyJarIcon(receipt.floraKey));
+        }
+        if (tvSoldAmount != null) {
+            String floraLabel = HiveSiteSummaryUi.floraLabel(activity, receipt.floraKey);
+            tvSoldAmount.setText(activity.getString(R.string.order_delivery_sold_amount,
+                    receipt.kg, floraLabel));
+        }
+        if (ivCoin != null) {
+            ivCoin.setImageResource(R.drawable.ic_beecoin);
+        }
+        if (tvEarnedAmount != null) {
+            tvEarnedAmount.setText(activity.getString(R.string.order_delivery_earned_amount,
+                    receipt.payout));
+        }
+        String[] thanks = activity.getResources().getStringArray(R.array.order_delivery_thanks_lines);
+        String[] speeches = activity.getResources().getStringArray(R.array.order_delivery_speech_lines);
+        int variants = Math.min(thanks.length, speeches.length);
+        if (variants > 0) {
+            int seed = receipt.id != null ? receipt.id.hashCode() : 0;
+            int index = Math.floorMod(seed, variants);
+            TextView tvThanks = dialog.findViewById(R.id.tv_order_thanks);
+            TextView tvSpeech = dialog.findViewById(R.id.tv_order_speech);
+            if (tvThanks != null) {
+                tvThanks.setText(thanks[index]);
+            }
+            if (tvSpeech != null) {
+                tvSpeech.setText(speeches[index]);
+            }
+        }
+
+        dialog.setOnDismissListener(d -> onDismiss.run());
+        View btnOk = dialog.findViewById(R.id.btn_order_summary_ok);
+        if (btnOk != null) {
+            btnOk.setOnClickListener(v -> dialog.dismiss());
         }
         dialog.show();
     }

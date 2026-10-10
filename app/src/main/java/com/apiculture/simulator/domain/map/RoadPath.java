@@ -15,6 +15,8 @@ public final class RoadPath {
     /** Un carácter por arista (puntos-1): A autopista, N nacional, C comarcal, O resto. */
     @NonNull
     public final String edgeKinds;
+    /** Recta de pista elegida a propósito en una red de carreteras muy escasa. */
+    public final boolean fieldTrack;
 
     public RoadPath(@NonNull List<double[]> points, @NonNull String encoded, double distanceKm) {
         this(points, encoded, distanceKm, "");
@@ -22,10 +24,16 @@ public final class RoadPath {
 
     public RoadPath(@NonNull List<double[]> points, @NonNull String encoded, double distanceKm,
             @Nullable String edgeKinds) {
+        this(points, encoded, distanceKm, edgeKinds, false);
+    }
+
+    private RoadPath(@NonNull List<double[]> points, @NonNull String encoded, double distanceKm,
+            @Nullable String edgeKinds, boolean fieldTrack) {
         this.points = points;
         this.encoded = encoded;
         this.distanceKm = distanceKm;
         this.edgeKinds = RoadKind.fit(edgeKinds, Math.max(0, points.size() - 1));
+        this.fieldTrack = fieldTrack;
     }
 
     @NonNull
@@ -37,6 +45,24 @@ public final class RoadPath {
                 com.apiculture.simulator.domain.game.TranshumanceRules.haversineKm(
                         fromLat, fromLng, toLat, toLng),
                 RoadKind.fill(1, RoadKind.OTRO));
+    }
+
+    /** Pista en línea recta, a la velocidad del gris. Cuenta como ruta aceptada. */
+    @NonNull
+    public static RoadPath fieldTrack(double fromLat, double fromLng, double toLat, double toLng) {
+        List<double[]> pts = new java.util.ArrayList<>(2);
+        pts.add(new double[]{fromLat, fromLng});
+        pts.add(new double[]{toLat, toLng});
+        return fieldTrack(pts);
+    }
+
+    @NonNull
+    public static RoadPath fieldTrack(@NonNull List<double[]> pts) {
+        if (pts.size() < 2) {
+            throw new IllegalArgumentException("fieldTrack needs two points");
+        }
+        return new RoadPath(pts, EncodedPolyline.encode(pts), pathKm(pts),
+                RoadKind.fill(pts.size() - 1, RoadKind.OTRO), true);
     }
 
     /**
@@ -69,7 +95,7 @@ public final class RoadPath {
     }
 
     public boolean followsRoads() {
-        return points.size() > 2;
+        return fieldTrack || points.size() > 2;
     }
 
     private static boolean farEnough(double lat1, double lng1, double lat2, double lng2) {

@@ -22,6 +22,9 @@ public class TruckTripEntity {
     /** Flora que pecoreará al llegar. Vacío = no cambia la miel. */
     public String destFlora;
 
+    /** Viaje de una división con el apiario lleno: no se puede cancelar. */
+    public static final String SPLIT_MOVE = "split-move";
+
     public long startEpochMs;
     public long durationMs;
 

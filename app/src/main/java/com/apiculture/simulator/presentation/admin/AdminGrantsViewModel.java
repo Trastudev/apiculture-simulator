@@ -185,22 +185,22 @@ public class AdminGrantsViewModel extends ViewModel {
             }
         }
         if (local) {
-            if (coins > 0) {
-                economy.addToBalance(coins, "Ingreso de administración");
-            }
-            if (honeyKg > 0) {
-                economy.addHoney(flora, honeyKg);
-            }
-            if (levelUp) {
-                progress.addXp(uid, xpToNextLevel());
-            } else if (xp > 0) {
-                progress.addXp(uid, xp);
-            }
-            gameState.enqueuePush(uid);
-            refresh();
+            int xpGrant = levelUp ? xpToNextLevel() : xp;
+            gameState.runOffMain(() -> {
+                String fail = applyLocal(coins, honeyKg, flora, xpGrant, levelUp);
+                gameState.enqueuePush(uid);
+                gameState.runOnMain(() -> {
+                    refresh();
+                    if (remote.isEmpty()) {
+                        onMain.accept(fail);
+                    }
+                });
+            });
         }
         if (remote.isEmpty()) {
-            onMain.accept(null);
+            if (!local) {
+                onMain.accept("Elige un jugador.");
+            }
             return;
         }
         if (coins > 0) {
@@ -214,6 +214,29 @@ public class AdminGrantsViewModel extends ViewModel {
         } else {
             onMain.accept("Indica una cantidad mayor que 0.");
         }
+    }
+
+    /** Corre fuera del hilo principal: el servidor rechaza el saldo si se escribe desde la interfaz. */
+    @Nullable
+    private String applyLocal(double coins, double honeyKg, @Nullable String flora, int xp, boolean levelUp) {
+        if (coins > 0) {
+            double before = economy.getBalance();
+            economy.addToBalance(coins, "Ingreso de administración");
+            if (economy.getBalance() < before + coins - 0.01) {
+                return EconomyRepository.OFFLINE_ACTION;
+            }
+        }
+        if (honeyKg > 0) {
+            double before = economy.getHoneyStock();
+            economy.addHoney(flora, honeyKg);
+            if (economy.getHoneyStock() < before + honeyKg - 0.01) {
+                return EconomyRepository.OFFLINE_ACTION;
+            }
+        }
+        if (levelUp || xp > 0) {
+            progress.addXp(uid, xp);
+        }
+        return null;
     }
 
     /** XP que falta para el siguiente nivel (al menos 1). */

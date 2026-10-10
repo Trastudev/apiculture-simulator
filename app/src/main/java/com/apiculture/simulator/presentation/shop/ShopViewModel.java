@@ -41,31 +41,62 @@ public class ShopViewModel extends AndroidViewModel {
                 EventInventoryStore.queens(ap)));
     }
 
-    public void buyTreatment(@Nullable String uid, Consumer<String> onMain) {
-        buy(uid, HiveCareRules.TREAT_EUR, "Compra de tratamiento",
-                () -> EventInventoryStore.addTreatments(getApplication(), 1), onMain);
+    public void buyTreatment(@Nullable String uid, int count, Consumer<String> onMain) {
+        int n = Math.max(0, count);
+        if (n < 1) {
+            refuse(HiveCareRules.TREAT_EUR, onMain);
+            return;
+        }
+        buy(uid, HiveCareRules.TREAT_EUR * n, "Compra de tratamiento",
+                () -> EventInventoryStore.addTreatments(getApplication(), n), onMain);
     }
 
-    public void buyFeed(@Nullable String uid, Consumer<String> onMain) {
-        buy(uid, HiveCareRules.FEED_7_DAYS_EUR, "Compra de apialimento",
-                () -> EventInventoryStore.addFeed(getApplication(), 1), onMain);
+    public void buyFeed(@Nullable String uid, int count, Consumer<String> onMain) {
+        int n = Math.max(0, count);
+        if (n < 1) {
+            refuse(HiveCareRules.FEED_7_DAYS_EUR, onMain);
+            return;
+        }
+        buy(uid, HiveCareRules.FEED_7_DAYS_EUR * n, "Compra de apialimento",
+                () -> EventInventoryStore.addFeed(getApplication(), n), onMain);
     }
 
-    public void buyQueen(@Nullable String uid, Consumer<String> onMain) {
-        buy(uid, HiveCareRules.QUEEN_EUR, "Compra de reina", () -> {
-            int q = HiveCareRules.randomCommercialQueenQuality();
-            if (!EventInventoryStore.addQueen(getApplication(), q)) {
-                return false;
+    public void buyQueen(@Nullable String uid, int count, Consumer<String> onMain) {
+        int n = Math.max(0, count);
+        if (n < 1) {
+            refuse(HiveCareRules.QUEEN_EUR, onMain);
+            return;
+        }
+        buy(uid, HiveCareRules.QUEEN_EUR * n, "Compra de reina", () -> {
+            int added = 0;
+            for (int i = 0; i < n; i++) {
+                int q = HiveCareRules.randomCommercialQueenQuality();
+                if (!EventInventoryStore.addQueen(getApplication(), q)) {
+                    break;
+                }
+                lastQueenQuality = q;
+                added++;
             }
-            lastQueenQuality = q;
-            return true;
+            if (added > 0 && added < n) {
+                economy.addToBalance(HiveCareRules.QUEEN_EUR * (n - added),
+                        "Devolución de Compra de reina");
+            }
+            return added > 0;
         }, msg -> {
             if (msg == null) {
-                onMain.accept("QUEEN:" + lastQueenQuality);
+                onMain.accept(n == 1 ? "QUEEN:" + lastQueenQuality : "QUEENS:" + n);
             } else {
                 onMain.accept(msg);
             }
         });
+    }
+
+    private void refuse(double price, @Nullable Consumer<String> onMain) {
+        if (onMain == null) {
+            return;
+        }
+        String reason = economy.blockedReason(price);
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> onMain.accept(reason));
     }
 
     private int lastQueenQuality = 0;

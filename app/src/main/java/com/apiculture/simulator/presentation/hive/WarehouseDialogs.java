@@ -4,6 +4,8 @@ import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -158,14 +160,20 @@ public final class WarehouseDialogs {
         }
         DialogBuyWarehouseBinding d = DialogBuyWarehouseBinding.inflate(fragment.getLayoutInflater());
         Dialog dialog = creamDialog(fragment, d.getRoot());
+        boolean guided = com.apiculture.simulator.presentation.tutorial.TutorialBus.wantsWarehouseChoice();
         d.btnConfirmWarehouse.setOnClickListener(v -> {
             String name = d.editWarehouseName.getText() == null
-                    ? "" : d.editWarehouseName.getText().toString();
+                    ? "" : d.editWarehouseName.getText().toString().trim();
+            if (guided && name.length() < 2) {
+                GameNotice.show(fragment.requireContext(), R.string.hex_purchase_name_required);
+                return;
+            }
             viewModel.buyWarehouse(ownerId, hexId, tapLat, tapLng, name, msg -> {
                 if (!fragment.isAdded()) {
                     return;
                 }
                 if (msg == null) {
+                    com.apiculture.simulator.presentation.tutorial.TutorialBus.handoff(dialog);
                     dialog.dismiss();
                     // Capítulo 1, viñeta 16. Almacén instalado.
                     com.apiculture.simulator.presentation.tutorial.TutorialBus.emit(
@@ -177,7 +185,38 @@ public final class WarehouseDialogs {
             });
         });
         d.btnCancelWarehouse.setOnClickListener(v -> dialog.dismiss());
+        if (guided) {
+            dialog.setCancelable(false);
+            dialog.setCanceledOnTouchOutside(false);
+            d.btnCancelWarehouse.setVisibility(android.view.View.GONE);
+        }
         dialog.show();
+        // Capítulo 1, viñeta 16. El nombre del almacén es obligatorio.
+        com.apiculture.simulator.presentation.tutorial.TutorialBus.emitDialog(
+                com.apiculture.simulator.presentation.tutorial.TutorialEvent.PURCHASE_FORM,
+                dialog, d.editWarehouseName);
+        if (guided) {
+            d.editWarehouseName.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    String name = s == null ? "" : s.toString().trim();
+                    if (name.length() < 2) {
+                        return;
+                    }
+                    com.apiculture.simulator.presentation.tutorial.TutorialDialogCoach.focus(
+                            dialog, d.btnConfirmWarehouse,
+                            fragment.getString(R.string.tutorial_c1_v16_buy));
+                }
+            });
+        }
     }
 
     public static void showStatus(@NonNull Fragment fragment, @NonNull HiveViewModel viewModel,
@@ -269,6 +308,15 @@ public final class WarehouseDialogs {
             dialog.dismiss();
             FleetDialogs.showTransfer(fragment, ownerId, hexId);
         });
+        // Cada almacén es un obrador: se abre el de este terreno.
+        if (hexId != null) {
+            d.btnWarehouseWorkshop.setVisibility(android.view.View.VISIBLE);
+            d.btnWarehouseWorkshop.setText(R.string.workshop_warehouse_open);
+            d.btnWarehouseWorkshop.setOnClickListener(v -> {
+                dialog.dismiss();
+                com.apiculture.simulator.presentation.workshop.WorkshopUi.open(fragment, hexId);
+            });
+        }
         d.barWarehouseKg.setMax(1000);
         d.barWarehouseKg.setProgress(cap <= 1e-9 ? 0 : (int) Math.round(1000.0 * Math.min(1.0, here / cap)));
         int cost = WarehouseRules.upgradeCostB(level);

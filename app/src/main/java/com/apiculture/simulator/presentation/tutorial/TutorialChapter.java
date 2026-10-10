@@ -20,5 +20,9 @@ public enum TutorialChapter {
     /** Capítulo 7. Clima nuevo. Una viñeta por cada clima que abre el nivel. */
     CLIMATE,
     /** Capítulo 8. Mercado internacional: puerto, barco y cuota del mercado. */
-    INTERNATIONAL
+    INTERNATIONAL,
+    /** Capítulo 9. Obrador: construirlo y comprar las máquinas básicas. Sale al acabar el capítulo 1. */
+    WORKSHOP,
+    /** Capítulo 10. Primera tanda: elegir envase, tarros y cera. Sale cuando llega la primera tanda. */
+    WORKSHOP_PACKING
 }

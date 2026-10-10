@@ -11,8 +11,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Catálogo determinista de fincas NPC (~2,5 % de hexes, sesgo agrícola).
- * El mismo {@code hexId} es amarillo para todos los jugadores.
+ * Identidad NPC de un contrato de polinización.
+ * El contrato puede salir en cualquier hex del clima desbloqueado.
  * Nombre y cara van ligados al género y a la procedencia del hex.
  */
 public final class NpcContractCatalog {
@@ -31,7 +31,14 @@ public final class NpcContractCatalog {
             "João Ferreira", "Carmen Ríos", "Iker Arana", "Fatima El Amrani", "Pieter van Zyl",
             "Laia Puig", "Manuel Ortega", "Sofia Almeida", "Nomsa Dlamini", "Ander Urrutia",
             "Rosa Beltrán", "Mei Lin", "Wei Chen", "Yuki Tanaka", "Hiroshi Nakamura",
-            "Alba Cruz", "Nico Vidal", "Priya Naidoo", "Sipho Ndlovu"
+            "Alba Cruz", "Nico Vidal", "Priya Naidoo", "Sipho Ndlovu",
+            "Aina Costa", "Marc Solé", "Hana Sato", "Kwame Mensah",
+            "Inês Duarte", "Oleksandr Petrenko", "Fatou Diallo", "Lars Eriksson",
+            "Amparo Gil", "Yusuf Demir", "Sibusiso Khumalo", "Mireia Pujol",
+            "Chloé Moreau", "Rajesh Patel", "Leila Haddad", "Kenji Watanabe",
+            "Aisha Rahman", "Mateo Quiroga", "Naledi Maseko", "Giovanni Rossi",
+            "Freya Nielsen", "Hassan Benali", "Ximena Rojas", "Pavel Novák",
+            "Zuri Okonkwo", "Eneko Zabala"
     };
 
     private static final String[] ESTATE_MED = {
@@ -204,11 +211,11 @@ public final class NpcContractCatalog {
         PollinationPayTerms terms = PollinationContractRules.termsForFlora(flora, days, startDoy, endDoy,
                 parcel != null ? parcel.id : null);
         return new NpcContractFarm(parcel, flora, npc, estateNameFor(parcel),
-                ClimateUnlock.climateLabelForParcel(parcel), isReserve(parcel.id), terms, portraitIndexFor(npc));
+                ClimateUnlock.climateLabelForParcel(parcel), false, terms, portraitIndexFor(npc));
     }
 
     public static List<NpcContractFarm> farmsFor(@Nullable HexParcel parcel) {
-        if (!isNpcFarm(parcel)) {
+        if (parcel == null || parcel.id == null || parcel.id.isEmpty()) {
             return Collections.emptyList();
         }
         return farmsFromCrops(parcel, pickSeasonCrops(parcel, CONTRACTS_PER_FARM), false, null);
@@ -239,7 +246,7 @@ public final class NpcContractCatalog {
         String npc = npcNameFor(parcel);
         String estate = estateNameFor(parcel);
         String climate = ClimateUnlock.climateLabelForParcel(parcel);
-        boolean reserve = isReserve(parcel.id);
+        boolean reserve = false;
         int portrait = portraitIndexFor(npc);
         java.time.LocalDate day = today != null ? today : java.time.LocalDate.now();
         int doy = Math.min(365, day.getDayOfYear());
@@ -359,29 +366,13 @@ public final class NpcContractCatalog {
         return best;
     }
 
+    /** Ya no hay hexes reservados a contrato. Cualquier terreno del clima vale. */
     public static boolean isNpcFarm(@Nullable HexParcel parcel) {
-        if (parcel == null || parcel.id == null || parcel.id.isEmpty()) {
-            return false;
-        }
-        List<String> pool = HexFlora.plantationPoolForParcel(parcel);
-        if (pool == null || pool.isEmpty()) {
-            return false;
-        }
-        int permille = densityPermille(parcel);
-        if (parcel.coastal) {
-            permille = Math.max(4, (int) Math.round(permille * 0.45));
-        }
-        long h = Math.abs(stableHash64("npc-farm:" + parcel.id));
-        return (h % 1000L) < permille;
+        return false;
     }
 
     public static boolean isReserve(@Nullable String hexId) {
-        if (hexId == null || hexId.isEmpty()) {
-            return false;
-        }
-        int pct = Math.max(0, Math.min(90, GameBalanceConfig.pollinationReservePct));
-        long h = Math.abs(stableHash64("npc-reserve:" + hexId));
-        return (h % 100L) < pct;
+        return false;
     }
 
     public static String floraFor(HexParcel parcel) {
@@ -555,40 +546,6 @@ public final class NpcContractCatalog {
     }
 
     /**
-     * Permil de hexes amarillos por zona. Media ~25 ‰ (2,5 %), más en huerta/meseta.
-     */
-    private static int densityPermille(HexParcel parcel) {
-        if (HexFlora.isSouthernParcel(parcel)) {
-            switch (SouthernAfricanClimateZone.forParcel(parcel)) {
-                case SUBTROPICAL:
-                    return 68;
-                case HIGHVELD:
-                    return 40;
-                case BUSHVELD:
-                    return 46;
-                case KAROO:
-                    return 16;
-                case FYNBOS:
-                default:
-                    return 30;
-            }
-        }
-        switch (IberianClimateZone.forParcel(parcel)) {
-            case MEDITERRANEAN:
-                return 70;
-            case SOUTH:
-                return 76;
-            case CONTINENTAL:
-                return 52;
-            case ATLANTIC:
-                return 26;
-            case MOUNTAIN:
-            default:
-                return 14;
-        }
-    }
-
-    /**
      * Caras ligadas al lugar: ibéricas por zona, sudafricanas en ZA,
      * diáspora china/japonesa en Levante y meseta, punk en ciudades del este/sur.
      */
@@ -596,44 +553,44 @@ public final class NpcContractCatalog {
         if (parcel != null && HexFlora.isSouthernParcel(parcel)) {
             switch (SouthernAfricanClimateZone.forParcel(parcel)) {
                 case FYNBOS:
-                    return new int[]{9, 22, 13, 4, 19, 18};
+                    return new int[]{9, 22, 13, 4, 19, 18, 42, 34, 44};
                 case KAROO:
-                    return new int[]{9, 4, 23};
+                    return new int[]{9, 4, 23, 31, 42};
                 case SUBTROPICAL:
-                    return new int[]{13, 23, 22, 4};
+                    return new int[]{13, 23, 22, 4, 27, 30, 48};
                 case BUSHVELD:
-                    return new int[]{4, 23, 13};
+                    return new int[]{4, 23, 13, 34, 30, 27};
                 case HIGHVELD:
                 default:
-                    return new int[]{4, 23, 13, 9};
+                    return new int[]{4, 23, 13, 9, 42, 37, 34};
             }
         }
         double lat = parcel != null ? parcel.centroidLat : 40.0;
         double lon = parcel != null ? parcel.centroidLon : -3.0;
         if (lat >= 42.35 && lon >= -3.2 && lon <= -1.15) {
-            return new int[]{3, 7, 14, 2};
+            return new int[]{3, 7, 14, 2, 49, 35, 24};
         }
         if (lon <= -6.7 && lat >= 41.7) {
-            return new int[]{5, 12, 15, 21};
+            return new int[]{5, 12, 15, 21, 28, 36, 31};
         }
         if (lon <= -6.7) {
-            return new int[]{5, 12, 16, 17, 21};
+            return new int[]{5, 12, 16, 17, 21, 43, 45};
         }
         if (lat < 36.9 || (lat < 37.45 && lon > -6.2 && lon < -2.0)) {
-            return new int[]{8, 6, 11, 15, 20};
+            return new int[]{8, 6, 11, 15, 20, 38, 40, 46};
         }
         switch (IberianClimateZone.forParcel(parcel)) {
             case MEDITERRANEAN:
-                return new int[]{0, 1, 10, 16, 17, 21, 18, 6};
+                return new int[]{0, 1, 10, 16, 17, 21, 18, 6, 25, 33, 26};
             case SOUTH:
-                return new int[]{6, 11, 15, 8, 20, 16, 17};
+                return new int[]{6, 11, 15, 8, 20, 16, 17, 41, 46, 32};
             case ATLANTIC:
-                return new int[]{5, 12, 15, 21};
+                return new int[]{5, 12, 15, 21, 28, 44, 47};
             case MOUNTAIN:
-                return new int[]{3, 7, 14, 2, 20};
+                return new int[]{3, 7, 14, 2, 20, 49, 29, 39};
             case CONTINENTAL:
             default:
-                return new int[]{2, 11, 15, 19, 20, 16, 17};
+                return new int[]{2, 11, 15, 19, 20, 16, 17, 37, 43, 48};
         }
     }
 

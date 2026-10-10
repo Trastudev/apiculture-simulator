@@ -213,7 +213,7 @@ public class ApicultureApp extends Application {
     }
 
     /**
-     * Reinicia la partida local+nube: vacío, con 20.000 beecoins.
+     * Reinicia la partida local+nube: vacío, con 45.000 beecoins.
      * Si {@code markGeneration} &gt; 0, marca esa generación de reset admin como aplicada.
      */
     public void resetPlayerToStarterState(@Nullable String uid, long markGeneration,

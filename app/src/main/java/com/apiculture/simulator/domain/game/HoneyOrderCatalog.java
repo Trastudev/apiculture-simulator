@@ -14,9 +14,13 @@ import com.apiculture.simulator.domain.market.HoneyMarketEngine;
 import com.apiculture.simulator.domain.parcel.HexFlora;
 import com.apiculture.simulator.domain.parcel.HexParcel;
 import com.apiculture.simulator.domain.parcel.HexParcelRandomPoint;
+import com.apiculture.simulator.domain.workshop.JarMix;
+import com.apiculture.simulator.domain.workshop.WorkshopRules;
+import com.apiculture.simulator.presentation.hive.HiveSiteSummaryUi;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -59,7 +63,7 @@ public final class HoneyOrderCatalog {
     }
 
     private static Map<String, Double> scarcityByFlora() {
-        Map<String, Double> out = new java.util.LinkedHashMap<>();
+        Map<String, Double> out = new LinkedHashMap<>();
         for (String[] band : SCARCITY_BANDS) {
             int last = Math.max(1, band.length - 1);
             for (int i = 0; i < band.length; i++) {
@@ -99,7 +103,7 @@ public final class HoneyOrderCatalog {
         }
         Set<String> used = new HashSet<>();
         String regionKey = region.prefsValue();
-        long expire = OfferReplenish.utcDayEndEpochMs(dayKey);
+        long expire = System.currentTimeMillis() + OfferReplenish.ORDER_LIFE_MS;
         for (int b = 0; b < OfferBand.COUNT; b++) {
             OfferBand band = OfferBand.at(b);
             int want = bandDailyCount(band, countEligible(parcels, band), region);
@@ -134,7 +138,7 @@ public final class HoneyOrderCatalog {
         }
         Set<String> used = usedHexIds != null ? new HashSet<>(usedHexIds) : new HashSet<>();
         String regionKey = region.prefsValue();
-        long expire = OfferReplenish.utcDayEndEpochMs(dayKey);
+        long expire = System.currentTimeMillis() + OfferReplenish.ORDER_LIFE_MS;
         List<HexParcel> dests = pickScattered(parcels, band, want, used,
                 ((long) dayKey << 8) + band.index);
         for (int i = 0; i < dests.size(); i++) {
@@ -189,7 +193,7 @@ public final class HoneyOrderCatalog {
         if (dest == null) {
             return null;
         }
-        long expire = OfferReplenish.utcDayEndEpochMs(dayKey);
+        long expire = nowMs + OfferReplenish.ORDER_LIFE_MS;
         String regionKey = region.prefsValue();
         String id = String.format(Locale.US, "ho-r-%s-%d-%d-%s", regionKey, dayKey, band.index,
                 Integer.toHexString((dead.id != null ? dead.id : dest.id).hashCode()));
@@ -200,7 +204,10 @@ public final class HoneyOrderCatalog {
     private static HoneyOrder buildAt(@NonNull String id, @NonNull HexParcel dest, @NonNull OfferBand band,
             @NonNull String regionKey, int dayKey, long expire, long seed, @Nullable PriceLookup prices) {
         String flora = floraForBand(dest, seed, band);
-        double kg = band.kgForSeed(seed);
+        double rawKg = band.kgForSeed(seed);
+        // La comanda pide tarros: los kilos se redondean hacia arriba y se reparten de mayor a menor.
+        JarMix mix = JarMix.fromKg(rawKg);
+        double kg = mix.kg();
         double base = HoneyMarketEngine.priceCeilingEurPerKgForFlora(flora);
         if (base <= 0.0) {
             base = HoneyMarketEngine.MIN_PRICE_EUR_PER_KG;
@@ -220,7 +227,7 @@ public final class HoneyOrderCatalog {
                 NpcContractCatalog.portraitIndexFor(npc),
                 flora,
                 kg,
-                Math.round(base * PRICE_BONUS * 100.0) / 100.0,
+                mix.unitPrice(Math.round(base * PRICE_BONUS * 100.0) / 100.0),
                 dest.id,
                 pin[0],
                 pin[1],
@@ -228,7 +235,9 @@ public final class HoneyOrderCatalog {
                 regionKey,
                 dayKey,
                 expire,
-                band.index);
+                band.index,
+                WorkshopRules.Format.BULK,
+                mix);
     }
 
     @NonNull
@@ -390,6 +399,25 @@ public final class HoneyOrderCatalog {
     public static void sortByNearest(@NonNull List<HoneyOrder> orders,
             @Nullable Double originLat, @Nullable Double originLng) {
         orders.sort((a, b) -> {
+            int km = Double.compare(
+                    distanceKm(originLat, originLng, a),
+                    distanceKm(originLat, originLng, b));
+            if (km != 0) {
+                return km;
+            }
+            return Long.compare(a.expireEpochMs, b.expireEpochMs);
+        });
+    }
+
+    public static void sortByFloraAndDistance(@NonNull List<HoneyOrder> orders,
+            @Nullable Double originLat, @Nullable Double originLng, @NonNull Context context) {
+        orders.sort((a, b) -> {
+            String labelA = HiveSiteSummaryUi.floraLabel(context, a.floraKey);
+            String labelB = HiveSiteSummaryUi.floraLabel(context, b.floraKey);
+            int flora = labelA.compareToIgnoreCase(labelB);
+            if (flora != 0) {
+                return flora;
+            }
             int km = Double.compare(
                     distanceKm(originLat, originLng, a),
                     distanceKm(originLat, originLng, b));

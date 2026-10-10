@@ -52,5 +52,13 @@ public enum TutorialEvent {
     /** Capítulo 8. El jugador abre un puerto. */
     PORT_OPENED,
     /** Capítulo 8. El jugador compra un barco. */
-    SHIP_BOUGHT
+    SHIP_BOUGHT,
+    /** Capítulo 9. Obrador construido. */
+    WORKSHOP_BUILT,
+    /** Capítulo 9. Ya están las cinco máquinas básicas. */
+    WORKSHOP_READY,
+    /** Capítulo 10. Hay al menos una tanda en el obrador. */
+    WORKSHOP_BATCH,
+    /** Capítulo 10. El jugador ha elegido el envase de una tanda. */
+    WORKSHOP_FORMAT
 }

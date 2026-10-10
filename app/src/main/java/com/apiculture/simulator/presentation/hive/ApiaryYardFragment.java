@@ -37,6 +37,8 @@ import com.apiculture.simulator.presentation.market.NpcPortraitUi;
 import com.apiculture.simulator.presentation.profile.ProfilePhoto;
 import com.apiculture.simulator.presentation.tutorial.TutorialBus;
 import com.apiculture.simulator.data.session.PlayerAuth;
+import com.apiculture.simulator.unity.Apiary3DActivity;
+import com.apiculture.simulator.unity.UnityBridge;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -58,6 +60,7 @@ public class ApiaryYardFragment extends Fragment {
     private String npcName = "";
     private int portraitIndex;
     private List<HiveEntity> lastHives = Collections.emptyList();
+    private List<HiveEntity> yardHives = Collections.emptyList();
     private List<HexParcelOwnershipEntity> lastSites = Collections.emptyList();
     private Set<String> lastTravelingHiveIds = Collections.emptySet();
     private String sessionOwnerId = "";
@@ -65,6 +68,7 @@ public class ApiaryYardFragment extends Fragment {
     private final Runnable bindDebounced = () -> bindHivesNow(lastHives);
     @Nullable
     private String lastYardFp;
+    private DailySkyCondition currentSky = DailySkyCondition.SUN;
 
     @Nullable
     @Override
@@ -88,19 +92,20 @@ public class ApiaryYardFragment extends Fragment {
         visitYard = !visitOwnerId.isEmpty();
         npcName = args != null && args.getString("npcName") != null ? args.getString("npcName") : "";
         portraitIndex = args != null ? args.getInt("portraitIndex", 0) : 0;
-        if (!visitYard && !contractYard && !hexId.isEmpty()) {
+        if (!visitYard && contractYard && !hexId.isEmpty()
+                && (npcName == null || npcName.isEmpty())) {
             HexParcel parcel = IberiaHexOverlayStore.findById(requireContext(), hexId);
-            if (NpcContractCatalog.isNpcFarm(parcel)) {
-                contractYard = true;
-                npcName = NpcContractCatalog.npcNameFor(parcel);
-                portraitIndex = NpcContractCatalog.portraitIndexFor(npcName);
-                if (parcelName == null || parcelName.isEmpty()
-                        || parcelName.equals(getString(R.string.apiaries_title))) {
-                    parcelName = NpcContractCatalog.estateNameFor(parcel);
-                }
+            npcName = NpcContractCatalog.npcNameFor(parcel);
+            portraitIndex = NpcContractCatalog.portraitIndexFor(npcName);
+            if (parcelName == null || parcelName.isEmpty()
+                    || parcelName.equals(getString(R.string.apiaries_title))) {
+                parcelName = NpcContractCatalog.estateNameFor(parcel);
             }
         }
         binding.tvYardTitle.setText(parcelName);
+        if (!visitYard && !contractYard && hexId != null && !hexId.isEmpty()) {
+            binding.tvYardTitle.setOnClickListener(v -> promptRename());
+        }
         if (visitYard) {
             bindVisitHeader();
         } else if (contractYard) {
@@ -135,6 +140,8 @@ public class ApiaryYardFragment extends Fragment {
             }
             NavHostFragment.findNavController(this).popBackStack();
         });
+        binding.btnYard3d.setOnClickListener(v -> open3d());
+        binding.tvYardMaintBanner.setOnClickListener(v -> open3d());
         binding.btnYardBuyHive.setOnClickListener(v -> {
             if (TutorialBus.firstHiveOpen()) {
                 return;
@@ -219,6 +226,46 @@ public class ApiaryYardFragment extends Fragment {
         NavHostFragment.findNavController(this).navigate(R.id.mapFragment, args);
     }
 
+    private void open3d() {
+        if (!isAdded() || yardHives.isEmpty()) {
+            return;
+        }
+        String apiaryId = hexId.isEmpty() ? "home" : hexId + (siteId.isEmpty() ? "" : "/" + siteId);
+        if (UnityBridge.isStungOutToday(requireContext(), sessionOwnerId, apiaryId)) {
+            GameNotice.show(requireContext(), R.string.apiary_3d_stung_locked);
+            return;
+        }
+        YardClimate climate = YardClimate.resolve(requireContext(), hexId, yardHives.get(0));
+        UnityBridge.prepare(requireContext(), sessionOwnerId, apiaryId, siteId, parcelName, climate.name(),
+                currentSky.name(), yardHives, ownFarm() ? hexId : null);
+        Apiary3DActivity.open(requireContext());
+    }
+
+    /** Terreno propio: el payés siembra y cuida sus cultivos. */
+    private boolean ownFarm() {
+        return !visitYard && !contractYard && hexId != null && !hexId.isEmpty();
+    }
+
+    private void refreshMaintenanceBanner() {
+        if (binding == null || !ownFarm() || "guest".equals(sessionOwnerId)) {
+            return;
+        }
+        ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
+        final String yardHex = hexId;
+        app.getHiveRepository().hexesNeedingMaintenanceAsync(sessionOwnerId, hexes -> {
+            if (!isAdded() || binding == null || !yardHex.equals(hexId)) {
+                return;
+            }
+            binding.tvYardMaintBanner.setVisibility(hexes.contains(yardHex) ? View.VISIBLE : View.GONE);
+        });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        refreshMaintenanceBanner();
+    }
+
     private void scheduleBindHives() {
         uiHandler.removeCallbacks(bindDebounced);
         uiHandler.postDelayed(bindDebounced, 80);
@@ -255,6 +302,9 @@ public class ApiaryYardFragment extends Fragment {
         mine.sort(Comparator.comparing(h -> h.name != null ? h.name.toLowerCase() : ""));
         binding.yardView.setHives(mine);
         binding.tvYardEmpty.setVisibility(mine.isEmpty() ? View.VISIBLE : View.GONE);
+        yardHives = mine;
+        boolean can3d = !visitYard && !mine.isEmpty() && !TutorialBus.firstHivePath();
+        binding.btnYard3d.setVisibility(can3d ? View.VISIBLE : View.GONE);
 
         HiveEntity sample = mine.isEmpty() ? null : mine.get(0);
         HexParcel parcel = hexId.isEmpty() ? null : IberiaHexOverlayStore.findById(requireContext(), hexId);
@@ -309,6 +359,7 @@ public class ApiaryYardFragment extends Fragment {
             return;
         }
         DailySkyCondition next = sky != null ? sky : DailySkyCondition.SUN;
+        currentSky = next;
         binding.yardView.setSky(next);
         binding.ivYardWeather.setImageResource(weatherIcon(next));
     }
@@ -355,6 +406,27 @@ public class ApiaryYardFragment extends Fragment {
             default:
                 return R.drawable.ic_sol_prado;
         }
+    }
+
+    private void promptRename() {
+        String uid = com.apiculture.simulator.data.session.PlayerAuth.getInstance().getUid();
+        if (uid == null || uid.isEmpty() || !isAdded()) {
+            return;
+        }
+        ApiaryNameDialog.show(this, parcelName, name -> {
+            ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
+            app.getHexParcelRepository().renameApiary(hexId, uid, siteId, name, msg -> {
+                if (!isAdded() || binding == null) {
+                    return;
+                }
+                if (msg != null) {
+                    com.apiculture.simulator.presentation.common.GameNotice.show(requireContext(), msg);
+                    return;
+                }
+                parcelName = name;
+                binding.tvYardTitle.setText(name);
+            });
+        });
     }
 
     private void bindVisitHeader() {

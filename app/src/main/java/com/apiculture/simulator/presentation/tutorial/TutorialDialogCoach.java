@@ -112,6 +112,29 @@ public final class TutorialDialogCoach {
         });
     }
 
+    /** Mueve el hueco y el texto de la viñeta que ya está sobre el diálogo. */
+    public static void focus(@Nullable Dialog dialog, @Nullable View highlight, @Nullable CharSequence text) {
+        if (dialog == null || dialog.getWindow() == null || showing != dialog) {
+            return;
+        }
+        View decor = dialog.getWindow().getDecorView();
+        if (!(decor instanceof ViewGroup)) {
+            return;
+        }
+        View coachView = ((ViewGroup) decor).findViewWithTag(TAG);
+        if (!(coachView instanceof TutorialOverlay)) {
+            return;
+        }
+        TutorialOverlay coach = (TutorialOverlay) coachView;
+        TextView body = coach.findViewById(R.id.tutorial_body);
+        if (body != null && text != null) {
+            body.setText(text);
+        }
+        View content = dialog.findViewById(android.R.id.content);
+        View pass = content != null ? content : (View) decor;
+        place(coach, highlight, false, pass);
+    }
+
     private static void place(TutorialOverlay coach, @Nullable View highlight, boolean cardOnTop, View pass) {
         if (highlight != null && highlight.getWidth() > 0 && highlight.getHeight() > 0) {
             int[] host = new int[2];

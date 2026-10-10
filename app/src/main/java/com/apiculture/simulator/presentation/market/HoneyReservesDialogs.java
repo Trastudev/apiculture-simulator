@@ -78,7 +78,7 @@ public final class HoneyReservesDialogs {
 
                 icon.setImageResource(HiveSiteSummaryUi.floraHoneyJarIcon(flora));
                 nameView.setText(HiveSiteSummaryUi.floraLabel(context, flora));
-                qtyView.setText(String.format(Locale.getDefault(), "%.1f kg", kg));
+                qtyView.setText(String.format(Locale.getDefault(), "%.2f kg", kg));
                 itemsContainer.addView(row);
             }
         }

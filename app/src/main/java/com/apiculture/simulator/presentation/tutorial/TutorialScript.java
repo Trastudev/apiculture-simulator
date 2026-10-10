@@ -17,7 +17,7 @@ import java.util.Map;
 public final class TutorialScript {
 
     public enum Screen {
-        ANY, DASHBOARD, MAP, YARD, HIVE, MARKET, SHOP
+        ANY, DASHBOARD, MAP, YARD, HIVE, MARKET, SHOP, WORKSHOP
     }
 
     public enum Advance {
@@ -45,10 +45,11 @@ public final class TutorialScript {
         YARD_BUY(false, R.id.btn_yard_buy_hive),
         YARD(false, R.id.yard_view),
         HIVE_BIO(false, R.id.tv_hive_header_honey, R.id.tv_hive_header_queen, R.id.tv_hive_header_varroa),
-        HIVE_HARVEST(false, R.id.btn_harvest_top),
+        HIVE_HARVEST(false, R.id.btn_harvest_top, R.id.btn_feed_top, R.id.btn_treat_top,
+                R.id.btn_replace_queen_top),
         HIVE_HONEY(false, R.id.tv_honey_stock_in_hive),
         HARVEST(false, R.id.tile_quick_harvest),
-        SHOP_TRUCK(false, R.id.btn_buy_truck),
+        SHOP_TRUCK(false, R.id.card_shop_truck, R.id.btn_buy_truck),
         MARKET_GOODS(false, R.id.recycler_market_pills, R.id.market_tab_toggle),
         CONTRACTS_TAB(false, R.id.btn_market_contracts),
         MARKET_IBERIA(false, R.id.btn_market_iberia),
@@ -57,7 +58,12 @@ public final class TutorialScript {
         CONTRACT_MIN(false, R.id.ll_contract_min),
         CONTRACT_DATES(false, R.id.ll_contract_window),
         CONTRACT_TRAVEL(false, R.id.ll_contract_travel),
-        CONTRACT_REWARD(false, R.id.ll_contract_reward);
+        CONTRACT_REWARD(false, R.id.ll_contract_reward),
+        DASH_WORKSHOP(false, R.id.tile_quick_workshop),
+        WORKSHOP_BUILD(false, R.id.ll_workshop_build),
+        WORKSHOP_MACHINES(false, R.id.ll_workshop_machines),
+        WORKSHOP_BATCHES(false, R.id.ll_workshop_batches),
+        WORKSHOP_STOCK(false, R.id.ll_workshop_stock, R.id.ll_workshop_wax);
 
         public final boolean onActivity;
         public final int[] viewIds;
@@ -71,9 +77,11 @@ public final class TutorialScript {
             return this == BOTTOM_NAV || this == TAB_DASH || this == TAB_MAP
                     || this == TAB_MARKET || this == TAB_HIVES || this == CLIMATE_LEGEND
                     || this == MAP || this == YARD_BUY || this == HARVEST
+                    || this == SHOP_TRUCK
                     || this == CONTRACT_CROP || this == CONTRACT_MIN
                     || this == CONTRACT_DATES || this == CONTRACT_TRAVEL
-                    || this == CONTRACT_REWARD;
+                    || this == CONTRACT_REWARD || this == DASH_WORKSHOP
+                    || this == WORKSHOP_MACHINES;
         }
     }
 
@@ -229,6 +237,41 @@ public final class TutorialScript {
                 step(TutorialChapter.INTERNATIONAL, 2, R.string.tutorial_c8_v02),
                 step(TutorialChapter.INTERNATIONAL, 3, R.string.tutorial_c8_v03),
                 step(TutorialChapter.INTERNATIONAL, 4, R.string.tutorial_c8_v04),
+        });
+
+        // Capítulo 9. Obrador. Sale al acabar el capítulo 1: sin obrador no se cosecha.
+        STEPS.put(TutorialChapter.WORKSHOP, new Step[] {
+                // Capítulo 9, viñeta 1. La miel nueva pasa por el obrador.
+                step(TutorialChapter.WORKSHOP, 1, R.string.tutorial_c9_v01),
+                // Capítulo 9, viñeta 2. Abrir el obrador desde Inicio.
+                step(TutorialChapter.WORKSHOP, 2, R.string.tutorial_c9_v02,
+                        Screen.WORKSHOP, Anchor.DASH_WORKSHOP, Advance.NAV, null),
+                // Capítulo 9, viñeta 3. Construirlo junto a un almacén.
+                step(TutorialChapter.WORKSHOP, 3, R.string.tutorial_c9_v03,
+                        Screen.WORKSHOP, Anchor.WORKSHOP_BUILD, Advance.EVENT, TutorialEvent.WORKSHOP_BUILT),
+                // Capítulo 9, viñeta 4. Comprar las cuatro máquinas que faltan.
+                step(TutorialChapter.WORKSHOP, 4, R.string.tutorial_c9_v04,
+                        Screen.WORKSHOP, Anchor.WORKSHOP_MACHINES, Advance.EVENT, TutorialEvent.WORKSHOP_READY),
+                // Capítulo 9, viñeta 5. El recorrido de una tanda.
+                step(TutorialChapter.WORKSHOP, 5, R.string.tutorial_c9_v05,
+                        Screen.WORKSHOP, Anchor.NONE, Advance.NEXT, null),
+                // Capítulo 9, viñeta 6. Cosechar: el camión vuelve al obrador.
+                step(TutorialChapter.WORKSHOP, 6, R.string.tutorial_c9_v06),
+        });
+
+        // Capítulo 10. Primera tanda. Sale cuando entra la primera tanda en el obrador.
+        STEPS.put(TutorialChapter.WORKSHOP_PACKING, new Step[] {
+                // Capítulo 10, viñeta 1. Máquinas, cola y tiempo con la app cerrada.
+                step(TutorialChapter.WORKSHOP_PACKING, 1, R.string.tutorial_c10_v01,
+                        Screen.WORKSHOP, Anchor.WORKSHOP_BATCHES, Advance.NEXT, null),
+                // Capítulo 10, viñeta 2. Elegir envase.
+                step(TutorialChapter.WORKSHOP_PACKING, 2, R.string.tutorial_c10_v02,
+                        Screen.WORKSHOP, Anchor.WORKSHOP_BATCHES, Advance.EVENT, TutorialEvent.WORKSHOP_FORMAT),
+                // Capítulo 10, viñeta 3. Tarros y cera.
+                step(TutorialChapter.WORKSHOP_PACKING, 3, R.string.tutorial_c10_v03,
+                        Screen.WORKSHOP, Anchor.WORKSHOP_STOCK, Advance.NEXT, null),
+                // Capítulo 10, viñeta 4. Mejoras.
+                step(TutorialChapter.WORKSHOP_PACKING, 4, R.string.tutorial_c10_v04),
         });
     }
 

@@ -86,7 +86,7 @@ public final class FleetPlanner {
             double loadedKm, double emptyKm, double truckKmh, double kg, boolean transfer,
             boolean hasTruck, boolean fits) {
         if (!hasTruck) {
-            return blocked("No hay un camión libre en ese almacén.");
+            return blocked("No hay un camión libre en ese obrador.");
         }
         if (!fits) {
             return blocked("El camión no tiene capacidad para esa carga.");
@@ -119,7 +119,7 @@ public final class FleetPlanner {
             return blocked("El barco no tiene capacidad para esa carga.");
         }
         if (!hasOriginTruck || !hasDestTruck) {
-            return blocked("Hace falta un camión libre en el almacén de salida y en el de llegada.");
+            return blocked("Hace falta un camión libre en el obrador de salida y en el de llegada.");
         }
         if (!originFits || !destFits) {
             return blocked("Alguno de los camiones no tiene capacidad para esa carga.");
@@ -138,7 +138,7 @@ public final class FleetPlanner {
 
         List<Leg> legs = new ArrayList<>();
         legs.add(new Leg("Camión al puerto", originWarehouse + " → " + originPort
-                + ". Deja la miel y vuelve a su almacén.", originDepart, road1));
+                + ". Deja la miel y vuelve a su obrador.", originDepart, road1));
         legs.add(new Leg("Barco", originPort + " → " + destPort
                 + String.format(java.util.Locale.getDefault(), " (%.2f km de mar)", seaKm), shipDepart, sea));
         legs.add(new Leg("Camión al destino",

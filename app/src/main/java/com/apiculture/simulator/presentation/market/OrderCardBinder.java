@@ -38,8 +38,10 @@ public final class OrderCardBinder {
         row.ivOrderJar.setImageResource(HiveSiteSummaryUi.floraHoneyJarIcon(order.floraKey));
         row.tvOrderNpc.setText(order.npcName);
         row.tvOrderPlace.setText(order.destLabel);
-        row.tvOrderAsk.setText(c.getString(R.string.market_order_ask, order.kg,
-                HiveSiteSummaryUi.floraLabel(c, order.floraKey)));
+        String flora = HiveSiteSummaryUi.floraLabel(c, order.floraKey);
+        row.tvOrderAsk.setText(order.wantsJars() && order.mix != null
+                ? c.getString(R.string.market_order_ask_mix, WorkshopFormatUi.mixLabel(c, order.mix), flora)
+                : c.getString(R.string.market_order_ask_drum, order.kg, flora));
         row.tvOrderPay.setText(c.getString(R.string.market_order_pay_amount, order.payout()));
         row.tvOrderUnit.setText(c.getString(R.string.market_order_pay_unit, order.unitPrice));
         double km = HoneyLogistics.travelKm(warehouse, order.destLat, order.destLng);

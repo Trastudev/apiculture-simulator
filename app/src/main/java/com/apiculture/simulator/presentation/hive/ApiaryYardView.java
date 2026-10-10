@@ -1337,7 +1337,7 @@ public class ApiaryYardView extends View {
     @Nullable
     private Bitmap destTripBitmap(@NonNull HiveEntity hive) {
         HexParcel dest = IberiaHexOverlayStore.findById(getContext(), hive.pendingContractHexId);
-        if (NpcContractCatalog.isNpcFarm(dest)) {
+        if (hive.pendingContractHexId != null && hive.pendingContractHexId.equals(dest != null ? dest.id : null)) {
             int face = NpcPortraitUi.faceDrawable(NpcContractCatalog.portraitIndexFor(
                     NpcContractCatalog.npcNameFor(dest)));
             return drawableBitmap(face);

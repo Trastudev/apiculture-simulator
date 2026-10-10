@@ -183,9 +183,9 @@ public final class GameBalanceConfig {
     /** Tope tras clima: la montaña en verano puede pasar de 1,20 (trashumancia). */
     public static double nectarIntensityCap = 1.50;
     /** Néctar del hex a bloom 1,0 (flora nativa). Por tipo de flora. */
-    public static double baseDailyNectarKgNative = 20.0;
+    public static double baseDailyNectarKgNative = 40.0;
     /** Néctar del hex a bloom 1,0 (cultivo plantado). Por tipo de flora. */
-    public static double baseDailyNectarKgPlanted = 20.0;
+    public static double baseDailyNectarKgPlanted = 40.0;
     /** Obsoleto: ya no hay pecoreo entre hexes vecinos. */
     public static double neighborForageSharePerHex = 0.0;
 

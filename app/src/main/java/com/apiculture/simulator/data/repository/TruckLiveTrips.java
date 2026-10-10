@@ -49,7 +49,6 @@ public final class TruckLiveTrips {
         /** Extra off: hay que poner ya lat/lng/hex. */
         TELEPORT,
         STARTED,
-        TOO_LATE,
         ALREADY_TRAVELING,
         NO_TRUCK
     }
@@ -73,36 +72,64 @@ public final class TruckLiveTrips {
         if (hasActive(context, hive.id)) {
             return StartResult.ALREADY_TRAVELING;
         }
-        if (!TruckLivePrefs.isEnabled(context) && !GameServer.enabled()) {
+        RoadPath path = LocalGraphHopper.route(context, hive.lat, hive.lng, destLat, destLng);
+        if (path == null || !path.followsRoads()) {
+            RouteErrorDialog.show(context, LocalGraphHopper.lastDiag());
+        }
+        return begin(context, hive, destLat, destLng, destHexId, path, null);
+    }
+
+    @NonNull
+    public static StartResult startOnTruck(@NonNull Context context, @NonNull HiveEntity hive,
+            double destLat, double destLng, @Nullable String destHexId, @Nullable String vehicleId) {
+        if (hive.id == null) {
             return StartResult.TELEPORT;
         }
-        List<com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity> homes =
-                AppDatabase.getInstance(context).hexParcelOwnershipDao().getWarehousesForOwnerSync(hive.ownerId);
-        String homeHex = hive.hexId;
-        if (homes != null) {
-            for (com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity row : homes) {
-                if (row != null && row.hasWarehouse) {
-                    homeHex = row.hexId;
-                    break;
-                }
-            }
-        }
-        FleetStore.ensureStarter(context, hive.ownerId, homeHex);
-        FleetStore.Vehicle truck = FleetStore.reserveHive(context, hive.ownerId, hive.id);
-        if (truck == null) {
-            return StartResult.NO_TRUCK;
+        if (hasActive(context, hive.id)) {
+            return StartResult.ALREADY_TRAVELING;
         }
         RoadPath path = LocalGraphHopper.route(context, hive.lat, hive.lng, destLat, destLng);
         if (path == null || !path.followsRoads()) {
             RouteErrorDialog.show(context, LocalGraphHopper.lastDiag());
         }
+        return begin(context, hive, destLat, destLng, destHexId, path, vehicleId);
+    }
+
+    @NonNull
+    private static StartResult begin(@NonNull Context context, @NonNull HiveEntity hive,
+            double destLat, double destLng, @Nullable String destHexId, @Nullable RoadPath path,
+            @Nullable String vehicleId) {
+        if (!TruckLivePrefs.isEnabled(context) && !GameServer.enabled()) {
+            return StartResult.TELEPORT;
+        }
+        FleetStore.Vehicle truck = vehicleId != null
+                ? FleetStore.reserveTruck(context, hive.ownerId, vehicleId, hive.id)
+                : null;
+        if (vehicleId != null && truck == null) {
+            return StartResult.NO_TRUCK;
+        }
+        if (truck == null) {
+            List<com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity> homes =
+                    AppDatabase.getInstance(context).hexParcelOwnershipDao()
+                            .getWarehousesForOwnerSync(hive.ownerId);
+            String homeHex = hive.hexId;
+            if (homes != null) {
+                for (com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity row : homes) {
+                    if (row != null && row.hasWarehouse) {
+                        homeHex = row.hexId;
+                        break;
+                    }
+                }
+            }
+            FleetStore.ensureStarter(context, hive.ownerId, homeHex);
+            truck = FleetStore.reserveHive(context, hive.ownerId, hive.id);
+        }
+        if (truck == null) {
+            return StartResult.NO_TRUCK;
+        }
         TruckTripEntity trip = TruckTripRules.create(hive, destLat, destLng, destHexId, path);
         double km = path != null && path.distanceKm > 0 ? path.distanceKm : 0;
         trip.durationMs = FleetRules.durationMs(km, FleetRules.speedKmh(FleetRules.Kind.TRUCK, truck.level));
-        if (TruckTripRules.arrivesAfterNextDailyTick(trip)) {
-            FleetStore.releaseHive(context, hive.ownerId, hive.id);
-            return StartResult.TOO_LATE;
-        }
         persist(context, trip);
         return StartResult.STARTED;
     }
@@ -184,7 +211,7 @@ public final class TruckLiveTrips {
             return false;
         }
         TruckTripEntity trip = get(context, hiveId);
-        if (trip == null) {
+        if (trip == null || TruckTripEntity.SPLIT_MOVE.equals(trip.destFlora)) {
             return false;
         }
         HiveEntity hive = null;
@@ -198,6 +225,7 @@ public final class TruckLiveTrips {
                 hive != null ? hive.hexId : trip.destHexId)) {
             return false;
         }
+        trip.destFlora = null;
         persist(context, trip, true);
         return true;
     }
@@ -235,9 +263,20 @@ public final class TruckLiveTrips {
                         .listByHexAndOwnerSync(hive.hexId, hive.ownerId),
                 hive.hexId, hive.lat, hive.lng);
         hive.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(hive.lat, hive.lng);
-        if (trip.destFlora != null && !trip.destFlora.trim().isEmpty()) {
+        if (trip.destFlora != null && !trip.destFlora.trim().isEmpty()
+                && !TruckTripEntity.SPLIT_MOVE.equals(trip.destFlora)) {
             hive.floraType = com.apiculture.simulator.domain.market.HoneyMarketEngine
                     .canonicalFloraKey(trip.destFlora);
+        }
+        if (hive.contractOriginHexId != null && hive.contractOriginHexId.equals(hive.hexId)) {
+            if (hive.contractOriginFlora != null && !hive.contractOriginFlora.isEmpty()) {
+                hive.floraType = hive.contractOriginFlora;
+            }
+            hive.contractId = null;
+            hive.contractOriginHexId = null;
+            hive.contractOriginFlora = null;
+            hive.contractOriginLat = 0;
+            hive.contractOriginLng = 0;
         }
     }
 

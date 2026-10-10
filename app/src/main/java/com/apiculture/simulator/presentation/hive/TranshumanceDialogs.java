@@ -190,7 +190,7 @@ public final class TranshumanceDialogs {
         ApicultureApp app = (ApicultureApp) fragment.requireContext().getApplicationContext();
         IO.execute(() -> {
             List<String> keys = app.getHexFloraRepository().listReadyFloraKeysBlocking(
-                    dest.hexId, System.currentTimeMillis());
+                    dest.hexId, dest.siteId, System.currentTimeMillis());
             if (keys == null || keys.isEmpty()) {
                 HexParcel parcel = IberiaHexOverlayStore.findById(app, dest.hexId);
                 keys = new ArrayList<>(HexFlora.nativeMixForParcel(parcel));

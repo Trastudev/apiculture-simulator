@@ -16,7 +16,6 @@ import com.apiculture.simulator.data.local.entity.HiveEntity;
 import com.apiculture.simulator.domain.game.ClimateUnlock;
 import com.apiculture.simulator.domain.game.HexForageSnapshot;
 import com.apiculture.simulator.domain.game.HexNectarPool;
-import com.apiculture.simulator.domain.game.NpcContractCatalog;
 import com.apiculture.simulator.domain.game.XpAwards;
 import com.apiculture.simulator.domain.parcel.FloraProgression;
 import com.apiculture.simulator.domain.parcel.HexApiary;
@@ -509,10 +508,7 @@ public class HexParcelRepository {
         if (parcel == null || parcel.id == null || parcel.id.isEmpty()) {
             return false;
         }
-        if (PlayableMapRegion.fromHexId(parcel.id) != PlayableMapRegion.IBERIA) {
-            return false;
-        }
-        return !NpcContractCatalog.isNpcFarm(parcel);
+        return PlayableMapRegion.fromHexId(parcel.id) == PlayableMapRegion.IBERIA;
     }
 
     /** Reinicio / tutorial: persiste en local y intenta la nube (sin revertir local si falla). */
@@ -714,7 +710,7 @@ public class HexParcelRepository {
             for (HexParcelOwnershipEntity other : owned) {
                 if (other != null && other.hasWarehouse
                         && com.apiculture.simulator.domain.game.EntityNames.same(other.parcelName, name)) {
-                    return "Ya tienes un almacén con ese nombre.";
+                    return "Ya tienes un obrador con ese nombre.";
                 }
             }
         }
@@ -722,20 +718,16 @@ public class HexParcelRepository {
                 || (Math.abs(tapLat) < 1e-8 && Math.abs(tapLng) < 1e-8)) {
             return "Elige un punto en el mapa.";
         }
-        HexParcel parcel = IberiaHexOverlayStore.findById(appContext, hexId);
-        if (NpcContractCatalog.isNpcFarm(parcel)) {
-            return "Esa finca es de un propietario. No se instala almacén aquí.";
-        }
         List<HexParcelOwnershipEntity> mine = dao.listByHexAndOwnerSync(hexId, ownerId);
         if (mine != null) {
             for (HexParcelOwnershipEntity existing : mine) {
                 if (existing != null && existing.hasWarehouse) {
-                    return "Ya hay un almacén en este terreno.";
+                    return "Ya hay un obrador en este terreno.";
                 }
             }
         }
         if (!economyRepository.trySpend(WarehouseRules.COST_B,
-                "Construcción del almacén " + name)) {
+                "Construcción del obrador " + name)) {
             return "No tienes " + WarehouseRules.COST_B + " B.";
         }
         String site = UUID.randomUUID().toString();
@@ -765,13 +757,13 @@ public class HexParcelRepository {
         } catch (Exception e) {
             Log.e(TAG, "buyWarehouseBlocking", e);
             economyRepository.addToBalance(WarehouseRules.COST_B,
-                    "Devolución de la construcción del almacén");
+                    "Devolución de la construcción del obrador");
             try {
                 dao.deleteByHexOwnerSite(hexId, ownerId, site);
             } catch (RuntimeException ignored) {
             }
             return e.getMessage() != null && !e.getMessage().isEmpty()
-                    ? e.getMessage() : "No se pudo instalar el almacén.";
+                    ? e.getMessage() : "No se pudo instalar el obrador.";
         }
         return null;
     }
@@ -840,19 +832,19 @@ public class HexParcelRepository {
         }
         HexParcelOwnershipEntity row = warehouseRow(ownerId, hexId, null);
         if (row == null || row.ownerId == null || !row.ownerId.equals(ownerId) || !row.hasWarehouse) {
-            return "No hay almacén en este terreno.";
+            return "No hay obrador en este terreno.";
         }
         int from = WarehouseRules.levelOf(row);
         int playerLevel = playerProgressRepository != null
                 ? playerProgressRepository.getLevel(ownerId) : from;
         if (from >= Math.max(1, playerLevel)) {
-            return "Sube de nivel de jugador para mejorar el almacén.";
+            return "Sube de nivel de jugador para mejorar el obrador.";
         }
         int cost = WarehouseRules.upgradeCostB(from);
         String warehouseName = row.parcelName == null || row.parcelName.trim().isEmpty()
-                ? "almacén" : row.parcelName.trim();
+                ? "obrador" : row.parcelName.trim();
         if (!economyRepository.trySpend(cost,
-                "Mejora del almacén " + warehouseName + " al nivel " + (from + 1))) {
+                "Mejora del obrador " + warehouseName + " al nivel " + (from + 1))) {
             return "No tienes " + cost + " B.";
         }
         row.warehouseLevel = from + 1;
@@ -875,7 +867,7 @@ public class HexParcelRepository {
                 mainHandler.post(() -> {
                     if (onMainMessage != null) {
                         onMainMessage.accept(e.getMessage() != null
-                                ? e.getMessage() : "No se pudo marcar el almacén.");
+                                ? e.getMessage() : "No se pudo marcar el obrador.");
                     }
                 });
             }
@@ -935,6 +927,42 @@ public class HexParcelRepository {
         }
     }
 
+    /** Cambia el nombre visible del apiario. El mensaje es null si se ha guardado. */
+    public void renameApiary(@NonNull String hexId, @NonNull String ownerId,
+            @Nullable String siteId, @Nullable String raw, @NonNull Consumer<String> onMain) {
+        ioExecutor.execute(() -> {
+            String name = com.apiculture.simulator.domain.game.EntityNames.clean(raw);
+            if (name == null) {
+                mainHandler.post(() -> onMain.accept("Escribe un nombre de al menos 2 letras."));
+                return;
+            }
+            List<HexParcelOwnershipEntity> mine = dao.listByHexAndOwnerSync(hexId, ownerId);
+            HexParcelOwnershipEntity row = null;
+            if (mine != null) {
+                for (HexParcelOwnershipEntity o : mine) {
+                    if (o == null) {
+                        continue;
+                    }
+                    if (siteId == null || siteId.isEmpty() || siteId.equals(o.siteId)) {
+                        row = o;
+                        break;
+                    }
+                }
+            }
+            if (row == null) {
+                mainHandler.post(() -> onMain.accept("No se ha encontrado el apiario."));
+                return;
+            }
+            row.parcelName = name;
+            if (!persistOwnershipRowCloud(row)) {
+                mainHandler.post(() -> onMain.accept("No se ha podido guardar el nombre."));
+                return;
+            }
+            dao.upsert(row);
+            mainHandler.post(() -> onMain.accept(null));
+        });
+    }
+
     /**
      * Instala un apiario: cobra siempre el precio del sitio (base + prima por flora nativa).
      * El hex solo define la flora compartida; no hay descuento por otro apiario en el mismo territorio.
@@ -957,17 +985,12 @@ public class HexParcelRepository {
             mainHandler.post(() -> onMainMessage.accept("Sesión no válida."));
             return;
         }
-        String nameToSave = sanitizeParcelName(parcelName);
-        if (nameToSave.isEmpty()) {
-            mainHandler.post(() -> onMainMessage.accept("Escribe un nombre para el apiario."));
+        String nameToSave = com.apiculture.simulator.domain.game.EntityNames.clean(parcelName);
+        if (nameToSave == null) {
+            mainHandler.post(() -> onMainMessage.accept("Escribe un nombre de al menos 2 letras."));
             return;
         }
         HexParcel parcel = IberiaHexOverlayStore.findById(appContext, hexId);
-        if (NpcContractCatalog.isNpcFarm(parcel)) {
-            mainHandler.post(() -> onMainMessage.accept(
-                    "Esa finca es de un propietario. No se compra: ve a Contratos en el mercado."));
-            return;
-        }
         if (!ClimateUnlock.canBuyParcel(parcel, playerLevel)) {
             int need = ClimateUnlock.minLevelForParcel(parcel);
             String climate = ClimateUnlock.climateLabelForParcel(parcel);
@@ -1000,7 +1023,7 @@ public class HexParcelRepository {
                 final int charge = pay;
                 boolean firstOnHex = dao.listByHexSync(hexId) == null || dao.listByHexSync(hexId).isEmpty();
                 String landConcept = (withWarehouse && !alreadyWarehouse
-                        ? "Compra de terreno con almacén "
+                        ? "Compra de terreno con obrador "
                         : "Compra de terreno ") + nameToSave;
                 if (charge > 0 && !economyRepository.trySpend(charge, landConcept)) {
                     mainHandler.post(() -> onMainMessage.accept(
@@ -1201,7 +1224,7 @@ public class HexParcelRepository {
         }
         HexParcelOwnershipEntity row = warehouseRow(ownerId, hexId, siteId);
         if (row == null || !row.hasWarehouse) {
-            return "No hay almacén en este punto.";
+            return "No hay obrador en este punto.";
         }
         if (!HoneyLogistics.cargoTouchingHex(appContext, ownerId, hexId).isEmpty()) {
             return "HAS_TRIPS";
@@ -1226,7 +1249,7 @@ public class HexParcelRepository {
         } else if (!deleteOwnershipRow(row)) {
             return "No hay conexión con el servidor. No se puede realizar esta acción.";
         }
-        economyRepository.addToBalance(refund, "Venta del almacén");
+        economyRepository.addToBalance(refund, "Venta del obrador");
         ensurePrimaryHexSync(ownerId);
         return null;
     }

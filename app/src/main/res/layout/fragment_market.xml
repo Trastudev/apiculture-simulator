@@ -403,11 +403,40 @@
             android:textSize="13sp"
             android:visibility="gone" />
 
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/input_layout_orders_sort"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="10dp"
+            android:visibility="gone"
+            app:boxBackgroundColor="@color/dash_card_bg"
+            app:boxCornerRadiusBottomEnd="16dp"
+            app:boxCornerRadiusBottomStart="16dp"
+            app:boxCornerRadiusTopEnd="16dp"
+            app:boxCornerRadiusTopStart="16dp"
+            app:boxStrokeColor="@color/event_gold_stroke"
+            app:boxStrokeWidth="1.5dp"
+            app:hintEnabled="false">
+
+            <AutoCompleteTextView
+                android:id="@+id/spinner_orders_sort"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="false"
+                android:inputType="none"
+                android:paddingVertical="10dp"
+                android:textColor="@color/event_ink"
+                android:textSize="14sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
         <TextView
             android:id="@+id/tv_orders_hint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             android:text="@string/market_orders_hint"
             android:textColor="@color/login_text_dark"
             android:textSize="12sp"
@@ -460,6 +489,47 @@
             android:layout_marginTop="8dp"
             android:orientation="vertical"
             android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/ll_orders_pager_bottom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="8dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/btn_orders_prev_bottom"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/market_orders_prev"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_chevron_left" />
+
+            <TextView
+                android:id="@+id/tv_orders_page_bottom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="12dp"
+                android:textColor="@color/event_ink"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                tools:text="1 / 1" />
+
+            <ImageButton
+                android:id="@+id/btn_orders_next_bottom"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/market_orders_next"
+                android:padding="6dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_chevron_right" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tv_orders_empty"

@@ -24,4 +24,6 @@ public class HoneyOrderEntity {
     public boolean taken;
     public String claimedBy;
     public int band;
+    /** Envase pedido; vacío en comandas antiguas, que van a granel. */
+    public String format;
 }

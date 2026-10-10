@@ -140,6 +140,21 @@
                 app:strokeWidth="1.5dp" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_warehouse_workshop"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="8dp"
+                android:text="@string/workshop_warehouse_open"
+                android:textAllCaps="false"
+                android:textColor="@color/event_ink"
+                android:textStyle="bold"
+                android:visibility="gone"
+                app:backgroundTint="@color/event_cream"
+                app:cornerRadius="14dp"
+                app:strokeColor="@color/event_gold_stroke"
+                app:strokeWidth="1.5dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_warehouse_upgrade"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"

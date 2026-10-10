@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewParent;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.core.widget.NestedScrollView;
@@ -18,7 +19,9 @@ import androidx.navigation.NavController;
 
 import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
+import com.apiculture.simulator.data.repository.WorkshopStore;
 import com.apiculture.simulator.databinding.ActivityMainBinding;
+import com.apiculture.simulator.domain.workshop.WorkshopState;
 import com.apiculture.simulator.presentation.MainActivity;
 import com.apiculture.simulator.presentation.common.GameNotice;
 import com.apiculture.simulator.presentation.hive.ApiaryYardFragment;
@@ -232,13 +235,14 @@ public final class TutorialController implements TutorialBus.Listener {
     @Override
     public boolean firstHivePath() {
         Step step = currentStep();
-        return step != null && (step.vignette == 10 || step.vignette == 11);
+        return step != null && (step.vignette == 10
+                || (step.vignette == 11 && step.advance == Advance.NAV));
     }
 
     @Override
     public boolean firstHiveOpen() {
         Step step = currentStep();
-        return step != null && step.vignette == 11;
+        return step != null && step.vignette == 11 && step.advance == Advance.NAV;
     }
 
     private void steerMap(@NonNull Step step) {
@@ -308,6 +312,7 @@ public final class TutorialController implements TutorialBus.Listener {
             begin(TutorialChapter.FIRST_APIARY, null, progress.stepIndex(uid, TutorialChapter.FIRST_APIARY));
             return;
         }
+        beginWorkshopChapter();
         beginContractsChapter();
         if (active == null) {
             overlay.setVisibility(View.GONE);
@@ -431,7 +436,8 @@ public final class TutorialController implements TutorialBus.Listener {
         if (currentStep() != step) {
             return;
         }
-        if (step.vignette == 11 && destId == R.id.apiaryYardFragment) {
+        if (step.vignette == 11 && step.advance == Advance.NAV
+                && destId == R.id.apiaryYardFragment) {
             View pass = binding.navHostFragment.getParent() instanceof View
                     ? (View) binding.navHostFragment.getParent() : binding.getRoot();
             Fragment host = activity.getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment);
@@ -481,7 +487,7 @@ public final class TutorialController implements TutorialBus.Listener {
             }
             return;
         }
-        if (step.vignette == 10 || step.vignette == 11) {
+        if (step.vignette == 10 || (step.vignette == 11 && step.advance == Advance.NAV)) {
             View target = hivePathTarget(step);
             View pass = binding.navHostFragment.getParent() instanceof View
                     ? (View) binding.navHostFragment.getParent() : binding.getRoot();
@@ -502,7 +508,8 @@ public final class TutorialController implements TutorialBus.Listener {
             return;
         }
         Anchor anchor = effectiveAnchor(step);
-        boolean liftCard = anchor == Anchor.HARVEST || anchor == Anchor.CONTRACT_DATES
+        boolean liftCard = anchor == Anchor.HARVEST || anchor == Anchor.DASH_WORKSHOP
+                || anchor == Anchor.CONTRACT_DATES
                 || anchor == Anchor.CONTRACT_TRAVEL || anchor == Anchor.CONTRACT_REWARD;
         if (!liftCard) {
             clearHarvestWatch();
@@ -520,6 +527,31 @@ public final class TutorialController implements TutorialBus.Listener {
                 }
             });
             return;
+        }
+        if (scroll && anchor == Anchor.SHOP_TRUCK) {
+            View truck = findTarget(false, R.id.card_shop_truck);
+            ScrollView shopScroll = scrollViewParent(truck);
+            if (truck == null || truck.getHeight() <= 0 || shopScroll == null) {
+                if (attempt < 20) {
+                    overlay.postDelayed(() -> placeHole(step, true, attempt + 1), 80);
+                }
+                return;
+            }
+            moveCard(true);
+            View card = overlay.findViewById(R.id.tutorial_card);
+            int[] truckAt = new int[2];
+            int[] scrollAt = new int[2];
+            truck.getLocationOnScreen(truckAt);
+            shopScroll.getLocationOnScreen(scrollAt);
+            int cardBottom = card == null ? 0 : card.getBottom();
+            int bandTop = Math.max(scrollAt[1], cardBottom);
+            int bandBottom = scrollAt[1] + shopScroll.getHeight();
+            int desired = (truckAt[1] + truck.getHeight() / 2) - ((bandTop + bandBottom) / 2);
+            if (Math.abs(desired) > 8) {
+                shopScroll.scrollBy(0, desired);
+                overlay.post(() -> placeHole(step, false, attempt));
+                return;
+            }
         }
         RectF union = new RectF();
         boolean any = false;
@@ -588,6 +620,8 @@ public final class TutorialController implements TutorialBus.Listener {
                 return R.id.ll_contract_travel;
             case CONTRACT_REWARD:
                 return R.id.ll_contract_reward;
+            case DASH_WORKSHOP:
+                return R.id.tile_quick_workshop;
             case HARVEST:
             default:
                 return R.id.tile_quick_harvest;
@@ -618,7 +652,8 @@ public final class TutorialController implements TutorialBus.Listener {
         overlay.getLocationOnScreen(overlayAt);
         float density = activity.getResources().getDisplayMetrics().density;
         int gap = Math.round(12f * density);
-        int extra = targetId == R.id.tile_quick_harvest ? 0 : Math.round(72f * density);
+        int extra = targetId == R.id.tile_quick_harvest || targetId == R.id.tile_quick_workshop
+                ? 0 : Math.round(72f * density);
         int bandTop = Math.max(scrollAt[1], overlayAt[1] + card.getBottom() + gap);
         int bandBottom = Math.min(scrollAt[1] + scroller.getHeight(), navAt[1] - gap - extra);
         if (bandBottom - bandTop < target.getHeight()) {
@@ -664,6 +699,15 @@ public final class TutorialController implements TutorialBus.Listener {
         }
         harvestWatch = null;
         harvestWatchListener = null;
+    }
+
+    @Nullable
+    private static ScrollView scrollViewParent(@Nullable View target) {
+        ViewParent parent = target == null ? null : target.getParent();
+        while (parent != null && !(parent instanceof ScrollView)) {
+            parent = parent.getParent();
+        }
+        return parent instanceof ScrollView ? (ScrollView) parent : null;
     }
 
     @Nullable
@@ -725,6 +769,10 @@ public final class TutorialController implements TutorialBus.Listener {
 
     @NonNull
     private Anchor effectiveAnchor(@NonNull Step step) {
+        // Capítulos 9 y 10. Al obrador se entra desde la casilla de Inicio.
+        if (step.screen == Screen.WORKSHOP && !screenMatches(Screen.WORKSHOP)) {
+            return destId == R.id.dashboardFragment ? Anchor.DASH_WORKSHOP : Anchor.TAB_DASH;
+        }
         if (step.advance == Advance.NAV || step.screen == Screen.ANY || screenMatches(step.screen)) {
             return step.anchor;
         }
@@ -766,7 +814,39 @@ public final class TutorialController implements TutorialBus.Listener {
         if (step.event == TutorialEvent.CONTRACTS_IBERIA) {
             return checked(R.id.btn_market_iberia);
         }
+        if (uid != null && (step.event == TutorialEvent.WORKSHOP_BUILT
+                || step.event == TutorialEvent.WORKSHOP_READY
+                || step.event == TutorialEvent.WORKSHOP_FORMAT)) {
+            if (step.event == TutorialEvent.WORKSHOP_BUILT) {
+                return WorkshopStore.built(activity, uid);
+            }
+            if (step.event == TutorialEvent.WORKSHOP_READY) {
+                return WorkshopStore.anyComplete(activity, uid);
+            }
+            for (WorkshopState s : WorkshopStore.all(activity, uid)) {
+                for (WorkshopState.Batch b : s.batches) {
+                    if (b.format == null) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
         return false;
+    }
+
+    /** Capítulo 9. Al acabar el capítulo 1, si el jugador aún no tiene obrador. */
+    private void beginWorkshopChapter() {
+        if (uid == null || active == TutorialChapter.WORKSHOP
+                || progress.isDone(uid, TutorialChapter.WORKSHOP)
+                || !progress.isDone(uid, TutorialChapter.FIRST_APIARY)) {
+            return;
+        }
+        if (WorkshopStore.anyComplete(activity, uid)) {
+            progress.setDone(uid, TutorialChapter.WORKSHOP, true);
+            return;
+        }
+        offer(TutorialChapter.WORKSHOP, null);
     }
 
     private boolean checked(int id) {
@@ -921,6 +1001,7 @@ public final class TutorialController implements TutorialBus.Listener {
             begin(nextChapter.chapter, nextChapter.detail, 0);
             return;
         }
+        beginWorkshopChapter();
         beginContractsChapter();
         if (active == null) {
             overlay.setVisibility(View.GONE);
@@ -964,6 +1045,8 @@ public final class TutorialController implements TutorialBus.Listener {
             case PORT_OPENED:
             case SHIP_BOUGHT:
                 return TutorialChapter.INTERNATIONAL;
+            case WORKSHOP_BATCH:
+                return TutorialChapter.WORKSHOP_PACKING;
             case APIARY_INSTALLED:
             case HIVE_BOUGHT:
             case WAREHOUSE_BOUGHT:
@@ -988,6 +1071,8 @@ public final class TutorialController implements TutorialBus.Listener {
                 return destId == R.id.marketFragment;
             case SHOP:
                 return destId == R.id.shopFragment;
+            case WORKSHOP:
+                return destId == R.id.workshopFragment;
             case ANY:
             default:
                 return true;

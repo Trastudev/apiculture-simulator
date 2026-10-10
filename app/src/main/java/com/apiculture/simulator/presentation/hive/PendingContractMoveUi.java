@@ -242,7 +242,7 @@ public final class PendingContractMoveUi {
         if (parcel != null && parcel.placeName != null && !parcel.placeName.trim().isEmpty()) {
             return parcel.placeName.trim();
         }
-        if (NpcContractCatalog.isNpcFarm(parcel)) {
+        if (parcel != null) {
             String estate = NpcContractCatalog.estateNameFor(parcel);
             if (estate != null && !estate.trim().isEmpty()) {
                 return estate.trim();

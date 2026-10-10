@@ -103,6 +103,12 @@ public class UserGameStateRepository {
                     } else {
                         FleetStore.pushServer(app, uid);
                     }
+                    JSONObject workshop = GameServer.loadStore(uid, "workshop");
+                    if (workshop != null && workshop.has("levels")) {
+                        WorkshopStore.applyServer(app, uid, workshop);
+                    } else {
+                        WorkshopStore.pushServer(app, uid);
+                    }
                     JSONObject warehouse = GameServer.loadStore(uid, "warehouse");
                     if (warehouse != null && warehouse.optJSONObject("stock") != null) {
                         WarehouseHoneyStore.applyServer(app, uid, warehouse.optJSONObject("stock"));
@@ -184,11 +190,12 @@ public class UserGameStateRepository {
         }
     }
 
-    /** Alta o documento de usuario sin partida: 20.000 beecoins, sin miel ni progreso. */
+    /** Alta o documento de usuario sin partida: 45.000 beecoins, sin miel ni progreso. */
     private void seedBlankPlayerLocal(String uid) {
         economy.applyNewGameEconomyDefaults();
         FleetStore.clear(app, uid);
         WarehouseHoneyStore.clear(app, uid);
+        WorkshopStore.clear(app, uid);
         progress.resetToNewGame(uid);
         EventInventoryStore.clearAll(app);
     }
@@ -237,6 +244,15 @@ public class UserGameStateRepository {
         mainHandler.removeCallbacks(debouncedPush);
         pendingPushUid = null;
         pushSnapshot(uid);
+    }
+
+    /** El saldo se confirma en red y no puede hacerse desde el hilo de la interfaz. */
+    public void runOffMain(Runnable work) {
+        io.execute(work);
+    }
+
+    public void runOnMain(Runnable work) {
+        mainHandler.post(work);
     }
 
     public void pushSnapshot(@Nullable String uid) {

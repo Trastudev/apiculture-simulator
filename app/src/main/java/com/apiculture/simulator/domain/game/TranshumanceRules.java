@@ -13,8 +13,6 @@ public final class TranshumanceRules {
     public static final int MIN_EUR = 80;
     public static final int MAX_EUR = 250;
     public static final int TRAVEL_DAYS = 1;
-    /** Código interno: el viaje llegaría después del cálculo diario. */
-    public static final String ERR_AFTER_DAILY_TICK = "__after_daily_tick__";
 
     private TranshumanceRules() {
     }

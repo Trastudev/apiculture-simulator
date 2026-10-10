@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">ApiSim</string>
     <string name="server_unavailable_title">Servidor non dispoñible</string>
-    <string name="server_unavailable_message">Non hai conexión co servidor. Non se puido realizar a acción.</string>
+    <string name="server_unavailable_message">Non hai conexión co servidor. Téntao de novo ata que volva; non se pode xogar sen ela.</string>
     <string name="server_retry">Tentar de novo a conexión</string>
     <string name="cd_app_logo">Logo do xogo</string>
     <string name="dashboard_default_player">Apicultor</string>
@@ -61,15 +61,15 @@
     <string name="dashboard_view_map">Ver mapa</string>
     <string name="dashboard_harvest">Recoller</string>
     <string name="dashboard_sell">Vender</string>
-    <string name="map_buy_warehouse">Comprar almacén (300,00 B)</string>
-    <string name="map_buy_warehouse_title">Comprar almacén</string>
-    <string name="map_buy_warehouse_info">Almacén de nivel 1: 50 kg. Garda os meles do teu nivel de xogador. O camión parte de aquí.</string>
-    <string name="map_buy_warehouse_ok">Almacén comprado.</string>
+    <string name="map_buy_warehouse">Comprar obradoiro (300,00 B)</string>
+    <string name="map_buy_warehouse_title">Comprar obradoiro</string>
+    <string name="map_buy_warehouse_info">Obradoiro de nivel 1: 50 kg. Garda os meles do teu nivel de xogador. O camión parte de aquí.</string>
+    <string name="map_buy_warehouse_ok">Obradoiro comprado.</string>
     <string name="map_build_choice_title">Que queres construír?</string>
     <string name="map_build_choice_hive">Comprar colmea</string>
     <string name="map_install_choice_title">Que queres instalar?</string>
     <string name="map_install_choice_apiary">Instalar un apiario</string>
-    <string name="map_install_choice_warehouse">Instalar un almacén</string>
+    <string name="map_install_choice_warehouse">Instalar un obradoiro</string>
     <string name="map_install_choice_hq">Instalar sede central</string>
     <string name="map_hq_title">Sede central</string>
     <string name="map_hq_region">Sede de %1$s</string>
@@ -81,14 +81,14 @@
     <string name="map_hq_move_message">Xa tes sede en %1$s. Móvesa a este punto?</string>
     <string name="map_hq_info">Desde aquí céntrase o mapa ao entrar neste territorio. Toca un terreo libre e elixe «Instalar sede central» para movela.</string>
     <string name="map_other_apiary_kicker">Apiario doutro xogador</string>
-    <string name="map_tap_warehouse_exists">Xa hai un almacén aquí. Toca a súa icona para velo.</string>
+    <string name="map_tap_warehouse_exists">Xa hai un obradoiro aquí. Toca a súa icona para velo.</string>
     <string name="map_apiary_placed">Apiario colocado.</string>
-    <string name="harvest_need_warehouse_title">Necesitas un almacén</string>
-    <string name="harvest_need_warehouse_message">Para recoller mel fai falta un almacén neste territorio. O camión partirá de alí coa colleita.</string>
+    <string name="harvest_need_warehouse_title">Necesitas un obradoiro</string>
+    <string name="harvest_need_warehouse_message">Para recoller mel fai falta un obradoiro neste territorio. O camión partirá de alí coa colleita.</string>
     <string name="harvest_need_warehouse_go_map">Ir ao mapa</string>
     <string name="harvest_trips_title">Confirmar recollida</string>
-    <string name="harvest_trips_subtitle">Elixe o camión. Sae do seu almacén.</string>
-    <string name="harvest_trips_plan">Cada camión sae do seu almacén e percorre os apiarios polo camiño máis curto.</string>
+    <string name="harvest_trips_subtitle">Elixe o camión. Sae do seu obradoiro.</string>
+    <string name="harvest_trips_plan">Cada camión sae do seu obradoiro e percorre os apiarios polo camiño máis curto.</string>
     <string name="harvest_trips_truck_level">Nivel %1$d</string>
     <string name="harvest_trips_route">%1$s sae de %2$s</string>
     <string name="harvest_trips_meta">%1$.1f kg · %2$s ida e volta</string>
@@ -97,10 +97,10 @@
     <string name="harvest_trips_confirm">Enviar camións</string>
     <string name="harvest_trips_confirm_one">Enviar camión</string>
     <string name="harvest_trips_cancel">Cancelar</string>
-    <string name="harvest_trips_skipped">%1$d colmeas non se recollen: non hai almacén no seu territorio.</string>
-    <string name="harvest_trips_left">Quedan %1$d colmeas: non caben no camión ou no almacén.</string>
+    <string name="harvest_trips_skipped">%1$d colmeas non se recollen: non hai obradoiro no seu territorio.</string>
+    <string name="harvest_trips_left">Quedan %1$d colmeas: non caben no camión ou no obradoiro.</string>
     <string name="harvest_no_truck">Non hai camións libres. Espera a que volva o que está en ruta.</string>
-    <string name="harvest_warehouse_full">O almacén non ten sitio. O mel queda nas colmeas.</string>
+    <string name="harvest_warehouse_full">O obradoiro non ten sitio. O mel queda nas colmeas.</string>
     <string name="map_market_title">Mercado de %1$s</string>
     <string name="map_market_local_kicker">Mercado local</string>
     <string name="map_market_capital_kicker">Mercado de capital</string>
@@ -113,7 +113,7 @@
     <string name="map_market_competition_note">Competencia %1$s · %2$.1f %% vs base</string>
     <string name="map_market_empty_stock">Non tes mel para vender aquí.</string>
     <string name="map_market_review">Revisar envío</string>
-    <string name="map_market_no_warehouse">Necesitas un almacén neste territorio.</string>
+    <string name="map_market_no_warehouse">Necesitas un obradoiro neste territorio.</string>
     <string name="map_market_demand_label">Perfil do mercado e o mel</string>
     <string name="map_market_profile_row">Vol. %1$s · comp. %2$s</string>
     <string name="map_market_band_high">alto</string>
@@ -134,7 +134,7 @@
     <string name="truck_confirm_send">Enviar camión</string>
     <string name="truck_confirm_back">Volver</string>
     <string name="truck_confirm_instant">Sen camión en vivo: cóbrase ao confirmar.</string>
-    <string name="map_warehouse_title">Almacén</string>
+    <string name="map_warehouse_title">Obradoiro</string>
     <string name="map_warehouse_kg">%1$.1f / %2$.0f kg</string>
     <string name="map_warehouse_jars">Mel gardado</string>
     <string name="map_warehouse_level">Nivel %1$d</string>
@@ -142,20 +142,20 @@
     <string name="map_warehouse_unlock_next">Seguinte: %1$s</string>
     <string name="map_warehouse_unlock_none">Sen máis tipos de mel</string>
     <string name="map_warehouse_upgrade">Subir a nivel %1$d (%2$.2f B)</string>
-    <string name="map_warehouse_upgrade_ok">Almacén mellorado.</string>
+    <string name="map_warehouse_upgrade_ok">Obradoiro mellorado.</string>
     <string name="map_sell_apiary">Vender apiario</string>
-    <string name="map_sell_warehouse">Vender almacén</string>
+    <string name="map_sell_warehouse">Vender obradoiro</string>
     <string name="map_sell_confirm">Vender</string>
     <string name="map_sell_apiary_confirm">Recibirás %1$.2f B (o 50 %% do prezo de instalación). Esta acción non se pode desfacer.</string>
     <string name="map_sell_warehouse_confirm">Recibirás %1$.2f B (o 50 %% do prezo de compra e das ampliacións). Esta acción non se pode desfacer.</string>
     <string name="map_sell_apiary_ok">Apiario vendido. +%1$.2f B</string>
-    <string name="map_sell_warehouse_ok">Almacén vendido. +%1$.2f B</string>
-    <string name="map_sell_warehouse_missing">Non hai almacén neste punto.</string>
+    <string name="map_sell_warehouse_ok">Obradoiro vendido. +%1$.2f B</string>
+    <string name="map_sell_warehouse_missing">Non hai obradoiro neste punto.</string>
     <string name="map_sell_apiary_blocked_title">O apiario non está baleiro</string>
-    <string name="map_sell_apiary_blocked_hives">Hai %1$d colmeas neste apiario. Valeira o apiario (transhumancia ou almacén) antes de vendelo.</string>
+    <string name="map_sell_apiary_blocked_hives">Hai %1$d colmeas neste apiario. Valeira o apiario (transhumancia ou obradoiro) antes de vendelo.</string>
     <string name="map_sell_apiary_blocked_hives_generic">Hai colmeas neste apiario. Valeira o apiario antes de vendelo.</string>
     <string name="map_sell_warehouse_blocked_title">Hai viaxes en curso</string>
-    <string name="map_sell_warehouse_blocked_trips">Espera a que terminen as viaxes cara a ou desde este almacén:</string>
+    <string name="map_sell_warehouse_blocked_trips">Espera a que terminen as viaxes cara a ou desde este obradoiro:</string>
     <string name="map_sell_trip_kind_collect">Recollida (ida)</string>
     <string name="map_sell_trip_kind_collect_back">Recollida (volta)</string>
     <string name="map_sell_trip_kind_wholesale">Venda ao por maior</string>
@@ -183,7 +183,7 @@
     <string name="dashboard_harvest_summary_total">Total: %1$.1f kg</string>
     <string name="dashboard_harvest_summary_kg">+%1$.1f kg</string>
     <string name="dashboard_sell_all_ok">Puxeches á venda %1$.2f kg no mercado. Ingresos: %2$.0f B.</string>
-    <string name="dashboard_sell_all_none">Non hai mel no almacén para vender. Recolle primeiro.</string>
+    <string name="dashboard_sell_all_none">Non hai mel no obradoiro para vender. Recolle primeiro.</string>
     <string name="dashboard_sell_all_partial">Vendidas %1$.2f kg (%2$.0f B). Non se puido vender o resto: %3$s</string>
     <string name="dashboard_sell_all_market">O mercado non está listo. Inténtao de novo nununs segundos.</string>
     <string name="game_notice_kicker">Apiario</string>
@@ -240,16 +240,16 @@
     <string name="admin_events_title">Eventos globais</string>
     <string name="admin_back">Volver</string>
     <string name="admin_trips_title">Viaxes en marcha</string>
-    <string name="admin_trips_subtitle">Elixe unha viaxe. Fai agora a venda, a recollida ou as entregas, e o camión volve ao seu almacén.</string>
+    <string name="admin_trips_subtitle">Elixe unha viaxe. Fai agora a venda, a recollida ou as entregas, e o camión volve ao seu obradoiro.</string>
     <string name="admin_trips_empty">Non hai viaxes en marcha.</string>
     <string name="admin_trips_finish">Terminar xa</string>
     <string name="admin_trips_confirm_title">Terminar esta viaxe?</string>
-    <string name="admin_trips_confirm_work">Farase agora o que lle quede polo camiño (vender, recoller ou deixar mel) e o camión sairá de volta ao seu almacén.</string>
-    <string name="admin_trips_confirm_home">Esta viaxe xa volve. Chegará agora ao almacén.</string>
+    <string name="admin_trips_confirm_work">Farase agora o que lle quede polo camiño (vender, recoller ou deixar mel) e o camión sairá de volta ao seu obradoiro.</string>
+    <string name="admin_trips_confirm_home">Esta viaxe xa volve. Chegará agora ao obradoiro.</string>
     <string name="admin_trips_confirm_hive">A colmea chegará agora ao seu destino.</string>
     <string name="admin_trips_ok_hive">A colmea xa está no destino.</string>
-    <string name="admin_trips_ok_return">Feito. O camión volve ao seu almacén.</string>
-    <string name="admin_trips_ok_home">O camión xa está no almacén.</string>
+    <string name="admin_trips_ok_return">Feito. O camión volve ao seu obradoiro.</string>
+    <string name="admin_trips_ok_home">O camión xa está no obradoiro.</string>
     <string name="admin_trips_fail">Non se puido terminar a viaxe.</string>
     <string name="admin_trips_kind_collect">Recollida</string>
     <string name="admin_trips_kind_wholesale">Venda</string>
@@ -299,7 +299,7 @@
     <string name="admin_grants_remote_ok">Feito. O xogador velao ao sincronizar a súa partida.</string>
     <string name="admin_grants_all_ok">Feito para todos os xogadores.</string>
     <string name="admin_grants_balance">Saldo: %1$.0f B</string>
-    <string name="admin_grants_honey_stock">Mel no almacén: %1$.1f kg</string>
+    <string name="admin_grants_honey_stock">Mel no obradoiro: %1$.1f kg</string>
     <string name="admin_grants_xp_line">Nivel %1$d · %2$d / %3$d XP</string>
     <string name="admin_grants_coins_title">Engadir BeeCoins</string>
     <string name="admin_grants_coins_hint">Cantidade (B)</string>
@@ -317,13 +317,13 @@
     <string name="admin_hive_honey_add">Engadir ás marcadas</string>
     <string name="admin_hive_honey_need">Marca polo menos unha colmea.</string>
     <string name="admin_hive_honey_line">%1$s · %2$s · %3$.1f kg</string>
-    <string name="admin_hive_honey_stored">no almacén de colmeas</string>
+    <string name="admin_hive_honey_stored">no obradoiro de colmeas</string>
     <string name="admin_hive_honey_ok">+%1$.1f kg de %2$s en %3$d colmeas.</string>
     <string name="admin_hive_honey_partial">En %1$d colmeas non cabía máis mel.</string>
     <string name="admin_hive_honey_full">Esas colmeas xa están ao máximo de mel.</string>
     <string name="admin_grants_need_amount">Indica unha cantidade maior que 0.</string>
     <string name="admin_grants_coins_ok">+%1$.0f B engadidos. Saldo: %2$.0f B</string>
-    <string name="admin_grants_honey_ok">+%1$.1f kg de %2$s. Almacén: %3$.1f kg</string>
+    <string name="admin_grants_honey_ok">+%1$.1f kg de %2$s. Obradoiro: %3$.1f kg</string>
     <string name="admin_grants_xp_ok">+%1$d XP. Nivel %2$d (%3$d / %4$d)</string>
     <string name="admin_global_reset_title">Reset global de partidas</string>
     <string name="admin_global_reset_subtitle">Borra na nube colmeas, terreos, economía, inventario e clasificación de todos os xogadores (e bots). Conserva nome e marca. Cada dispositivo reiníciase só ao abrir a app; os bots no próximo tick.</string>
@@ -332,7 +332,7 @@
     <string name="admin_global_reset_confirm_message">Esta acción non se pode desfacer. Valeirarase o progreso de xogo de todos os xogadores en Firestore. Os perfís (nome/marca) consérvanse.</string>
     <string name="admin_global_reset_busy">Executando reset global…</string>
     <string name="admin_global_reset_local_ok">A túa partida local tamén se reiniciou.</string>
-    <string name="admin_global_reset_forced_notice">Un administrador reiniciou as partidas. Empezas de cero con 20.000,00 beecoins.</string>
+    <string name="admin_global_reset_forced_notice">Un administrador reiniciou as partidas. Empezas de cero con 45.000,00 beecoins.</string>
     <string name="dashboard_global_event_kicker">Evento global</string>
     <string name="dashboard_global_event_live">En curso</string>
     <string name="dashboard_global_event_ended_badge">Finalizado</string>
@@ -362,7 +362,7 @@
     <string name="dashboard_global_event_sell">Vender mel do evento</string>
     <string name="dashboard_global_event_sell_flora">Vender %1$s</string>
     <string name="dashboard_global_event_sell_kg">Vender %1$s · %2$.1f kg</string>
-    <string name="dashboard_global_event_sell_none">Non tes mel de %1$s no almacén. Recolle primeiro.</string>
+    <string name="dashboard_global_event_sell_none">Non tes mel de %1$s no obradoiro. Recolle primeiro.</string>
     <string name="dashboard_global_event_sell_ok">Vendiches %1$.2f kg de %2$s no evento. Ingresos: %3$.0f B.</string>
     <string name="dashboard_global_event_sell_not_live">Este evento non admite venda agora.</string>
     <string name="dashboard_global_event_claimed">Recompensa recollida.</string>
@@ -371,13 +371,13 @@
     <string name="dashboard_global_event_velutina">Ataque de velutina: −%1$.0f%% de obreiras en climas seleccionados.</string>
     <string name="dashboard_menu_reset_game">Reiniciar xogo</string>
     <string name="dashboard_reset_confirm_title">Reiniciar xogo?</string>
-    <string name="dashboard_reset_confirm_message">Borraranse colmeas, terreos, viaxes, contratos, encomendas, sementeiras, inventario, sede, mel, nivel e a túa achega aos eventos. Consérvase o perfil (nome e marca). Empezas con 20.000,00 beecoins.</string>
+    <string name="dashboard_reset_confirm_message">Borraranse colmeas, terreos, viaxes, contratos, encomendas, sementeiras, inventario, sede, mel, nivel e a túa achega aos eventos. Consérvase o perfil (nome e marca). Empezas con 45.000,00 beecoins.</string>
     <string name="dashboard_reset_choose">Podes reiniciar só a túa partida ou a de todos, bots incluídos. O perfil (nome e marca) consérvase. Non queda rastro de colmeas, terreos, viaxes nin achegas a eventos.</string>
     <string name="dashboard_reset_mine">Só a miña partida</string>
     <string name="dashboard_reset_all">Todos, incluídos bots</string>
     <string name="dashboard_reset_all_title">Reiniciar a todos?</string>
-    <string name="dashboard_reset_all_message">Bórrase a partida de cada xogador e dos bots: colmeas, terreos, clasificación, mercado do día e achegas a eventos. Os perfís consérvanse. Cada un volve empezar con 20.000,00 beecoins.</string>
-    <string name="dashboard_reset_done">Partida reiniciada: 20.000,00 beecoins, sen terreos nin colmeas.</string>
+    <string name="dashboard_reset_all_message">Bórrase a partida de cada xogador e dos bots: colmeas, terreos, clasificación, mercado do día e achegas a eventos. Os perfís consérvanse. Cada un volve empezar con 45.000,00 beecoins.</string>
+    <string name="dashboard_reset_done">Partida reiniciada: 45.000,00 beecoins, sen terreos nin colmeas.</string>
     <string name="dashboard_reset_error">Non se puido reiniciar o xogo.</string>
     <string name="privacy_policy">Política de privacidade</string>
     <string name="account_delete">Eliminar a conta e os datos</string>
@@ -425,8 +425,8 @@
     <string name="market_picker_south_africa_locked_title">Suráfrica bloqueada</string>
     <string name="market_picker_south_africa_locked">Suráfrica desbloquéase no nivel 40.</string>
     <string name="market_picker_locked_close">Entendido</string>
-    <string name="market_picker_warehouse">o teu almacén</string>
-    <string name="market_picker_no_origin">sen almacén</string>
+    <string name="market_picker_warehouse">o teu obradoiro</string>
+    <string name="market_picker_no_origin">sen obradoiro</string>
     <string name="market_picker_provincial">Mercado provincial</string>
     <string name="market_picker_local">Mercado local</string>
     <string name="market_picker_international">Mercado internacional</string>
@@ -473,11 +473,11 @@
         <item>O pecoreo diario calcúlase ás 8:00. Se deixas mel na colmea, as abellas comen das súas reservas.</item>
         <item>Un terreo saturado produce menos: reparte as colmeas ou busca floración nova.</item>
         <item>Os contratos de polinización acéptanse desde o apiario. O camión sae ás 8:00 do día programado.</item>
-        <item>Recolle mel ao almacén e vende no mercado ou cumpre encomendas para mellor prezo.</item>
+        <item>Recolle mel ao obradoiro e vende no mercado ou cumpre encomendas para mellor prezo.</item>
         <item>A varroa medra con cría e calor. Trata a tempo e vixía a saúde da raíña.</item>
         <item>Cada clima (Iberia, Suráfrica, Madagascar) ten floracións distintas: viaxa cando desbloquees a zona.</item>
         <item>Se hai perigo de enxambración, divide a colmea antes de perder poboación.</item>
-        <item>O almacén garda mel por tipo. As encomendas piden un tipo concreto: non mestures ás cegas.</item>
+        <item>O obradoiro garda mel por tipo. As encomendas piden un tipo concreto: non mestures ás cegas.</item>
     </string-array>
     <string name="hive_detail_prev">Colmea anterior do apiario</string>
     <string name="hive_detail_next">Colmea seguinte do apiario</string>
@@ -488,7 +488,7 @@
     <string name="market_tab_wholesale">Mercado</string>
     <string name="market_tab_contracts">Contratos</string>
     <string name="market_tab_orders">Encomendas</string>
-    <string name="market_orders_hint">Pedidos de mel de comercios e particulares. O camión sae do almacén cara ao pobo do cliente.</string>
+    <string name="market_orders_hint">Pedidos de mel de comercios e particulares. O camión sae do obradoiro cara ao pobo do cliente.</string>
     <string name="market_orders_empty">Hoxe non hai encomendas preto.</string>
     <string name="market_orders_prev">Páxina anterior de encomendas</string>
     <string name="market_orders_next">Páxina seguinte de encomendas</string>
@@ -500,11 +500,11 @@
     <string name="market_order_en_route">Camión en camiño</string>
     <string name="market_order_ok">O camión sae cara a %1$s</string>
     <string name="market_order_instant">Entrega rexistrada: %1$.0f B</string>
-    <string name="market_order_fail_stock">Non hai mel suficiente dese tipo no almacén</string>
-    <string name="market_order_fail_truck">Non hai un camión libre no almacén que poida levar esta encomenda.</string>
+    <string name="market_order_fail_stock">No obradoiro seleccionado non hai mel suficiente dese tipo</string>
+    <string name="market_order_fail_truck">Non hai un camión libre no obradoiro que poida levar esta encomenda.</string>
     <string name="market_order_fail">Non se puido aceptar a encomenda</string>
     <string name="order_truck_title">Elixe o camión</string>
-    <string name="order_truck_subtitle">Sae do seu almacén coa encomenda.</string>
+    <string name="order_truck_subtitle">Sae do seu obradoiro coa encomenda.</string>
     <string name="market_sell_truck_subtitle">Elixe que camión leva o mel ao mercado.</string>
     <string name="order_truck_meta">Caixa %1$.0f kg · %2$.1f km · %3$.0f B</string>
     <string name="order_truck_level_here">Nivel %1$d · o mel está aquí</string>
@@ -519,6 +519,36 @@
     <string name="market_order_distance_label">Distancia</string>
     <string name="market_order_distance">%1$.2f km</string>
     <string name="market_order_travel">−%1$.2f</string>
+    <string name="orders_sort_label">Ordenar encomendas</string>
+    <string name="orders_sort_distance">Por distancia</string>
+    <string name="orders_sort_flora_distance">Por flora e distancia</string>
+    <string name="order_delivery_title">Encomenda entregada</string>
+    <string name="order_delivery_thanks">Grazas!</string>
+    <string name="order_delivery_npc_speech">«Moitas grazas pola entrega!»</string>
+    <string-array name="order_delivery_thanks_lines">
+        <item>Grazas!</item>
+        <item>Que puntual!</item>
+        <item>Xusto a tempo!</item>
+        <item>Excelente!</item>
+        <item>Unha marabilla!</item>
+        <item>Que aroma!</item>
+        <item>Perfecto!</item>
+        <item>Ata a próxima!</item>
+    </string-array>
+    <string-array name="order_delivery_speech_lines">
+        <item>«Moitas grazas pola entrega!»</item>
+        <item>«Que puntual. Este mel cheira de marabilla.»</item>
+        <item>«Xusto o que precisaba. Grazas!»</item>
+        <item>«Os meus clientes van quedar encantados.»</item>
+        <item>«Un tarro así non se atopa cada día.»</item>
+        <item>«Que aroma. Pagou a pena esperar.»</item>
+        <item>«Chegou perfecta. Conta comigo outra vez.»</item>
+        <item>«Déboche unha. Este mel é excelente.»</item>
+    </string-array>
+    <string name="order_delivery_sold_title">Kg vendidos</string>
+    <string name="order_delivery_sold_amount">%1$.1f kg de %2$s</string>
+    <string name="order_delivery_earned_title">Beecoins conseguidos</string>
+    <string name="order_delivery_earned_amount">+%1$.2f B</string>
     <string name="market_sell_truck">O camión sae ao mercado con %1$.1f kg</string>
     <string name="hive_harvest_ok_truck">Recollido: %1$.2f kg. O camión vai recollela.</string>
     <string name="dashboard_trips_title">Viaxes</string>
@@ -528,10 +558,17 @@
     <string name="dashboard_place_dest">Destino</string>
     <string name="dashboard_trip_hive">Traslado de colmea</string>
     <string name="dashboard_trip_collect">Recollida de mel</string>
-    <string name="dashboard_trip_collect_return">Mel ao almacén</string>
+    <string name="dashboard_trip_collect_return">Mel ao obradoiro</string>
     <string name="dashboard_trip_wholesale">Venda ao maior</string>
     <string name="dashboard_trip_order">Encomenda</string>
     <string name="dashboard_trip_route">%1$s → %2$s</string>
+    <string name="trip_cancel_cd">Cancelar viaxe</string>
+    <string name="trip_cancel_title">Confirmar cancelación da viaxe</string>
+    <string name="trip_cancel_message">Seguro que queres cancelar esta viaxe? O camión dará a volta desde onde estea. A carga e as colmeas que leve volven ao seu sitio ao chegar.</string>
+    <string name="trip_cancel_keep">Continuar a viaxe</string>
+    <string name="trip_cancel_ok">Cancelar a viaxe</string>
+    <string name="trip_cancel_done">O camión volve. A carga devólvese ao chegar.</string>
+    <string name="trip_cancel_already">Esa viaxe xa volve.</string>
     <string name="dashboard_trip_leg_out">Ida</string>
     <string name="dashboard_trip_leg_back">Volta</string>
     <string name="dashboard_trip_eta">Tempo restante: %1$s</string>
@@ -605,7 +642,7 @@
     <string name="market_contract_need_hive">Escolle polo menos unha colmea.</string>
     <string name="market_contract_need_hive_or_buy">Escolle polo menos unha colmea.</string>
     <string name="market_contract_buy_section">Comprar para esta finca</string>
-    <string name="market_contract_buy_hint">As novas colmeas instálanse na finca do contrato. Ao terminar pasan ao almacén (terreo principal).</string>
+    <string name="market_contract_buy_hint">As novas colmeas instálanse na finca do contrato. Ao terminar pasan ao obradoiro (terreo principal).</string>
     <string name="market_contract_buy_add">Engadir ao pedido</string>
     <string name="market_contract_buy_cart_empty">Pedido baleiro. Engade núcleos un a un ou por cantidade.</string>
     <string name="market_contract_buy_cart_line">%1$d × %2$s · %3$.2f B</string>
@@ -628,8 +665,8 @@
     <string name="cd_stat_honey">Mel en stock</string>
     <string name="cd_stat_honey_harvested">Mel recollido</string>
     <string name="cd_stat_bees">Obreiras adultas</string>
-    <string name="cd_stat_warehouse">Colmeas no almacén</string>
-    <string name="stock_hive_dialog_title">Almacén de colmeas</string>
+    <string name="cd_stat_warehouse">Colmeas no obradoiro</string>
+    <string name="stock_hive_dialog_title">Obradoiro de colmeas</string>
     <string name="stock_hive_empty">Non hai colmeas en stock.</string>
     <string name="stock_hive_place">Colocar aquí</string>
     <string name="stock_hive_stat_pop">Poboación</string>
@@ -638,10 +675,10 @@
     <string name="stock_hive_stat_health">Saúde</string>
     <string name="stock_hive_stat_varroa">Varroa</string>
     <string name="stock_hive_placed_ok">Colmea colocada no apiario.</string>
-    <string name="hex_mark_primary">Marcar como almacén</string>
-    <string name="hex_primary_already">Almacén principal</string>
-    <string name="hex_primary_ok">Este terreo é agora o teu almacén.</string>
-    <string name="hex_own_parcel_kicker_primary">O teu terreo principal · almacén</string>
+    <string name="hex_mark_primary">Marcar como obradoiro</string>
+    <string name="hex_primary_already">Obradoiro principal</string>
+    <string name="hex_primary_ok">Este terreo é agora o teu obradoiro.</string>
+    <string name="hex_own_parcel_kicker_primary">O teu terreo principal · obradoiro</string>
     <string name="hive_card_obreras_label">Obreiras</string>
     <string name="hive_card_obreras_line">Obreiras %1$s</string>
     <string name="hive_detail_pop_headline_obreras">%1$s obreiras adultas</string>
@@ -750,7 +787,7 @@
     <string name="transhumance_ok">Transhumancia en marcha.</string>
     <string name="apiary_card_orphans">Sen terreo asignado</string>
     <string name="apiary_yard_buy_hive">Nova colmea</string>
-    <string name="apiary_yard_place_stock">Colocar do almacén</string>
+    <string name="apiary_yard_place_stock">Colocar do obradoiro</string>
     <string name="apiary_yard_empty">Este apiario aínda non ten colmeas. Pon a primeira no prado.</string>
     <string name="apiary_yard_visit_title">Apiario %1$s de %2$s</string>
     <string name="apiary_yard_visit_empty">Este apiario non ten colmeas á vista.</string>
@@ -820,9 +857,9 @@
     <string name="map_hive_dialog_subtitle">Que queres facer con esta colmea?</string>
     <string name="hex_purchase_title">Instalar apiario</string>
     <string name="hex_purchase_kicker">Novo apiario</string>
-    <string name="hex_purchase_warehouse_title">Instalar almacén</string>
-    <string name="hex_purchase_warehouse_kicker">Novo almacén</string>
-    <string name="hex_purchase_ok_warehouse">Terreo e almacén instalados.</string>
+    <string name="hex_purchase_warehouse_title">Instalar obradoiro</string>
+    <string name="hex_purchase_warehouse_kicker">Novo obradoiro</string>
+    <string name="hex_purchase_ok_warehouse">Terreo e obradoiro instalados.</string>
     <string name="hex_purchase_intro">Ao instalar este apiario poderás colocar colmeas e aproveitar a flora do lugar.</string>
     <string name="hex_purchase_price_chip">%1$.2f B</string>
     <string name="hex_purchase_flora_label">Flora silvestre</string>
@@ -869,7 +906,7 @@
     <string name="map_road_comarcal">Comarcal</string>
     <string name="map_road_other">Outros</string>
     <string name="map_help_title">Como xogar o mapa</string>
-    <string name="map_help_text">Toca un hexágono libre para instalar un apiario, un almacén ou a sede central. Hai unha sede por Iberia, Madagascar e Suráfrica: o mapa céntrase alí ao entrar.\n\nAs colmeas cómpranse dentro do apiario (Os meus apiarios). Desde a tarxeta podes entrar, recoller, transhumar ou volver ao mapa.\n\nVerde: terreo libre. Vermello: clima aínda bloqueado. Morado: teu. Gris: doutro xogador, só se pode mirar. Amarelo: finca de contrato; non se compra, acéptase en Mercado. Laranxa: finca de reserva; ao tocala ves a ficha.\n\nO bordo do hexágono é o clima (lenda de climas). As iconas marcan tenda, mercado, apiario, almacén, encomenda, contrato, porto e mercado internacional.\n\nA ruta do camión segue a estrada: azul autopista, vermello nacional, amarelo comarcal, gris outros camiños.\n\nO filtro de flora deixa só os terreos con esa planta.</string>
+    <string name="map_help_text">Toca un hexágono libre para instalar un apiario, un obradoiro ou a sede central. Hai unha sede por Iberia, Madagascar e Suráfrica: o mapa céntrase alí ao entrar.\n\nAs colmeas cómpranse dentro do apiario (Os meus apiarios). Desde a tarxeta podes entrar, recoller, transhumar ou volver ao mapa.\n\nVerde: terreo libre. Vermello: clima aínda bloqueado. Morado: teu. Gris: doutro xogador, só se pode mirar. Amarelo: finca de contrato. Non se compra. O contrato sae no mapa cando toca, segundo o teu nivel e a floración.\n\nO bordo do hexágono é o clima (lenda de climas). As iconas marcan tenda, mercado, apiario, obradoiro, encomenda, contrato, porto e mercado internacional.\n\nA ruta do camión segue a estrada: azul autopista, vermello nacional, amarelo comarcal, gris outros camiños.\n\nO filtro de flora deixa só os terreos con esa planta.</string>
     <string name="map_cd_move_flora_filter">Mover o filtro de flora</string>
     <string name="map_flora_filter_title">Flora</string>
     <string name="map_flora_filter_all">Todas</string>
@@ -882,7 +919,8 @@
     <string name="hex_purchase_native_note">Non hai sementeira nin espera: o terreo xa trae ese tipo de flora.</string>
     <string name="hex_purchase_name_label">Nome do apiario</string>
     <string name="hex_purchase_name_hint">Ex. O meu colmear norte</string>
-    <string name="hex_purchase_name_required">Escribe un nome para o apiario</string>
+    <string name="hex_purchase_name_required">Escribe un nome de polo menos 2 letras</string>
+    <string name="apiary_rename_title">Nome do apiario</string>
     <string name="flora_display_romero">Romeu</string>
     <string name="flora_display_tomillo">Tomiño</string>
     <string name="flora_display_bosque">Bosque</string>
@@ -893,6 +931,7 @@
     <string name="flora_display_neret">Neret</string>
     <string name="flora_display_arboc">Érbedo</string>
     <string name="flora_display_naranjos">Azar</string>
+    <string name="crop_name_naranjos">Laranxeira</string>
     <string name="flora_display_almendros">Amendoeira</string>
     <string name="flora_display_cerezos">Cerdeira</string>
     <string name="hive_sell_button">Vender colmea (%1$.2f B)</string>
@@ -911,7 +950,7 @@
     <string name="map_legend_shop">Tenda</string>
     <string name="map_legend_market">Mercado</string>
     <string name="map_legend_apiary">Apiario</string>
-    <string name="map_legend_warehouse">Almacén</string>
+    <string name="map_legend_warehouse">Obradoiro</string>
     <string name="map_legend_order">Encomenda</string>
     <string name="map_legend_contract">Contrato</string>
     <string name="map_legend_port">Porto</string>
@@ -944,8 +983,8 @@
     <string name="flora_display_sisal">Sisal</string>
     <string name="hex_purchase_confirm">Instalar</string>
     <string name="hex_purchase_ok">Apiario instalado.</string>
-    <string name="hex_purchase_also_warehouse">Comprar tamén almacén (300,00 B)</string>
-    <string name="hex_purchase_ok_with_warehouse">Apiario e almacén instalados.</string>
+    <string name="hex_purchase_also_warehouse">Comprar tamén obradoiro (300,00 B)</string>
+    <string name="hex_purchase_ok_with_warehouse">Apiario e obradoiro instalados.</string>
     <string name="hex_open_apiary_yard">Abrir apiario</string>
     <string name="dashboard_flora_plantings_section">Sementeiras de flora en curso</string>
     <string name="map_plant_flora_button">Semear un cultivo</string>
@@ -965,7 +1004,7 @@
     <string name="map_transhumance_cancelled">Transhumancia cancelada.</string>
     <string name="map_transhumance_confirm_title">Confirmar transhumancia</string>
     <string name="map_transhumance_confirm_ok">Trasladar</string>
-    <string name="map_transhumance_confirm_message">Custo: %1$.2f B. Debe chegar antes das 8:00 do cálculo diario. En frío extremo ou calor forte a colonia perde saúde e abellas; un clima temperado recupéraas.</string>
+    <string name="map_transhumance_confirm_message">Custo: %1$.2f B. En frío extremo ou calor forte a colonia perde saúde e abellas; un clima temperado recupéraas.</string>
     <string name="map_transhumance_contract_confirm_message">Custo: %1$.2f B. Programarase para o primeiro día do contrato; ata entón a colmea segue pecoreando onde está.</string>
     <string name="map_transhumance_busy">Esta colmea aínda está de camiño.</string>
     <string name="map_transhumance_day_change_title">Cambio de día</string>
@@ -1020,6 +1059,19 @@
     <string name="cd_worker_trend_up">Crecemento de obreiras</string>
     <string name="cd_worker_trend_down">Descenso de obreiras</string>
     <string name="hive_split_ok">Colmea dividida: o núcleo está no mesmo terreo.</string>
+    <string name="hive_split_full_title">Apiario cheo</string>
+    <string name="hive_split_full_message">Este apiario xa ten 10 colmeas. Elixe outro con sitio. A colmea nova sairá cara alí. Os máis próximos van primeiro.</string>
+    <string name="hive_split_dest_row">%1$s · %2$d libres · %3$.0f km</string>
+    <string name="hive_split_no_room">Non tes outro apiario con sitio libre.</string>
+    <string name="hive_split_truck_title">Elixe camión</string>
+    <string name="hive_split_truck_message">Camións con oco para levar a colmea a %1$s. Os máis próximos van primeiro.</string>
+    <string name="hive_split_truck_row">%1$s · %2$d ocos · %3$.0f km</string>
+    <string name="hive_split_no_truck">Non hai un camión libre con oco para unha colmea.</string>
+    <string name="hive_split_send_title">Confirmar envío</string>
+    <string name="hive_split_send_message">Crear a colmea e enviala a %1$s con %2$s?</string>
+    <string name="hive_split_sent">Colmea creada. O camión lévaa ao apiario elixido.</string>
+    <string name="hive_split_truck_taken">Non hai oco nese camión. A colmea queda xa no apiario de destino.</string>
+    <string name="hive_split_too_late">A viaxe non colle antes do peche do día. A colmea queda no apiario de destino.</string>
     <string name="dashboard_no_event_title">Sen evento activo</string>
     <string name="dashboard_no_event_subtitle">Proximamente engadiremos eventos especiais.</string>
     <string name="dashboard_swarm_risk_title">Perigo de enxambración</string>
@@ -1069,8 +1121,10 @@
     <string name="shop_title">Tenda</string>
     <string name="shop_balance">Saldo: %1$.0f B</string>
     <string name="shop_buy">Comprar</string>
+    <string name="shop_bought_units">Compradas %1$d unidades.</string>
     <string name="shop_price_eur">%1$.2f B</string>
     <string name="shop_owned">Tes: %1$d</string>
+    <string name="shop_insufficient_beecoins">Non tes suficientes beecoins para comprar</string>
     <string name="shop_item_treat">Tratamento antivarroa</string>
     <string name="shop_item_treat_desc">Un tratamento de 7 días. Gástase ao aplicarlo nunha colmea.</string>
     <string name="shop_item_feed">Apialimento</string>
@@ -1156,12 +1210,12 @@
     <string name="truck_live_ask_message">Queres ver o camión de transhumancia moverse no mapa en tempo real (~70 km/h)? A app descarga e instala soa os mapas de estradas de Iberia (~160 MB), Suráfrica e Madagascar na carpeta do xogo: non fai falta descomprimir nada. A viaxe calcúlase no móbil.</string>
     <string name="truck_live_ask_yes">Si, ver o camión</string>
     <string name="truck_live_ask_no">Agora non</string>
-    <string name="truck_live_download_title">Instalando estradas</string>
+    <string name="truck_live_download_title">Descargando mapas</string>
     <string name="truck_live_download_title_region">Instalando estradas (%1$s)</string>
     <string name="truck_live_download_desc">Gardando o grafo na carpeta do xogo…</string>
     <string name="truck_live_download_started">A app está instalando o mapa de estradas en segundo plano. Non tes que descomprimir nada.</string>
     <string name="truck_live_install_kicker">Mapa</string>
-    <string name="truck_live_install_wait">Espera a que termine a instalación. O camión usará estas estradas no mapa.</string>
+    <string name="truck_live_install_wait">Estanse a descargar os mapas de estradas de Iberia, Suráfrica e Madagascar. O camión usaraos nas viaxes.</string>
     <string name="truck_live_install_connecting">Conectando…</string>
     <string name="truck_live_install_percent">%1$d %%</string>
     <string name="truck_live_install_bytes">%1$s / %2$s MB</string>
@@ -1178,7 +1232,7 @@
     <string name="truck_route_error_copy">Copiar</string>
     <string name="truck_route_error_copied">Erro copiado. Envíao para revisalo.</string>
     <string name="fleet_shop_title">Frota</string>
-    <string name="fleet_shop_hint">Camións nos almacéns e barcos nos portos. O nivel sobe a carga e a velocidade.</string>
+    <string name="fleet_shop_hint">Camións nos obradoiros e barcos nos portos. O nivel sobe a carga e a velocidade.</string>
     <string name="fleet_buy_truck">Comprar camión (1.200 B)</string>
     <string name="fleet_buy_ship">Comprar barco (6.000 B)</string>
     <string name="fleet_none">Aínda non tes vehículos.</string>
@@ -1189,13 +1243,13 @@
     <string name="fleet_ship_line">Barco nv.%1$d · %2$.0f kg · %3$.0f km/h · %4$s</string>
     <string name="fleet_upgrade">Subir a nivel %1$d (%2$d B)</string>
     <string name="fleet_level_max">Nivel máximo</string>
-    <string name="fleet_warehouse_trucks">Camións deste almacén</string>
-    <string name="fleet_bought_truck">O camión sae da tenda cara ao almacén.</string>
+    <string name="fleet_warehouse_trucks">Camións deste obradoiro</string>
+    <string name="fleet_bought_truck">O camión sae da tenda cara ao obradoiro.</string>
     <string name="fleet_item_truck">Camión</string>
-    <string name="fleet_item_truck_desc">Sae desta tenda e queda no almacén que elixas.</string>
+    <string name="fleet_item_truck_desc">Sae desta tenda e queda no obradoiro que elixas.</string>
     <string name="fleet_item_ship">Barco</string>
     <string name="fleet_item_ship_desc">Queda amarrado no porto que elixas. Non fai a viaxe desde a tenda.</string>
-    <string name="fleet_none_trucks">Este almacén non ten camións.</string>
+    <string name="fleet_none_trucks">Este obradoiro non ten camións.</string>
     <string name="fleet_none_ships">Non hai barcos neste porto.</string>
     <string name="fleet_bought_ship">Barco amarrado no porto.</string>
     <string name="fleet_upgraded">Vehículo mellorado.</string>
@@ -1231,7 +1285,7 @@
     <string name="fleet_port_buy">Comprar amarre (%1$d B)</string>
     <string name="fleet_port_berth_ok">Amarre comprado.</string>
     <string name="entity_name_hint">Nome</string>
-    <string name="fleet_buy_home_truck">Almacén</string>
+    <string name="fleet_buy_home_truck">Obradoiro</string>
     <string name="fleet_buy_home_ship">Porto</string>
     <string name="fleet_unnamed_truck">Camión</string>
     <string name="fleet_unnamed_ship">Barco</string>
@@ -1240,7 +1294,7 @@
     <string name="fleet_transfer_honey">Mel</string>
     <string name="fleet_transfer_amount">Cantidade</string>
     <string name="fleet_transfer_kg">%1$.2f kg de %2$.2f kg</string>
-    <string name="fleet_transfer_dest">Almacén de destino</string>
+    <string name="fleet_transfer_dest">Obradoiro de destino</string>
     <string name="fleet_transfer_km">%1$.2f km</string>
     <string name="fleet_transfer_cost">%1$.2f B</string>
     <string name="fleet_transfer_discount">Tarifa de traslado, máis baixa que a dunha venda.</string>
@@ -1261,7 +1315,7 @@
     <string name="tutorial_day">Adiantar un día</string>
     <string name="tutorial_menu">Tutorial</string>
     <!-- Capítulo 1. El primer colmenar. -->
-    <string name="tutorial_c1_v01">Son Ramón. Esta explotación é túa. Empezamos con 10.000 B e un calendario que avanza día a día. As abellas traballan mentres ti non estás.</string>
+    <string name="tutorial_c1_v01">Son Ramón. Esta explotación é túa. Empezamos con 45.000 B e un calendario que avanza día a día. As abellas traballan mentres ti non estás.</string>
     <string name="tutorial_c1_v02">Arriba están o teu diñeiro e o teu nivel. Subir de nivel abre climas novos. Vender mel, instalar apiarios e comprar colmeas dan experiencia.</string>
     <string name="tutorial_c1_v03">O clima do día decide canto néctar hai. Un día malo produce menos. A colonia segue.</string>
     <string name="tutorial_c1_v04">Inicio é o resumo. Apiarios son as túas fincas. O mapa é onde instalas. O mercado é onde sae o mel. Desde Inicio tamén podes elixir un mercado e vender.</string>
@@ -1275,14 +1329,14 @@
     <string name="tutorial_c1_v10b">Elixe a flor da que as abellas sacarán o néctar. Ao tocála ábrese un gráfico: as meladas e se esa flor está dispoñible ao longo do ano. Queda cunha que agora teña melada.</string>
     <string name="tutorial_c1_v11_open">Preme a colmea no apiario.</string>
     <string name="tutorial_c1_v11">Arriba ves o mel, a raíña e a varroa. A raíña marca a cría. Se a varroa sobe, trátaa. Alimentar baixa o consumo en días floxos.</string>
-    <string name="tutorial_c1_v12">Isto é Recoller. Sempre quedan 3 kg dentro: esa reserva é a comida da colonia.</string>
-    <string name="tutorial_c1_v16">Sen almacén non hai envío, e a colleita sae cara a el. Instálao no teu hexágono violeta: preme o terreo e elixe almacén. Alí gárdase o mel e de alí sae o camión.</string>
-    <string name="tutorial_c1_v16_choice">Preme Instalar un almacén.</string>
+    <string name="tutorial_c1_v12">Isto é Recoller. Sempre quedan 3 kg dentro: esa reserva é a comida da colonia.\nAlimentar baixa un 50 % o consumo de mel das abellas mentres dura.\nTratar a varroa fréaa durante 7 días. O tratamento cómprase na tenda.\nCambiar raíña substitúe a actual: dela depende a cría.\nTranshumar leva a colmea a outro apiario en camión. O prezo depende da distancia.</string>
+    <string name="tutorial_c1_v16">Sen obradoiro non hai envío, e a colleita sae cara a el. Instálao no teu hexágono violeta: preme o terreo e elixe obradoiro. Alí gárdase o mel e de alí sae o camión.</string>
+    <string name="tutorial_c1_v16_choice">Preme Instalar un obradoiro.</string>
     <string name="tutorial_c1_v13">Adianto un día para que vexas o ciclo. Na partida normal o día corre só.</string>
-    <string name="tutorial_c1_v14">En Inicio, preme Recoller. O mel vai ao almacén; despois preme Vender e elixe o mercado máis próximo ou o que che conveña.</string>
+    <string name="tutorial_c1_v14">En Inicio, preme Recoller. O mel vai ao obradoiro; despois preme Vender e elixe o mercado máis próximo ou o que che conveña.</string>
     <string name="tutorial_c1_v15_open">Abre o mercado para ver máis detalles. Desde Inicio tamén podes elixir un mercado e vender.</string>
-    <string name="tutorial_c1_v15">Cada tipo ten o seu prezo e a súa demanda. O envío sae do almacén cara ao mercado da provincia, cando o camión xa recolleu o mel. En Pedidos hai entregas concretas. En Contratos levas colmeas a unha finca allea e cobras polo servizo.</string>
-    <string name="tutorial_c1_v18">Iso é o oficio: apiario, colmea, día, colleita, almacén e mercado. Cando fagas algo novo, volvo. Podes repetir este capítulo desde o menú do panel.</string>
+    <string name="tutorial_c1_v15">Cada tipo ten o seu prezo e a súa demanda. O envío sae do obradoiro cara ao mercado da provincia, cando o camión xa recolleu o mel. En Pedidos hai entregas concretas. En Contratos levas colmeas a unha finca allea e cobras polo servizo.</string>
+    <string name="tutorial_c1_v18">Iso é o oficio: apiario, colmea, día, colleita, obradoiro e mercado. Cando fagas algo novo, volvo. Podes repetir este capítulo desde o menú do panel.</string>
     <!-- Capítulo 2. Cuidado de la colmena. -->
     <string name="tutorial_c2_v01">Alimentar cobre un día ou sete. Neses días a colonia consume menos mel.</string>
     <string name="tutorial_c2_v02">O tratamento antivarroa dura 7 días. Se a deixas subir, a colonia vén abaixo.</string>
@@ -1294,7 +1348,7 @@
     <string name="tutorial_c4_v01">As colmeas viaxan por estrada. Mentres van de camiño non producen no destino.</string>
     <string name="tutorial_c4_v02">Serve para seguir unha floración ou para cumprir un contrato de polinización.</string>
     <!-- Capítulo 5. Pedidos y contratos. -->
-    <string name="tutorial_c5_v01">Un pedido cúmprese con mel do almacén e un camión ata o cliente.</string>
+    <string name="tutorial_c5_v01">Un pedido cúmprese con mel do obradoiro e un camión ata o cliente.</string>
     <string name="tutorial_c5_v02">Un contrato cúmprese levando colmeas ao apiario desa finca. Cobras polo servizo, non polo mel.</string>
     <string name="tutorial_c5_v03">Abre o menú Mercado.</string>
     <string name="tutorial_c5_v04">Preme Contratos.</string>
@@ -1307,13 +1361,13 @@
     <string name="tutorial_c5_v11">A recompensa é o pago se cumpres o mínimo. O mel que collan segue sendo teu.</string>
     <string name="tutorial_c5_v12">Transhumar colmeas elixe as que van á finca. Non fai falta facelo agora.</string>
     <!-- Capítulo 6. Camión. -->
-    <string name="tutorial_c6_v01">O camión leva mel e, segundo o seu nivel, colmeas. As prazas saen do nivel do almacén.</string>
+    <string name="tutorial_c6_v01">O camión leva mel e, segundo o seu nivel, colmeas. As prazas saen do nivel do obradoiro.</string>
     <string name="tutorial_c6_v02">Antes de saír ves orixe, destino, cobro, custo da viaxe e neto. A ruta queda debuxada no mapa.</string>
     <!-- Capítulo 7. Clima nuevo. -->
     <string name="tutorial_c7_v01">O clima %1$s xa está aberto. No mapa, eses hexágonos pasan de vermello a verde.</string>
     <!-- Capítulo 8. Mercado internacional. -->
     <string name="tutorial_c8_v01">A partir do nivel 30 podes usar o porto. A cota son 10.000 B. Alí amarras un barco. O amarre é teu e custa 2.500 B.</string>
-    <string name="tutorial_c8_v02">O barco move mel entre rexións. Non move colmeas. O camión leva a carga do almacén ao porto, e o barco segue por mar.</string>
+    <string name="tutorial_c8_v02">O barco move mel entre rexións. Non move colmeas. O camión leva a carga do obradoiro ao porto, e o barco segue por mar.</string>
     <string name="tutorial_c8_v03">A ruta do barco vese no mapa, igual que o camión na estrada.</string>
     <string name="tutorial_c8_v04">Ao nivel 35 pagas 15.000 B por cada mercado internacional. Vendes onde o mel vale máis, descontando a viaxe.</string>
     <string name="profile_language">Idioma</string>
@@ -1359,12 +1413,12 @@
     <string name="hive_alerts_none">Sen alertas</string>
     <string name="hive_honey_in_hive">Na colmea: %1$s kg</string>
     <string name="fleet_name_length">Pon un nome de 2 a 32 letras.</string>
-    <string name="fleet_need_warehouse">Primeiro constrúe un almacén.</string>
+    <string name="fleet_need_warehouse">Primeiro constrúe un obradoiro.</string>
     <string name="fleet_home_slots">%1$s · %2$d prazas</string>
-    <string name="fleet_unnamed_warehouse">Almacén</string>
+    <string name="fleet_unnamed_warehouse">Obradoiro</string>
     <string name="fleet_need_berth">Paga a cota dun porto e deixa un amarre libre antes de comprar o barco.</string>
-    <string name="fleet_warehouse_no_honey">Este almacén non ten mel.</string>
-    <string name="fleet_no_dest_warehouse">Non hai outro almacén de destino.</string>
+    <string name="fleet_warehouse_no_honey">Este obradoiro non ten mel.</string>
+    <string name="fleet_no_dest_warehouse">Non hai outro obradoiro de destino.</string>
     <string name="transhumance_no_free">Non hai colmeas libres para transhumar.</string>
     <string name="hive_unnamed">Colmea</string>
     <string name="rank_apprentice">Aprendiz</string>
@@ -1419,7 +1473,112 @@
     <string name="hive_health_band_critical">Crítico</string>
     <string name="hive_health_band_collapse">Colapso inminente</string>
     <string name="honey_reserves_title">Reserva de mel</string>
-    <string name="honey_reserves_total">Total nos almacéns: %1\$.1f kg</string>
+    <string name="honey_reserves_total">Total nos obradoiros: %1\$.1f kg</string>
     <string name="honey_reserves_empty">Non hai mel en reserva actualmente.</string>
     <string name="tutorial_c5_v13">Para comezar cos contratos, lembra que debe haber cultivos en floración da época desbloqueados para o teu nivel. Revisa tanto Madagascar coma Iberia dependendo da estación meteorolóxica de cada territorio.</string>
+    <string name="apiary_3d_open">Ver en 3D</string>
+    <string name="apiary_3d_use_hive_card">Esta acción faise desde a ficha da colmea.</string>
+    <string name="crop_tick_tree_due">Os %1$s de %2$s precisan poda e abono: entra no apiario en 3D e fala co labrego.</string>
+    <string name="apiary_yard_maint_banner">As túas árbores froiteiras precisan mantemento. Entra en 3D e fala co labrego.</string>
+    <string name="apiary_3d_stung_locked">Picáronte demasiado: non podes volver a este apiario en 3D ata mañá.</string>
+    <string name="workshop_name">Obradoiro</string>
+    <string name="workshop_format_bulk">bidón</string>
+    <string name="workshop_format_jar_1000">bote de 1 kg</string>
+    <string name="workshop_format_jar_500">bote de 500 g</string>
+    <string name="workshop_format_jar_250">bote de 250 g</string>
+    <string name="market_order_ask_jars">%1$d × %2$s de %3$s</string>
+    <string name="market_order_ask_drum">%1$.2f kg de %2$s en bidón</string>
+    <string name="workshop_mix_part">%1$d × %2$s</string>
+    <string name="market_order_ask_mix">%1$s de %2$s</string>
+    <string name="market_order_fail_jars">Non hai tarros abondo. Os tarros saen do obradoiro onde se envasaron.</string>
+    <string name="harvest_need_workshop">Necesitas un obradoiro para extraer o mel.</string>
+    <string name="workshop_subtitle">As alzas pasan por recepción, desoperculado, extracción, maduración e envasado. Todo segue en marcha coa app pechada.</string>
+    <string name="workshop_build_title">Constrúe o teu obradoiro</string>
+    <string name="workshop_build_intro">Cada obradoiro garda o mel e procésao. Trae de serie a sala de recepción; o resto das máquinas mércanse á parte.</string>
+    <string name="workshop_build_here">Construír en %1$s (%2$d B)</string>
+    <string name="workshop_build_no_warehouse">Primeiro necesitas un obradoiro. Instálao dende o mapa.</string>
+    <string name="workshop_go_map">Ir ao mapa</string>
+    <string name="workshop_built_at">Obradoiro %1$s</string>
+    <string name="workshop_change_obrador">cambiar de obradoiro</string>
+    <string name="workshop_machines">Maquinaria</string>
+    <string name="workshop_machine_reception">Sala de recepción</string>
+    <string name="workshop_machine_uncapper">Desoperculadora</string>
+    <string name="workshop_machine_extractor">Extractor</string>
+    <string name="workshop_machine_maturer">Madurador</string>
+    <string name="workshop_machine_packer">Envasadora</string>
+    <string name="workshop_machine_missing">Sen mercar</string>
+    <string name="workshop_machine_level">Nivel %1$d de %2$d</string>
+    <string name="workshop_machine_info_reception">Repouso de %1$s. Sen límite de quendas.</string>
+    <string name="workshop_machine_info_time">%1$s por cada %2$d kg</string>
+    <string name="workshop_machine_info_packer">%1$d kg por quenda no tempo base</string>
+    <string name="workshop_machine_info_maturer">Depósitos: %1$d · repouso de %2$s</string>
+    <string name="workshop_machine_buy">Mercar (%1$d B)</string>
+    <string name="workshop_machine_upgrade">Mellorar a nivel %1$d (%2$d B)</string>
+    <string name="workshop_machine_max">Nivel máximo</string>
+    <string name="workshop_machine_bought">Máquina lista.</string>
+    <string name="workshop_batches">Quendas</string>
+    <string name="workshop_batches_empty">Non hai quendas. As alzas que recollas chegarán aquí.</string>
+    <string name="workshop_batch_title">%1$s · %2$s kg</string>
+    <string name="workshop_batch_from">De %1$s</string>
+    <string name="workshop_batch_running">%1$s · faltan %2$s</string>
+    <string name="workshop_batch_queued">Na cola para %1$s</string>
+    <string name="workshop_batch_no_machine">Parada: falta %1$s</string>
+    <string name="workshop_batch_need_format">Escolle o envase para envasala</string>
+    <string name="workshop_batch_format">Envase: %1$s</string>
+    <string name="workshop_batch_choose">Escoller envase</string>
+    <string name="workshop_batch_change">Cambiar envase</string>
+    <string name="workshop_format_title">Como envasas %1$s kg de %2$s?</string>
+    <string name="workshop_format_option_bulk">%1$s · vai ao obradoiro · prezo ×%2$.2f</string>
+    <string name="workshop_format_option_jars">%1$s · %2$d botes · prezo ×%3$.2f</string>
+    <string name="workshop_stock">Envasado</string>
+    <string name="workshop_stock_empty">Aínda non hai botes. O bidón pasa directo ao obradoiro.</string>
+    <string name="workshop_stock_row">%1$d × %2$s de %3$s</string>
+    <string name="workshop_sell_jars">Vender</string>
+    <string name="workshop_sell_title">Vender %1$s de %2$s</string>
+    <string name="workshop_sell_amount">%1$d de %2$d botes</string>
+    <string name="workshop_sell_hint">Un camión deste obradoiro lévaos ao mercado máis próximo que pida ese mel.</string>
+    <string name="workshop_sell_confirm">Enviar ao mercado</string>
+    <string name="workshop_sell_started">O camión sae ao mercado con %1$d botes.</string>
+    <string name="workshop_sell_instant">Vendidos %1$d botes.</string>
+    <string name="workshop_sell_no_demand">Ningún mercado pide agora ese mel.</string>
+    <string name="workshop_sell_no_cash">Non tes BeeCoins para o transporte.</string>
+    <string name="workshop_sell_no_truck">Non hai ningún camión libre neste obradoiro.</string>
+    <string name="workshop_sell_failed">Non se puido vender.</string>
+    <string name="workshop_wax">Cera</string>
+    <string name="workshop_wax_kg">%1$.2f kg · págase a %2$.0f B/kg</string>
+    <string name="workshop_sell_wax">Vender cera</string>
+    <string name="workshop_wax_sold">Cera vendida.</string>
+    <string name="workshop_built_ok">Obradoiro construído.</string>
+    <string name="workshop_need_title">Necesitas un obradoiro</string>
+    <string name="workshop_need_message">O mel extráese nun obradoiro. Merca un no mapa para poder coller.</string>
+    <string name="workshop_need_go">Ir ao obradoiro</string>
+    <string name="workshop_dash_build">Constrúe o teu obradoiro para poder colleitar.</string>
+    <string name="workshop_dash_format">Quendas agardando envase: %1$d</string>
+    <string name="workshop_dash_machine">Falta %1$s e hai quendas agardando.</string>
+    <string name="workshop_dash_running">Quendas en proceso: %1$d</string>
+    <string name="workshop_dash_stock">Listo para vender: %1$d botes</string>
+    <string name="workshop_dash_wax">Cera para vender: %1$.2f kg</string>
+    <string name="workshop_warehouse_open">Abrir o obradoiro</string>
+    <string name="workshop_warehouse_build">Construír o obradoiro aquí</string>
+    <string name="workshop_err_pick_parcel">Escolle unha parcela túa.</string>
+    <string name="workshop_err_already">Xa tes un obradoiro.</string>
+    <string name="workshop_err_need_warehouse">Necesitas un obradoiro.</string>
+    <string name="workshop_err_login">Inicia sesión para usar o obradoiro.</string>
+    <string name="workshop_err_build_first">Primeiro constrúe o obradoiro.</string>
+    <string name="workshop_err_max">Esta máquina xa está ao máximo.</string>
+    <string name="workshop_err_not_upgradable">A sala de recepción non se mellora.</string>
+    <string name="workshop_err_none">Non tes obradoiro.</string>
+    <string name="workshop_err_packing">Esta quenda xa se está envasando.</string>
+    <string name="workshop_err_no_wax">Non tes cera para vender.</string>
+    <!-- Capítulos 9 e 10 do titorial: obradoiro. -->
+    <string name="tutorial_c9_v01">Desde agora, o mel que colles vai ao obradoiro. Alí extráese e envásase. Sen obradoiro non se pode coller.</string>
+    <string name="tutorial_c9_v02">Preme Obradoiro en Inicio.</string>
+    <string name="tutorial_c9_v03">Cada obradoiro garda o mel e procésao. Trae de serie a sala de recepción, e o que envases queda aquí mesmo.</string>
+    <string name="tutorial_c9_v04">Compra a desoperculadora, o extractor, o madurador e a envasadora. Son 10.500 B. Se falta unha, as tandas páranse nela.</string>
+    <string name="tutorial_c9_v05">Cada tanda pasa por recepción, desoperculado, extracción, maduración e envasado. Cada máquina traballa unha tanda á vez e as demais agardan na cola. O tempo corre aínda que peches a app.</string>
+    <string name="tutorial_c9_v06">Xa podes coller. O camión leva as alzas ao obradoiro. Cando chegue a primeira tanda, ensínoche a envasala.</string>
+    <string name="tutorial_c10_v01">Chegou a túa primeira tanda. Aquí ves en que máquina está e canto lle falta.</string>
+    <string name="tutorial_c10_v02">Preme Escoller envase. O bidón vai ao obradoiro e véndese a granel. Os tarros páganse bastante mellor, e canto máis pequeno o tarro, máis por quilo, pero tardan máis en envasarse.</string>
+    <string name="tutorial_c10_v03">Os tarros quedan no obradoiro. Véndeos no mercado ou lévaos ás comandas que piden tarros. A cera sae ao desopercular e véndese a 9 B/kg.</string>
+    <string name="tutorial_c10_v04">Cada nivel dunha máquina acurta o seu tempo e cabe máis mel por tanda. O madurador suma un depósito por nivel.</string>
 </resources>

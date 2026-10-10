@@ -7,6 +7,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.apiculture.simulator.data.repository.RoutingGraphDownloader;
+import com.apiculture.simulator.domain.game.TranshumanceRules;
+import com.apiculture.simulator.domain.game.TruckTripRules;
+import com.apiculture.simulator.data.repository.LandMaskAssets;
+import com.apiculture.simulator.domain.parcel.LandMask;
 import com.apiculture.simulator.data.repository.TruckLivePrefs;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.graphhopper.GHRequest;
@@ -111,15 +115,17 @@ public final class LocalGraphHopper {
         Context app = context.getApplicationContext();
         RoadPath local = routeLocal(app, fromLat, fromLng, toLat, toLng);
         if (local != null) {
+            local = preferFieldTrack(app, fromLat, fromLng, toLat, toLng, local);
             lastDiag = new Diag(Kind.OK, "puntos=" + local.points.size()
-                    + " km=" + local.distanceKm);
+                    + " km=" + local.distanceKm
+                    + (local.fieldTrack ? " pista" : ""));
             return local;
         }
         if (lastDiag == null || lastDiag.kind == Kind.OK) {
             lastDiag = new Diag(Kind.ROUTE_ERRORS, graphState(app)
                     + "\nruta local nula sin detalle");
         }
-        return RoadPath.geodesic(fromLat, fromLng, toLat, toLng);
+        return landSafeFallback(app, fromLat, fromLng, toLat, toLng);
     }
 
     @Nullable
@@ -135,6 +141,43 @@ public final class LocalGraphHopper {
             return null;
         }
         return r;
+    }
+
+    /**
+     * En Madagascar y Sudáfrica, si la carretera mide al menos
+     * {@link LandSafeRoute#FIELD_TRACK_MIN_ROAD_RATIO} veces la recta (el doble, 200 %)
+     * y tarda más que esa pista, el camión va campo a través. Si la recta cruza mar,
+     * rodea por tierra o se queda en carretera.
+     */
+    @NonNull
+    private static RoadPath preferFieldTrack(@NonNull Context app, double fromLat, double fromLng,
+            double toLat, double toLng, @NonNull RoadPath road) {
+        PlayableMapRegion region = regionForRoute(fromLat, fromLng, toLat, toLng);
+        if (region != PlayableMapRegion.SOUTH_AFRICA && region != PlayableMapRegion.MADAGASCAR) {
+            return road;
+        }
+        double straightKm = TranshumanceRules.haversineKm(fromLat, fromLng, toLat, toLng);
+        if (straightKm < 1.0
+                || road.distanceKm < straightKm * LandSafeRoute.FIELD_TRACK_MIN_ROAD_RATIO) {
+            return road;
+        }
+        LandMask mask = LandMaskAssets.getOrLoadDefaultLandMask(app);
+        RoadPath track = LandSafeRoute.fieldTrackOnLand(mask, fromLat, fromLng, toLat, toLng);
+        if (track == null) {
+            return road;
+        }
+        if (TruckTripRules.durationMs(road) <= TruckTripRules.durationMs(track)) {
+            return road;
+        }
+        return track;
+    }
+
+    @NonNull
+    private static RoadPath landSafeFallback(@NonNull Context app, double fromLat, double fromLng,
+            double toLat, double toLng) {
+        LandMask mask = LandMaskAssets.getOrLoadDefaultLandMask(app);
+        RoadPath track = LandSafeRoute.fieldTrackOnLand(mask, fromLat, fromLng, toLat, toLng);
+        return track != null ? track : RoadPath.geodesic(fromLat, fromLng, toLat, toLng);
     }
 
     private static RoadPath routeLocal(@NonNull Context app, double fromLat, double fromLng,

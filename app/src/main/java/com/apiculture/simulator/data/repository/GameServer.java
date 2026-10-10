@@ -63,7 +63,7 @@ public final class GameServer {
     private static final String PREFS = "game_server";
     private static final String APPLIED = "applied_effects";
     private static volatile long lastOfferSyncMs;
-    private static volatile boolean serverAvailable = true;
+    private static volatile boolean serverAvailable = false;
     private static final CopyOnWriteArrayList<ConnectionListener> CONNECTION_LISTENERS =
             new CopyOnWriteArrayList<>();
     private static final ExecutorService CONNECTION_IO = Executors.newSingleThreadExecutor();
@@ -236,6 +236,10 @@ public final class GameServer {
                 SYNC_TOKEN.remove();
                 SYNC_DEADLINE_NANOS.remove();
             }
+        }
+        Context app = context.getApplicationContext();
+        if (app instanceof ApicultureApp) {
+            WorkshopStore.flushBulk(app, user.getUid(), ((ApicultureApp) app).getEconomyRepository());
         }
     }
 
@@ -493,6 +497,7 @@ public final class GameServer {
             }
             return postOfferAction(body, type);
         } catch (Exception ignored) {
+            lastClaimedOrder = null;
             return false;
         }
     }
@@ -500,9 +505,18 @@ public final class GameServer {
     private static volatile int lastOfferStatus;
     @Nullable
     private static volatile String lastOfferReason;
+    @Nullable
+    private static volatile HoneyOrderEntity lastClaimedOrder;
 
     public static int lastOfferStatus() {
         return lastOfferStatus;
+    }
+
+    @Nullable
+    public static HoneyOrderEntity takeLastClaimedOrder() {
+        HoneyOrderEntity row = lastClaimedOrder;
+        lastClaimedOrder = null;
+        return row;
     }
 
     @Nullable
@@ -523,6 +537,7 @@ public final class GameServer {
             HttpResult result = request("POST", "/offer-actions", body.toString());
             lastOfferStatus = result.status;
             lastOfferReason = offerReason(result.body);
+            lastClaimedOrder = claimedOrderFrom(result.body);
             Log.w("OrderDispatch",
                     "offer-actions " + type + " status=" + result.status
                             + " reason=" + lastOfferReason);
@@ -605,22 +620,66 @@ public final class GameServer {
         }
         HoneyOrderEntity order = new HoneyOrderEntity();
         order.id = id;
-        order.npcName = optText(row, "npcName");
-        order.portraitIndex = row.optInt("portraitIndex");
-        order.floraKey = optText(row, "floraKey");
-        order.kg = row.optDouble("kg");
-        order.unitPrice = row.optDouble("unitPrice");
-        order.destHexId = optText(row, "destHexId");
-        order.destLat = row.optDouble("destLat");
-        order.destLng = row.optDouble("destLng");
-        order.destLabel = optText(row, "destLabel");
+        order.npcName = firstText(row, "npcName", "npc_name");
+        order.portraitIndex = firstInt(row, "portraitIndex", "portrait_index");
+        order.floraKey = firstText(row, "floraKey", "flora_key");
+        order.kg = firstDouble(row, "kg", "kg");
+        order.unitPrice = firstDouble(row, "unitPrice", "unit_price");
+        order.destHexId = firstText(row, "destHexId", "dest_hex_id");
+        order.destLat = firstDouble(row, "destLat", "dest_lat");
+        order.destLng = firstDouble(row, "destLng", "dest_lng");
+        order.destLabel = firstText(row, "destLabel", "dest_label");
         order.region = optText(row, "region");
-        order.createdDayKey = row.optInt("createdDayKey");
-        order.expireEpochMs = row.optLong("expireEpochMs");
+        order.createdDayKey = firstInt(row, "createdDayKey", "created_day_key");
+        order.expireEpochMs = firstLong(row, "expireEpochMs", "expire_epoch_ms");
         order.taken = row.optBoolean("taken");
-        order.claimedBy = optText(row, "claimedBy");
-        order.band = row.optInt("band");
+        order.claimedBy = firstText(row, "claimedBy", "claimed_by");
+        order.band = firstInt(row, "band", "band");
+        order.format = optText(row, "format");
         return order;
+    }
+
+    @Nullable
+    private static HoneyOrderEntity claimedOrderFrom(@Nullable String body) {
+        if (body == null || body.isEmpty()) {
+            return null;
+        }
+        try {
+            return honeyOrderFromServer(new JSONObject(body).optJSONObject("order"));
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    @Nullable
+    private static String firstText(@NonNull JSONObject row, @NonNull String camel,
+            @NonNull String snake) {
+        String v = optText(row, camel);
+        return v != null ? v : optText(row, snake);
+    }
+
+    private static double firstDouble(@NonNull JSONObject row, @NonNull String camel,
+            @NonNull String snake) {
+        if (row.has(camel) && !row.isNull(camel)) {
+            return row.optDouble(camel);
+        }
+        return row.optDouble(snake);
+    }
+
+    private static int firstInt(@NonNull JSONObject row, @NonNull String camel,
+            @NonNull String snake) {
+        if (row.has(camel) && !row.isNull(camel)) {
+            return row.optInt(camel);
+        }
+        return row.optInt(snake);
+    }
+
+    private static long firstLong(@NonNull JSONObject row, @NonNull String camel,
+            @NonNull String snake) {
+        if (row.has(camel) && !row.isNull(camel)) {
+            return row.optLong(camel);
+        }
+        return row.optLong(snake);
     }
 
     @Nullable
@@ -837,7 +896,10 @@ public final class GameServer {
         if ("collect-credit".equals(type)) {
             Map<String, Double> collected = lines(payload);
             String buckets = payload.optString("honeyBuckets", "");
-            if (!buckets.isEmpty()) {
+            JSONObject workshop = payload.optJSONObject("workshop");
+            if (workshop != null) {
+                WorkshopStore.applyServer(app, ownerId, workshop);
+            } else if (!buckets.isEmpty()) {
                 game.getEconomyRepository().applyFromCloud(
                         game.getEconomyRepository().getBalance(), buckets);
                 if (payload.has("honeyStockSeq")) {
@@ -903,9 +965,38 @@ public final class GameServer {
             }
         }
         if (CargoTripEntity.KIND_ORDER.equals(kind)) {
-            HoneyOrderStore.finish(app, optText(payload, "orderId"));
+            String orderId = optText(payload, "orderId");
+            String tripId = optText(payload, "tripId");
+            HoneyOrderStore.finish(app, orderId);
             if (credited > 1e-9) {
                 game.getHiveRepository().grantXp(ownerId, XpAwards.orderDelivered(credited));
+
+                Map<String, Double> lines = lines(payload);
+                String flora = !lines.isEmpty() && lines.keySet().iterator().hasNext() ? lines.keySet().iterator().next() : "";
+                String npc = optText(payload, "npcName");
+                int portrait = payload.optInt("portraitIndex", 0);
+                if (flora == null) flora = "";
+                if (npc == null) npc = "";
+
+                AppDatabase db = AppDatabase.getInstance(app);
+                if ((npc.isEmpty() || flora.isEmpty() || portrait <= 0) && orderId != null && !orderId.isEmpty()) {
+                    HoneyOrderEntity savedOrder = db.honeyOrderDao().getById(orderId);
+                    if (savedOrder != null) {
+                        if (npc.isEmpty()) npc = savedOrder.npcName;
+                        if (flora.isEmpty()) flora = savedOrder.floraKey;
+                        if (portrait <= 0) portrait = savedOrder.portraitIndex;
+                    }
+                }
+                if ((npc.isEmpty() || flora.isEmpty()) && tripId != null && !tripId.isEmpty()) {
+                    CargoTripEntity savedTrip = db.cargoTripDao().getById(tripId);
+                    if (savedTrip != null) {
+                        if (npc.isEmpty() && savedTrip.npcName != null) npc = savedTrip.npcName;
+                        if (flora.isEmpty() && savedTrip.floraKey != null) flora = savedTrip.floraKey;
+                    }
+                }
+
+                OrderReceipts.publish(app, tripId, orderId, npc, portrait, flora,
+                        credited, payload.optDouble("creditedEur", 0.0));
             }
         } else if (CargoTripEntity.KIND_WHOLESALE.equals(kind) && credited > 1e-9) {
             game.getHiveRepository().grantXp(ownerId, XpAwards.marketSold(credited));

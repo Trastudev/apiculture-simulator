@@ -51,10 +51,6 @@ public final class CargoTripRules {
         return Math.max(0L, trip.startEpochMs + Math.max(0L, trip.durationMs) - nowMs);
     }
 
-    public static boolean arrivesAfterNextDailyTick(@Nullable CargoTripEntity trip) {
-        return trip != null && TruckTripRules.arrivesAfterNextDailyTick(trip.startEpochMs, trip.durationMs);
-    }
-
     @NonNull
     public static List<double[]> routePoints(@Nullable CargoTripEntity trip) {
         if (trip == null) {

@@ -132,8 +132,8 @@ public class HiveViewModel extends ViewModel {
         hiveRepository.floraSaturationAsync(hexId, floraKey, onMain);
     }
 
-    public void listReadyFlorasForHex(String hexId, Consumer<List<String>> onMain) {
-        hiveRepository.listReadyFlorasForHexAsync(hexId, onMain);
+    public void listReadyFlorasForHex(String hexId, @Nullable String siteId, Consumer<List<String>> onMain) {
+        hiveRepository.listReadyFlorasForHexAsync(hexId, siteId, onMain);
     }
 
     public void loadFloraPlantingsInProgress(String ownerId, Consumer<List<FloraPlantingProgressRow>> onMain) {
@@ -145,7 +145,7 @@ public class HiveViewModel extends ViewModel {
             String ownerId,
             String floraKey,
             Consumer<String> onMain) {
-        hiveRepository.plantAdditionalFloraAsync(hexId, ownerId, floraKey, onMain);
+        hiveRepository.plantAdditionalFloraAsync(hexId, ownerId, floraKey, null, onMain);
     }
 
     public static int maxHivesPerParcel() {
@@ -268,6 +268,23 @@ public class HiveViewModel extends ViewModel {
         }
         hiveRepository.splitHiveIntoEmptyNuc(
                 hive.id, hive.ownerId, hexId, floraType, hiveName, superCount, onMainMessage);
+    }
+
+    public void splitAndSend(HiveEntity hive, String floraType, String hiveName,
+            String destHexId, String destSiteId, String vehicleId, Consumer<String> onMainMessage) {
+        if (hive == null || hive.id == null) {
+            if (onMainMessage != null) {
+                onMainMessage.accept("Colmena no válida.");
+            }
+            return;
+        }
+        hiveRepository.splitAndSend(hive.id, hive.ownerId, floraType, hiveName,
+                destHexId, destSiteId, vehicleId, onMainMessage);
+    }
+
+    public void listSplitDestinations(HiveEntity hive, Consumer<List<HiveRepository.SplitDest>> onMain) {
+        hiveRepository.listSplitDestinations(
+                hive != null ? hive.ownerId : null, hive, onMain);
     }
 
     public void replaceQueenFromInventory(HiveEntity hive, int queenIndex, Consumer<String> onMainMessage) {

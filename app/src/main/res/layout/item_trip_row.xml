@@ -137,6 +137,18 @@
                     android:textSize="12sp"
                     android:textStyle="bold"
                     tools:text="12 min" />
+
+                <ImageView
+                    android:id="@+id/btn_trip_cancel"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="6dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:contentDescription="@string/trip_cancel_cd"
+                    android:focusable="true"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_trip_cancel" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

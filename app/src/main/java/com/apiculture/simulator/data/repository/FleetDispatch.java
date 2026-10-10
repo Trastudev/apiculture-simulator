@@ -72,7 +72,7 @@ public final class FleetDispatch {
         double[] dock = HoneyLogistics.warehouseDock(context, ownerId, parcel);
         double[] from = new double[]{shopLat, shopLng};
         RoadPath path = road(context, from, dock);
-        String name = "Almacén";
+        String name = "Obrador";
         for (HexParcelOwnershipEntity row : warehouses(context, ownerId)) {
             if (row != null && hexId.equals(row.hexId)) {
                 name = label(row);
@@ -266,12 +266,12 @@ public final class FleetDispatch {
         double moving = quote.honeyKg;
         HexParcelOwnershipEntity extra = quote.extraStop;
         if (quote.costB > 0 && !economy.trySpend(quote.costB,
-                "Transporte de miel de " + flora + " entre almacenes")) {
+                "Transporte de miel de " + flora + " entre obradores")) {
             return "Saldo insuficiente para el transporte.";
         }
         if (!take(context, economy, ownerId, fromHex, flora, moving)) {
             if (quote.costB > 0) {
-                economy.addToBalance(quote.costB, "Devolución del transporte entre almacenes");
+                economy.addToBalance(quote.costB, "Devolución del transporte entre obradores");
             }
             return "No se pudo reservar la miel.";
         }
@@ -318,7 +318,7 @@ public final class FleetDispatch {
             }
             giveBack(context, economy, ownerId, fromHex, flora, moving);
             if (quote.costB > 0) {
-                economy.addToBalance(quote.costB, "Devolución del transporte entre almacenes");
+                economy.addToBalance(quote.costB, "Devolución del transporte entre obradores");
             }
             return "No se pudo salir.";
         }
@@ -342,7 +342,7 @@ public final class FleetDispatch {
             double kg, @NonNull String toHex, double extraKg, @Nullable String extraHex) {
         Quote quote = new Quote();
         if (ownerId == null || kg <= 1e-9 || fromHex.equals(toHex)) {
-            quote.block = "Elige otro almacén y una cantidad.";
+            quote.block = "Elige otro obrador y una cantidad.";
             return quote;
         }
         List<HexParcelOwnershipEntity> rows = warehouses(context, ownerId);
@@ -350,7 +350,7 @@ public final class FleetDispatch {
         HexParcelOwnershipEntity from = row(rows, fromHex);
         HexParcelOwnershipEntity to = row(rows, toHex);
         if (from == null || to == null) {
-            quote.block = "No se encuentra el almacén.";
+            quote.block = "No se encuentra el obrador.";
             return quote;
         }
         double moving = kg;
@@ -369,13 +369,13 @@ public final class FleetDispatch {
             moving += extraKg;
         }
         if (WarehouseHoneyStore.kg(context, ownerId, fromHex, flora) + 1e-6 < moving) {
-            quote.block = "En ese almacén no hay tanta miel de ese tipo.";
+            quote.block = "En ese obrador no hay tanta miel de ese tipo.";
             return quote;
         }
         double room = WarehouseRules.capacityKg(WarehouseRules.levelOf(to))
                 - WarehouseHoneyStore.totalAt(context, ownerId, toHex);
         if (room + 1e-6 < kg) {
-            quote.block = "El almacén de destino no tiene sitio.";
+            quote.block = "El obrador de destino no tiene sitio.";
             return quote;
         }
         if (extra != null) {
@@ -389,7 +389,7 @@ public final class FleetDispatch {
         FleetStore.ensureStarter(context, ownerId, fromHex);
         FleetStore.Vehicle truck = freeTruck(context, ownerId, fromHex, moving);
         if (liveTrips(context) && truck == null) {
-            quote.block = "No hay un camión libre con capacidad en el almacén de salida.";
+            quote.block = "No hay un camión libre con capacidad en el obrador de salida.";
             return quote;
         }
         boolean cross = PlayableMapRegion.fromHexId(fromHex) != PlayableMapRegion.fromHexId(toHex);
@@ -473,7 +473,7 @@ public final class FleetDispatch {
         }
         if (chosen != null && flora != null
                 && WarehouseHoneyStore.kg(context, ownerId, chosen.homeId, flora) + 1e-6 < kg) {
-            quote.block = "En el almacén de ese camión no hay tanta miel.";
+            quote.block = "En el obrador de ese camión no hay tanta miel.";
             quote.itinerary = quote.block;
             return quote;
         }
@@ -965,7 +965,7 @@ public final class FleetDispatch {
         if (row.parcelName != null && !row.parcelName.trim().isEmpty()) {
             return row.parcelName.trim();
         }
-        return "Almacén";
+        return "Obrador";
     }
 
     @Nullable
@@ -983,9 +983,9 @@ public final class FleetDispatch {
         boolean geodesic;
         @Nullable String block;
         String itinerary = "";
-        String label = "Almacén";
-        String sourceLabel = "Almacén";
-        String destHomeLabel = "Almacén";
+        String label = "Obrador";
+        String sourceLabel = "Obrador";
+        String destHomeLabel = "Obrador";
         double costB;
         double km;
         long durationMs;

@@ -19,6 +19,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.apiculture.simulator.ApicultureApp;
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.entity.HiveEntity;
 import com.apiculture.simulator.data.repository.HiveRepository;
@@ -29,6 +30,11 @@ import com.apiculture.simulator.domain.game.HexNectarRules;
 import com.apiculture.simulator.presentation.common.FloraSaturationBar;
 import com.apiculture.simulator.domain.game.HiveCareRules;
 import com.apiculture.simulator.domain.parcel.HexParcel;
+import com.apiculture.simulator.domain.parcel.HexParcelGameRules;
+import com.apiculture.simulator.domain.game.FleetRules;
+import com.apiculture.simulator.domain.game.TranshumanceRules;
+import com.apiculture.simulator.data.repository.FleetStore;
+import com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity;
 import com.apiculture.simulator.presentation.common.GameNotice;
 import com.apiculture.simulator.data.session.PlayerAuth;
 
@@ -130,6 +136,126 @@ public final class BuyHiveDialogs {
         });
     }
 
+    private static void offerAnotherApiary(
+            Fragment fragment, HiveViewModel viewModel, HiveEntity parent,
+            String flora, String name, java.util.function.Consumer<String> onBought) {
+        viewModel.listSplitDestinations(parent, dests -> {
+            if (!fragment.isAdded()) {
+                return;
+            }
+            if (dests == null || dests.isEmpty()) {
+                GameNotice.show(fragment.requireContext(), R.string.hive_split_no_room);
+                return;
+            }
+            showChoice(fragment, fragment.getString(R.string.hive_split_full_title),
+                    fragment.getString(R.string.hive_split_full_message),
+                    dests, d -> fragment.getString(R.string.hive_split_dest_row, d.label, d.free, d.km),
+                    dest -> showTrucks(fragment, viewModel, parent, flora, name, dest, onBought));
+        });
+    }
+
+    private static void showTrucks(
+            Fragment fragment, HiveViewModel viewModel, HiveEntity parent,
+            String flora, String name, HiveRepository.SplitDest dest,
+            java.util.function.Consumer<String> onBought) {
+        Context ctx = fragment.requireContext();
+        List<FleetStore.Vehicle> trucks = new ArrayList<>();
+        for (FleetStore.Vehicle v : FleetStore.vehicles(ctx, parent.ownerId)) {
+            if (v == null || !v.isTruck() || v.honeyBusy()) {
+                continue;
+            }
+            int slots = FleetRules.hiveSlots(FleetRules.Kind.TRUCK, v.level);
+            if (v.hiveTrips >= slots) {
+                continue;
+            }
+            trucks.add(v);
+        }
+        trucks.sort((a, b) -> Double.compare(truckKm(ctx, parent, a), truckKm(ctx, parent, b)));
+        if (trucks.isEmpty()) {
+            GameNotice.show(ctx, R.string.hive_split_no_truck);
+            return;
+        }
+        showChoice(fragment, fragment.getString(R.string.hive_split_truck_title),
+                fragment.getString(R.string.hive_split_truck_message, dest.label),
+                trucks,
+                v -> {
+                    int free = FleetRules.hiveSlots(FleetRules.Kind.TRUCK, v.level) - v.hiveTrips;
+                    String label = v.name != null && !v.name.isEmpty() ? v.name : v.id;
+                    return fragment.getString(R.string.hive_split_truck_row, label, free,
+                            truckKm(ctx, parent, v));
+                },
+                truck -> GameNotice.confirm(ctx,
+                        fragment.getString(R.string.hive_split_send_title),
+                        fragment.getString(R.string.hive_split_send_message, dest.label,
+                                truck.name != null && !truck.name.isEmpty() ? truck.name : truck.id),
+                        android.R.string.ok,
+                        android.R.string.cancel,
+                        () -> viewModel.splitAndSend(parent, flora, name, dest.hexId, dest.siteId,
+                                truck.id, msg -> onBought.accept(msg == null ? "SENT" : msg)),
+                        null));
+    }
+
+    private static double truckKm(Context ctx, HiveEntity parent, FleetStore.Vehicle truck) {
+        HexParcel home = IberiaHexOverlayStore.findById(ctx, truck.homeId);
+        if (home == null) {
+            return 0;
+        }
+        return TranshumanceRules.haversineKm(parent.lat, parent.lng, home.centroidLat, home.centroidLon);
+    }
+
+    private static <T> void showChoice(
+            Fragment fragment, String title, String message, List<T> items,
+            java.util.function.Function<T, String> label, java.util.function.Consumer<T> onPick) {
+        Dialog dialog = new Dialog(fragment.requireContext());
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        android.widget.LinearLayout box = new android.widget.LinearLayout(fragment.requireContext());
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (18f * fragment.getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad, pad, pad);
+        box.setBackgroundResource(R.drawable.bg_event_global_body);
+        TextView heading = new TextView(fragment.requireContext());
+        heading.setText(title);
+        heading.setTextColor(fragment.getResources().getColor(R.color.event_ink));
+        heading.setTextSize(18f);
+        heading.setGravity(android.view.Gravity.CENTER);
+        box.addView(heading);
+        TextView body = new TextView(fragment.requireContext());
+        body.setText(message);
+        body.setTextColor(fragment.getResources().getColor(R.color.event_ink_muted));
+        body.setPadding(0, pad / 2, 0, pad / 2);
+        box.addView(body);
+        android.widget.ScrollView scroll = new android.widget.ScrollView(fragment.requireContext());
+        android.widget.LinearLayout list = new android.widget.LinearLayout(fragment.requireContext());
+        list.setOrientation(android.widget.LinearLayout.VERTICAL);
+        for (T item : items) {
+            com.google.android.material.button.MaterialButton btn =
+                    new com.google.android.material.button.MaterialButton(fragment.requireContext());
+            btn.setText(label.apply(item));
+            btn.setAllCaps(false);
+            btn.setOnClickListener(v -> {
+                dialog.dismiss();
+                onPick.accept(item);
+            });
+            list.addView(btn);
+        }
+        scroll.addView(list);
+        box.addView(scroll, new android.widget.LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, (int) (280f * fragment.getResources().getDisplayMetrics().density)));
+        com.google.android.material.button.MaterialButton cancel =
+                new com.google.android.material.button.MaterialButton(fragment.requireContext(), null,
+                        com.google.android.material.R.attr.borderlessButtonStyle);
+        cancel.setText(android.R.string.cancel);
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        box.addView(cancel);
+        dialog.setContentView(box);
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        dialog.show();
+    }
+
     private static void showForm(
             Fragment fragment,
             HiveViewModel viewModel,
@@ -203,7 +329,7 @@ public final class BuyHiveDialogs {
                 return;
             }
             String hexId = hexOptions.get(hexIdx).hexId;
-            viewModel.listReadyFlorasForHex(hexId, floras -> {
+            viewModel.listReadyFlorasForHex(hexId, siteId, floras -> {
                 if (!fragment.isAdded()) {
                     return;
                 }
@@ -283,7 +409,7 @@ public final class BuyHiveDialogs {
                 if (!fragment.isAdded()) {
                     return;
                 }
-                if (msg == null) {
+                if (msg == null || "SENT".equals(msg)) {
                     if (!split) {
                         // Capítulo 1, viñeta 10b. Colmena comprada y colocada.
                         com.apiculture.simulator.presentation.tutorial.TutorialBus.handoff(dialog);
@@ -291,7 +417,9 @@ public final class BuyHiveDialogs {
                                 com.apiculture.simulator.presentation.tutorial.TutorialEvent.HIVE_BOUGHT);
                     }
                     dialog.dismiss();
-                    if (split) {
+                    if ("SENT".equals(msg)) {
+                        GameNotice.showSuccess(fragment.requireContext(), R.string.hive_split_sent);
+                    } else if (split) {
                         GameNotice.showSuccess(fragment.requireContext(), R.string.hive_split_ok);
                     } else {
                         GameNotice.show(fragment.requireContext(), R.string.hive_created_ok);
@@ -301,7 +429,21 @@ public final class BuyHiveDialogs {
                 }
             };
             if (split) {
-                viewModel.splitHiveIntoEmptyNuc(splitFrom, hexId, flora, name, 0, onBought);
+                ApicultureApp app = (ApicultureApp) fragment.requireActivity().getApplication();
+                new Thread(() -> {
+                    int n = app.getHexParcelRepository().countHivesAtSiteBlocking(
+                            ownerId, splitFrom.hexId, splitFrom.siteId);
+                    fragment.requireActivity().runOnUiThread(() -> {
+                        if (!fragment.isAdded()) {
+                            return;
+                        }
+                        if (n >= HexParcelGameRules.MAX_HIVES_PER_SITE) {
+                            offerAnotherApiary(fragment, viewModel, splitFrom, flora, name, onBought);
+                        } else {
+                            viewModel.splitHiveIntoEmptyNuc(splitFrom, hexId, flora, name, 0, onBought);
+                        }
+                    });
+                }, "split-room").start();
             } else {
                 viewModel.purchaseHive(ownerId, hexId, flora, name, 0, siteId, onBought);
             }

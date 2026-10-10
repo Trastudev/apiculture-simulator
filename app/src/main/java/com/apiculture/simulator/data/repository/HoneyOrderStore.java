@@ -435,7 +435,14 @@ public final class HoneyOrderStore {
             if (owner.isEmpty() || !GameServer.claimOrder(orderId, owner)) {
                 return false;
             }
-            if (d.markClaimed(orderId, owner) <= 0) {
+            HoneyOrderEntity authoritative = GameServer.takeLastClaimedOrder();
+            if (authoritative != null && orderId.equals(authoritative.id)) {
+                authoritative.taken = true;
+                if (authoritative.claimedBy == null || authoritative.claimedBy.isEmpty()) {
+                    authoritative.claimedBy = owner;
+                }
+                d.upsert(authoritative);
+            } else if (d.markClaimed(orderId, owner) <= 0) {
                 GameServer.syncOffersBlocking(context);
             }
             return true;

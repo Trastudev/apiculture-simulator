@@ -91,7 +91,7 @@ public final class PlaceStockDialogs {
             holder.b.tvStockFlora.setText(h.floraType != null ? h.floraType : "—");
             int pop = HivePopulationState.adultWorkersForUi(h, HiveRepository.DEFAULT_BEE_COUNT_PER_HIVE);
             holder.b.tvStockPop.setText(nf.format(pop));
-            holder.b.tvStockHoney.setText(String.format(Locale.getDefault(), "%.1f kg", h.honeyProduction));
+            holder.b.tvStockHoney.setText(String.format(Locale.getDefault(), "%.2f kg", h.honeyProduction));
             holder.b.tvStockSupers.setText(String.valueOf(Math.max(0, h.superCount)));
             holder.b.tvStockHealth.setText(h.health + "%");
             holder.b.tvStockVarroa.setText(String.format(Locale.getDefault(), "%.1f%%", h.varroaPct));

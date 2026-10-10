@@ -36,6 +36,7 @@ import com.apiculture.simulator.data.local.entity.HiveDailyYieldEntity;
 
 import com.apiculture.simulator.data.local.entity.HiveEntity;
 import com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity;
+import com.apiculture.simulator.data.local.entity.TruckTripEntity;
 import com.apiculture.simulator.data.local.entity.HexParcelFloraEntity;
 
 import com.apiculture.simulator.data.remote.OpenMeteoElevation;
@@ -55,6 +56,7 @@ import com.apiculture.simulator.domain.parcel.LocalTangentPlane;
 import com.apiculture.simulator.domain.game.HiveProductionEligibility;
 import com.apiculture.simulator.domain.game.XpAwards;
 import com.apiculture.simulator.domain.game.TranshumanceRules;
+import com.apiculture.simulator.domain.parcel.WarehouseRules;
 import com.apiculture.simulator.domain.game.GameClock;
 import com.apiculture.simulator.domain.game.DailySkyCondition;
 import com.apiculture.simulator.domain.game.DailyWeather;
@@ -1095,7 +1097,7 @@ public class HiveRepository {
 
      * Partida en blanco: borra colmenas, terrenos, contratos, viajes y comandas del dueño
 
-     * (local + nube). Deja 20.000 beecoins y sin terrenos ni colmenas. Detiene la escucha
+     * (local + nube). Deja 45.000 beecoins y sin terrenos ni colmenas. Detiene la escucha
 
      * en tiempo real hasta que la UI vuelva a llamar a {@link #startRealtimeCloudSync(String)}.
 
@@ -1134,6 +1136,7 @@ public class HiveRepository {
                 FleetStore.clear(appContext, ownerId);
                 RankingCounters.clear(appContext, ownerId);
                 WarehouseHoneyStore.clear(appContext, ownerId);
+                WorkshopStore.clear(appContext, ownerId);
 
                 List<HiveEntity> old = hiveDao.getHivesByOwnerSync(ownerId);
 
@@ -1510,9 +1513,7 @@ public class HiveRepository {
 
     /**
 
-     * Solo para depuración: aplica <strong>un</strong> día de producción (siguiente tras {@code lastProcessed}),
-
-     * sin exigir las 8:00 locales ni el día de calendario actual. Permite comprobar miel, población, etc.
+     * Depuración: pide al servidor el tick pendiente y aplica las colmenas que devuelva.
 
      *
 
@@ -1566,12 +1567,18 @@ public class HiveRepository {
 
                         msg = "Avance sin producción (antes del día 1): " + next.format(df);
 
+                    } else if (!GameServer.enabled()) {
+                        msg = "El cálculo diario solo corre en el servidor.";
                     } else {
-
-                        applyProductionForCalendarDay(ownerId, next, state, new double[2]);
-
-                        msg = "Producción simulada · " + next.format(df);
-
+                        List<DailyTickSummary> days = new ArrayList<>();
+                        boolean ok = applyAuthoritativeProduction(ownerId, state, days, null);
+                        if (!ok) {
+                            msg = "El servidor no respondió.";
+                        } else if (days.isEmpty()) {
+                            msg = "No hay un día nuevo cerrado en el servidor.";
+                        } else {
+                            msg = "Producción del servidor · " + next.format(df);
+                        }
                     }
 
                 }
@@ -2030,8 +2037,20 @@ public class HiveRepository {
                     hive.lastSummaryHoneyKg = row.optDouble("lastSummaryHoneyKg", hive.lastSummaryHoneyKg);
                     hive.lastSummaryDeltaBees = row.optInt("lastSummaryDeltaBees", hive.lastSummaryDeltaBees);
                     hive.lastSummaryWorkerDeaths = row.optInt("lastSummaryWorkerDeaths", hive.lastSummaryWorkerDeaths);
+                    hive.lastSummaryWorkerEmergences = row.optInt(
+                            "lastSummaryWorkerEmergences", hive.lastSummaryWorkerEmergences);
                     hive.lastSummaryEggsLaid = row.optInt("lastSummaryEggsLaid", hive.lastSummaryEggsLaid);
                     hive.lastSummarySwarmed = row.optBoolean("lastSummarySwarmed", hive.lastSummarySwarmed);
+                    hive.health = row.optInt("health", hive.health);
+                    hive.varroaPct = row.optDouble("varroaPct", hive.varroaPct);
+                    hive.queenGeneticQuality = row.optInt("queenGeneticQuality", hive.queenGeneticQuality);
+                    hive.lastHealthSimDayKey = row.optInt("lastHealthSimDayKey", hive.lastHealthSimDayKey);
+                    hive.varroaTreatmentDaysRemaining = row.optInt(
+                            "varroaTreatmentDaysRemaining", hive.varroaTreatmentDaysRemaining);
+                    hive.varroaReboundDaysRemaining = row.optInt(
+                            "varroaReboundDaysRemaining", hive.varroaReboundDaysRemaining);
+                    hive.lastSummaryDeltaHealth = row.optInt("lastSummaryDeltaHealth", hive.lastSummaryDeltaHealth);
+                    hive.lastSummaryDeltaVarroa = row.optDouble("lastSummaryDeltaVarroa", hive.lastSummaryDeltaVarroa);
                     upsertCloud(hive);
                 }
             }
@@ -2275,9 +2294,8 @@ public class HiveRepository {
 
     /**
      * Solo se ejecuta con la app abierta (p. ej. {@code MainActivity.onResume}): plan Spark gratuito.
-     * Tras {@link #mergeRemoteProductionProgress}, recorre cada día civil desde el último procesado hasta hoy;
-     * para cada uno solo aplica el tick si ya son las {@link GameCalendar#PRODUCTION_HOUR}:00 o posteriores
-     * en la zona horaria del dispositivo.
+     * Tras {@link #mergeRemoteProductionProgress}, pide el cálculo al servidor y aplica las colmenas
+     * que devuelve. No simula población, varroa ni miel en el teléfono.
      *
      * @param appliedDaysOut se vacía al inicio; recibe un {@link DailyTickSummary} por cada día con colmenas
      *                       y datos de resumen (orden cronológico).
@@ -2288,12 +2306,6 @@ public class HiveRepository {
         appliedDaysOut.clear();
 
         GameBalanceConfig.load(appContext);
-
-        ZoneId z = GameCalendar.userTimeZone();
-
-        LocalDate today = LocalDate.now(z);
-
-        LocalDateTime now = LocalDateTime.now(z);
 
         GameProductionStateEntity state = getOrCreateProductionState(ownerId);
 
@@ -2307,53 +2319,6 @@ public class HiveRepository {
 
         }
 
-        if (GameServer.enabled()) {
-            int due = GameCalendar.dueProductionDayKey();
-            if (state.lastProcessedProductionDayKey >= due) {
-                markProductionSettledDay(ownerId, state.lastProcessedProductionDayKey);
-            }
-            if (!productionUploadPending(ownerId) && productionShownDay(ownerId) >= due
-                    && hivesCaughtUp(ownerId, due)) {
-                Log.i(TAG, "production skip: día " + due + " ya aplicado en el teléfono");
-                return;
-            }
-            Log.i(TAG, "production ask due=" + due
-                    + " local=" + state.lastProcessedProductionDayKey
-                    + " settled=" + productionSettledDay(ownerId)
-                    + " caughtUp=" + hivesCaughtUp(ownerId, due));
-            if (applyAuthoritativeProduction(ownerId, state, appliedDaysOut, onWorkStartedOnMain)) {
-                return;
-            }
-        }
-
-        LocalDate gameStart = GameCalendar.fromDayKey(state.gameStartDayKey);
-
-        LocalDate lastProcessed = lastClosedProductionDay(state);
-
-        LocalDate cursor = lastProcessed.plusDays(1);
-
-        if (onWorkStartedOnMain != null) {
-            LocalDate peek = cursor;
-            boolean pendingCalendarWork = false;
-            while (!peek.isAfter(today)) {
-                LocalDateTime deadline = peek.atTime(GameCalendar.PRODUCTION_HOUR, GameCalendar.PRODUCTION_MINUTE);
-                if (now.isBefore(deadline)) {
-                    break;
-                }
-                // También se avisa cuando solo hay que avanzar el estado, cortar
-                // cultivos o resolver contratos, aunque no haya colmenas activas.
-                pendingCalendarWork = true;
-                break;
-            }
-            if (pendingCalendarWork) {
-                mainHandler.post(onWorkStartedOnMain);
-            }
-        }
-
-        // La sincronización de viajes puede tardar o estar temporalmente caída.
-        // Se hace después de publicar el indicador de cálculo para que el usuario
-        // vea que la actualización diaria ha empezado; si falla, el resumen de
-        // producción se calcula igualmente.
         try {
             TruckLiveTrips.completeDue(appContext);
         } catch (RuntimeException e) {
@@ -2371,86 +2336,32 @@ public class HiveRepository {
             Log.w(TAG, "No se pudieron mantener las ofertas antes del tick diario", e);
         }
 
-        while (!cursor.isAfter(today)) {
-
-            LocalDateTime deadline = cursor.atTime(GameCalendar.PRODUCTION_HOUR, GameCalendar.PRODUCTION_MINUTE);
-
-            if (now.isBefore(deadline)) {
-
-                break;
-
-            }
-
-            if (cursor.isBefore(gameStart)) {
-
-                state.lastProcessedProductionDayKey = GameCalendar.toDayKey(cursor);
-
-                gameProductionStateDao.update(state);
-
-                pushProductionStateToFirestore(ownerId, state);
-
-                cursor = cursor.plusDays(1);
-
-                continue;
-
-            }
-
-            int dayKeyJustApplied = GameCalendar.toDayKey(cursor);
-
-            CropTickResult cropTick =
-                    hexFloraRepository.tickCropsForOwnerBlocking(
-                            ownerId, cursor, economyRepository, hexParcelRepository);
+        if (!GameServer.enabled()) {
+            Log.w(TAG, "production skip: el cálculo diario solo corre en el servidor");
+            return;
+        }
+        int due = GameCalendar.dueProductionDayKey();
+        if (state.lastProcessedProductionDayKey >= due) {
+            markProductionSettledDay(ownerId, state.lastProcessedProductionDayKey);
+        }
+        Log.i(TAG, "production ask due=" + due
+                + " local=" + state.lastProcessedProductionDayKey
+                + " settled=" + productionSettledDay(ownerId)
+                + " caughtUp=" + hivesCaughtUp(ownerId, due));
+        if (!applyAuthoritativeProduction(ownerId, state, appliedDaysOut, onWorkStartedOnMain)) {
+            Log.w(TAG, "production: el servidor no respondió; no se calcula en el teléfono");
+            return;
+        }
+        LocalDate dueDay = GameCalendar.fromDayKey(due);
+        LocalDate gameStart = GameCalendar.fromDayKey(state.gameStartDayKey);
+        if (hexFloraRepository != null && !dueDay.isBefore(gameStart)) {
+            CropTickResult cropTick = hexFloraRepository.tickCropsForOwnerBlocking(
+                    ownerId, dueDay, economyRepository, hexParcelRepository);
             reassignForageAfterRemovedCrops(ownerId, cropTick);
             for (String hexId : cropTick.touchedHexIds) {
                 hexParcelRepository.syncHexParcelFlorasToCloudBlocking(hexId);
             }
-
-            double[] forageMelee = new double[2];
-            List<String> contractNotes = new ArrayList<>();
-            Set<String> velutinaHits = applyProductionForCalendarDay(
-                    ownerId, cursor, state, forageMelee, contractNotes);
-
-            List<HiveDayStartupSummary> summaries = collectStartupSummariesForDay(ownerId, dayKeyJustApplied, velutinaHits);
-
-            List<String> dayNotes = new ArrayList<>();
-            if (cropTick.notes != null) {
-                dayNotes.addAll(cropTick.notes);
-            }
-            dayNotes.addAll(contractNotes);
-
-            if (!summaries.isEmpty()) {
-
-                int velCount = 0;
-                int queenGone = 0;
-                int swarmCount = 0;
-                for (HiveDayStartupSummary s : summaries) {
-                    if (s.velutinaHit) {
-                        velCount++;
-                    }
-                    if (s.queenMissing) {
-                        queenGone++;
-                    }
-                    if (s.swarmed) {
-                        swarmCount++;
-                    }
-                }
-                appliedDaysOut.add(new DailyTickSummary(dayKeyJustApplied, summaries, velCount, queenGone, swarmCount,
-                        dayNotes, forageMelee[0], forageMelee[1]));
-
-            } else if (!dayNotes.isEmpty()) {
-                appliedDaysOut.add(new DailyTickSummary(dayKeyJustApplied, Collections.emptyList(), 0, 0, 0,
-                        dayNotes, 0, 0));
-
-            }
-
-            cursor = cursor.plusDays(1);
-
         }
-
-        if (GameServer.enabled()) {
-            markProductionUploadPending(ownerId, true);
-        }
-
     }
 
     private boolean productionUploadPending(@Nullable String ownerId) {
@@ -2595,573 +2506,6 @@ public class HiveRepository {
                 .commit();
     }
 
-    private List<HiveDayStartupSummary> collectStartupSummariesForDay(
-            String ownerId, int dayKey, Set<String> velutinaHits) {
-
-        List<HiveEntity> hives = hiveDao.getHivesByOwnerSync(ownerId);
-
-        List<HiveDayStartupSummary> summaries = new ArrayList<>();
-
-        if (hives == null) {
-
-            return summaries;
-
-        }
-
-        for (HiveEntity h : hives) {
-
-            if (h.lastSummaryDayKey == dayKey) {
-
-                int net = h.lastSummaryWorkerEmergences - h.lastSummaryWorkerDeaths;
-
-                ensurePopulationJson(h);
-                HivePopulationState pop = HivePopulationState.fromJson(h.populationStateJson);
-                boolean queenGone = pop != null && pop.needsQueenIntroduction();
-                boolean velHit = velutinaHits != null && h.id != null && velutinaHits.contains(h.id);
-
-                summaries.add(new HiveDayStartupSummary(
-
-                        h.name,
-
-                        h.lastSummaryHoneyKg,
-
-                        h.floraType,
-
-                        net,
-
-                        h.lastSummaryEggsLaid,
-
-                        h.lastSummaryDeltaHealth,
-
-                        h.lastSummaryDeltaVarroa,
-
-                        h.lastSummarySwarmed,
-                        queenGone,
-                        velHit));
-
-            }
-
-        }
-
-        return summaries;
-
-    }
-
-    private Set<String> applyProductionForCalendarDay(String ownerId, LocalDate day, GameProductionStateEntity state,
-            double[] forageMeleeOut) {
-        return applyProductionForCalendarDay(ownerId, day, state, forageMeleeOut, null);
-    }
-
-    private Set<String> applyProductionForCalendarDay(String ownerId, LocalDate day, GameProductionStateEntity state,
-            double[] forageMeleeOut, @Nullable List<String> contractNotesOut) {
-
-        int dayKey = GameCalendar.toDayKey(day);
-        Set<String> velutinaHits = new HashSet<>();
-
-        List<HiveEntity> hives = hiveDao.getHivesByOwnerSync(ownerId);
-
-        if (hives == null || hives.isEmpty()) {
-
-            state.lastProcessedProductionDayKey = dayKey;
-
-            gameProductionStateDao.update(state);
-
-            pushProductionStateToFirestore(ownerId, state);
-
-            if (marketRepository != null) {
-
-                marketRepository.refreshGlobalMarketForDay(dayKey, day.getDayOfYear());
-
-            }
-
-            return velutinaHits;
-
-        }
-
-        if (forageMeleeOut != null && forageMeleeOut.length >= 2) {
-            forageMeleeOut[0] = 0;
-            forageMeleeOut[1] = 0;
-        }
-
-        if (pollinationContractRepository != null) {
-            List<String> moveNotes = pollinationContractRepository
-                    .applyScheduledContractMovesBlocking(ownerId, dayKey);
-            if (contractNotesOut != null && moveNotes != null) {
-                contractNotesOut.addAll(moveNotes);
-            }
-            hives = hiveDao.getHivesByOwnerSync(ownerId);
-            if (hives == null) {
-                hives = Collections.emptyList();
-            }
-        }
-
-        List<HiveEntity> toSim = new ArrayList<>();
-        boolean startDay = state != null && dayKey == state.gameStartDayKey;
-        for (HiveEntity h : hives) {
-            if (h == null || h.inWarehouse) {
-                continue;
-            }
-            TruckLiveTrips.applyDue(appContext, h, dayKey);
-            if (startDay) {
-                continue;
-            }
-            if (!HiveProductionEligibility.participatesOnDay(h.firstProductionDayKey, dayKey)) {
-                continue;
-            }
-            toSim.add(h);
-        }
-
-        if (toSim.isEmpty()) {
-            tickPollinationContracts(ownerId, day, dayKey, Collections.emptyMap(), contractNotesOut);
-            state.lastProcessedProductionDayKey = dayKey;
-            gameProductionStateDao.update(state);
-            pushProductionStateToFirestore(ownerId, state);
-            if (marketRepository != null) {
-                marketRepository.refreshGlobalMarketForDay(dayKey, day.getDayOfYear());
-            }
-            return velutinaHits;
-        }
-
-        Map<String, DailyWeather> weatherByHiveId = buildPreviousDayWeatherByHive(toSim, day);
-        List<PendingHiveForage> pendingForage = new ArrayList<>();
-
-        for (HiveEntity h : toSim) {
-            if (applyVelutinaIfNeeded(h) && h.id != null) {
-                velutinaHits.add(h.id);
-            }
-
-            h.lastSummarySwarmed = false;
-
-            int elevM = h.elevationMeters;
-
-            if (elevM < 0) {
-
-                elevM = OpenMeteoElevation.resolveMetersPersistedBlocking(h.lat, h.lng);
-
-                h.elevationMeters = elevM;
-
-                upsertCloud(h);
-
-            }
-
-            if (h.feedHoneyBonusEndDayKeyExclusive > 0 && dayKey >= h.feedHoneyBonusEndDayKeyExclusive) {
-
-                h.feedHoneyBonusEndDayKeyExclusive = 0;
-
-                h.feedHoneyBonusMultiplier = 1.0;
-
-            }
-
-            if (h.feedBroodBonusEndDayKeyExclusive > 0 && dayKey >= h.feedBroodBonusEndDayKeyExclusive) {
-
-                h.feedBroodBonusEndDayKeyExclusive = 0;
-
-                h.feedBroodBonusMultiplier = 1.0;
-
-            }
-
-            String skyKey = "hive:" + h.id;
-            DailyWeather observed = weatherByHiveId.get(h.id);
-            DailySkyCondition sky = DailySkyCondition.forHiveDay(skyKey, dayKey, elevM, observed);
-            double skyMult = sky.productionMultiplier();
-            Double tempC = (observed != null && observed.meanTempC != null && !Double.isNaN(observed.meanTempC))
-                    ? observed.meanTempC : null;
-
-            int healthStart = h.health;
-
-            double varroaStart = h.varroaPct;
-
-            ensurePopulationJson(h);
-
-            HivePopulationState pop = HivePopulationState.fromJson(h.populationStateJson);
-
-            if (pop == null) {
-
-                int nPop = h.beeCount > 0 ? h.beeCount : DEFAULT_BEE_COUNT_PER_HIVE;
-
-                if (h.id != null && !h.id.isEmpty()) {
-
-                    pop = HivePopulationState.fromInitialColonyWithRandomBroodPipeline(nPop, h.id);
-
-                } else {
-
-                    pop = HivePopulationState.fromLegacyBeeCount(nPop);
-
-                }
-
-            }
-
-            Season season = Season.fromDayOfYear(
-                    Hemispheres.biologicalDayOfYear(day.getDayOfYear(), h.lat));
-
-            if (h.lastHealthSimDayKey < dayKey) {
-
-                int eggsForVarroa = HiveDailyBiology.eggsLaidToday(pop, h, day, dayKey, tempC);
-
-                HiveDailyHealthSimulator.applyDay(h, dayKey, season, tempC, eggsForVarroa);
-
-                h.lastHealthSimDayKey = dayKey;
-
-            }
-
-            if (h.health < 50) {
-
-                h.queenGeneticQuality = Math.max(0, h.queenGeneticQuality - 1);
-
-            }
-
-            boolean ranPopulationSim = pop.lastPopulationDayKey < dayKey;
-
-            if (ranPopulationSim) {
-
-                HivePopulationSimulator.applyDay(pop, h, day, dayKey, tempC);
-
-                pop.lastPopulationDayKey = dayKey;
-
-                h.populationStateJson = pop.toJson();
-
-                h.beeCount = pop.totalBees();
-
-                h.lastSummarySwarmed = pop.lastDaySwarmed;
-
-            }
-
-            if (ranPopulationSim) {
-
-                h.lastSummaryWorkerDeaths = pop.lastDayWorkerDeaths;
-
-                h.lastSummaryWorkerEmergences = pop.lastDayWorkerEmergences;
-
-                h.lastSummaryEggsLaid = pop.lastDayEggsLaid;
-
-                h.lastSummaryDeltaBees = pop.lastDayWorkerEmergences;
-
-            } else {
-
-                h.lastSummaryWorkerDeaths = 0;
-
-                h.lastSummaryWorkerEmergences = 0;
-
-                h.lastSummaryEggsLaid = 0;
-
-                h.lastSummaryDeltaBees = 0;
-
-            }
-
-            boolean honeyDone = hiveDailyYieldDao.getYield(h.id, dayKey) != null;
-
-            if (!honeyDone) {
-
-                HiveDailyYieldEntity cloudRow = readFirestoreDailyYieldBlocking(h.id, dayKey);
-
-                if (cloudRow != null) {
-
-                    hiveDailyYieldDao.insert(cloudRow);
-
-                    honeyDone = true;
-
-                }
-
-            }
-
-            if (!honeyDone) {
-                if (TranshumanceRules.isInTransit(h, dayKey)) {
-                    HiveDailyYieldEntity travel = new HiveDailyYieldEntity();
-                    travel.hiveId = h.id;
-                    travel.dayKey = dayKey;
-                    travel.kg = 0;
-                    travel.consumptionKg = 0;
-                    travel.forageKg = 0;
-                    hiveDailyYieldDao.insert(travel);
-                } else {
-                    int eggsCons = ranPopulationSim
-                            ? h.lastSummaryEggsLaid
-                            : HiveDailyBiology.eggsLaidToday(pop, h, day, dayKey, tempC);
-                    pendingForage.add(new PendingHiveForage(h, pop, day, dayKey, tempC, skyMult, sky,
-                            ranPopulationSim, eggsCons));
-                }
-            }
-
-            h.lastSummaryDayKey = dayKey;
-
-            h.lastSummaryDeltaHealth = h.health - healthStart;
-
-            if (h.transhumanceArrivesDayKey > 0 && dayKey >= h.transhumanceArrivesDayKey) {
-                h.transhumanceArrivesDayKey = 0;
-            }
-
-            h.lastSummaryDeltaVarroa = h.varroaPct - varroaStart;
-
-            HiveDailyYieldEntity yieldForDay = hiveDailyYieldDao.getYield(h.id, dayKey);
-
-            h.lastSummaryHoneyKg = yieldForDay != null ? yieldForDay.kg : 0.0;
-
-            normalizeBeeCount(h);
-
-            upsertCloud(h);
-
-            if (firestore != null) {
-
-                try {
-
-                    Tasks.await(firestore.collection("hives").document(h.id).set(h, SetOptions.merge()));
-
-                    if (yieldForDay != null) {
-
-                        Map<String, Object> y = new HashMap<>();
-
-                        y.put("kg", yieldForDay.kg);
-
-                        y.put("workerNetDelta", yieldForDay.workerNetDelta);
-
-                        y.put("eggsLaid", yieldForDay.eggsLaid);
-                        y.put("consumptionKg", yieldForDay.consumptionKg);
-                        y.put("forageKg", yieldForDay.forageKg);
-
-                        y.put("dayKey", dayKey);
-
-                        y.put("hiveId", h.id);
-
-                        y.put("ownerId", h.ownerId);
-
-                        y.put("sky", sky.name());
-
-                        Tasks.await(firestore.collection("hives").document(h.id)
-
-                                .collection("dailyYields").document(String.valueOf(dayKey))
-
-                                .set(y, SetOptions.merge()));
-
-                    }
-
-                } catch (Exception ignored) {
-
-                }
-
-            }
-
-        }
-
-        applyHexNectarForage(ownerId, day, dayKey, pendingForage, forageMeleeOut, contractNotesOut);
-
-        state.lastProcessedProductionDayKey = dayKey;
-
-        gameProductionStateDao.update(state);
-
-        pushProductionStateToFirestore(ownerId, state);
-
-        if (marketRepository != null) {
-
-            marketRepository.refreshGlobalMarketForDay(dayKey, day.getDayOfYear());
-
-        }
-
-        return velutinaHits;
-
-    }
-
-    private static final class PendingHiveForage {
-        final HiveEntity hive;
-        final HivePopulationState pop;
-        final LocalDate day;
-        final int dayKey;
-        final Double tempC;
-        final double skyMult;
-        final DailySkyCondition sky;
-        final boolean ranPopulationSim;
-        final int eggsCons;
-
-        PendingHiveForage(HiveEntity hive, HivePopulationState pop, LocalDate day, int dayKey,
-                Double tempC, double skyMult, DailySkyCondition sky,
-                boolean ranPopulationSim, int eggsCons) {
-            this.hive = hive;
-            this.pop = pop;
-            this.day = day;
-            this.dayKey = dayKey;
-            this.tempC = tempC;
-            this.skyMult = skyMult;
-            this.sky = sky;
-            this.ranPopulationSim = ranPopulationSim;
-            this.eggsCons = eggsCons;
-        }
-    }
-
-    private void applyHexNectarForage(
-            String ownerId,
-            LocalDate day,
-            int dayKey,
-            List<PendingHiveForage> pending,
-            double[] forageMeleeOut,
-            @Nullable List<String> contractNotesOut) {
-        if (pending == null || pending.isEmpty()) {
-            tickPollinationContracts(ownerId, day, dayKey, Collections.emptyMap(), contractNotesOut);
-            return;
-        }
-        Map<String, List<PendingHiveForage>> byPatch = new LinkedHashMap<>();
-        for (PendingHiveForage p : pending) {
-            if (p.hive == null || p.hive.id == null) {
-                continue;
-            }
-            String hex = p.hive.hexId != null && !p.hive.hexId.isEmpty() ? p.hive.hexId : "_";
-            String flora = HoneyMarketEngine.canonicalFloraKey(p.hive.floraType);
-            String k = hex + "|" + flora;
-            List<PendingHiveForage> list = byPatch.get(k);
-            if (list == null) {
-                list = new ArrayList<>();
-                byPatch.put(k, list);
-            }
-            list.add(p);
-        }
-        List<HexNectarPool.Patch> patches = new ArrayList<>();
-        for (Map.Entry<String, List<PendingHiveForage>> e : byPatch.entrySet()) {
-            List<PendingHiveForage> group = e.getValue();
-            PendingHiveForage sample = group.get(0);
-            List<HexNectarPool.HiveShare> shares = new ArrayList<>();
-            double site = 0.0;
-            int n = 0;
-            for (PendingHiveForage p : group) {
-                double demand = HexNectarPool.forageDemandKg(p.pop, p.hive, p.dayKey, p.tempC, p.skyMult);
-                shares.add(new HexNectarPool.HiveShare(p.hive.id, demand));
-                site += HexNectarPool.siteFactor(p.tempC, p.skyMult);
-                n++;
-            }
-            double pool = HexNectarPool.poolKg(sample.hive, day);
-            String hex = sample.hive.hexId != null ? sample.hive.hexId : "_";
-            HexNectarPool.Patch patch = new HexNectarPool.Patch(
-                    hex,
-                    HoneyMarketEngine.canonicalFloraKey(sample.hive.floraType),
-                    ownerId,
-                    pool,
-                    n > 0 ? site / n : 0.0,
-                    shares);
-            patches.add(patch);
-        }
-
-        HexNectarPool.Totals totals = HexNectarPool.resolve(patches, Collections.emptyMap());
-        if (forageMeleeOut != null && forageMeleeOut.length >= 2) {
-            forageMeleeOut[0] = totals.fromNeighborsKg;
-            forageMeleeOut[1] = totals.takenByNeighborsKg;
-        }
-
-        Map<String, List<HexNectarPool.Patch>> patchesByHex = new HashMap<>();
-        for (HexNectarPool.Patch patch : patches) {
-            List<HexNectarPool.Patch> list = patchesByHex.get(patch.hexId);
-            if (list == null) {
-                list = new ArrayList<>();
-                patchesByHex.put(patch.hexId, list);
-            }
-            list.add(patch);
-        }
-
-        Map<String, Double> collectedByHive = new HashMap<>();
-        for (HexNectarPool.Patch patch : patches) {
-            for (HexNectarPool.HiveShare share : patch.hives) {
-                collectedByHive.put(share.hiveId, share.collectedKg);
-            }
-        }
-
-        for (PendingHiveForage p : pending) {
-            if (p.hive == null || p.hive.id == null) {
-                continue;
-            }
-            String floraKey = HoneyMarketEngine.canonicalFloraKey(p.hive.floraType);
-            double forage = collectedByHive.containsKey(p.hive.id)
-                    ? collectedByHive.get(p.hive.id) : 0.0;
-            double cons = HiveDailyBiology.consumptionKg(p.pop, p.hive, p.eggsCons, p.dayKey);
-            double kg = forage - cons;
-
-            HiveDailyYieldEntity row = new HiveDailyYieldEntity();
-            row.hiveId = p.hive.id;
-            row.dayKey = dayKey;
-            row.kg = kg;
-            row.consumptionKg = cons;
-            row.forageKg = forage;
-            row.workerNetDelta = p.ranPopulationSim
-                    ? (p.hive.lastSummaryWorkerEmergences - p.hive.lastSummaryWorkerDeaths) : 0;
-            row.eggsLaid = p.ranPopulationSim ? p.hive.lastSummaryEggsLaid : 0;
-            hiveDailyYieldDao.insert(row);
-            HiveHoneyStocks.applyNet(p.hive, kg, floraKey);
-            p.hive.lastSummaryHoneyKg = kg;
-            upsertCloud(p.hive);
-
-            if (firestore != null) {
-                try {
-                    Tasks.await(firestore.collection("hives").document(p.hive.id).set(p.hive, SetOptions.merge()));
-                    Map<String, Object> y = new HashMap<>();
-                    y.put("kg", row.kg);
-                    y.put("workerNetDelta", row.workerNetDelta);
-                    y.put("eggsLaid", row.eggsLaid);
-                    y.put("consumptionKg", row.consumptionKg);
-                    y.put("forageKg", row.forageKg);
-                    y.put("dayKey", dayKey);
-                    y.put("hiveId", p.hive.id);
-                    y.put("ownerId", p.hive.ownerId);
-                    y.put("sky", p.sky != null ? p.sky.name() : "");
-                    Tasks.await(firestore.collection("hives").document(p.hive.id)
-                            .collection("dailyYields").document(String.valueOf(dayKey))
-                            .set(y, SetOptions.merge()));
-                } catch (Exception ignored) {
-                }
-            }
-        }
-
-        tickPollinationContracts(ownerId, day, dayKey, collectedByHive, contractNotesOut);
-
-        if (hexParcelRepository == null) {
-            return;
-        }
-        for (Map.Entry<String, List<HexNectarPool.Patch>> e : patchesByHex.entrySet()) {
-            String hexId = e.getKey();
-            if (hexId == null || hexId.isEmpty() || "_".equals(hexId) || isNpcContractHex(hexId)) {
-                continue;
-            }
-            Map<String, Double> demand = new HashMap<>();
-            Map<String, Double> pool = new HashMap<>();
-            Map<String, Double> leftoverDemand = new HashMap<>();
-            Map<String, Double> leftoverPool = new HashMap<>();
-            double site = 0.0;
-            int n = 0;
-            for (HexNectarPool.Patch patch : e.getValue()) {
-                demand.put(patch.flora, patch.localDemand);
-                pool.put(patch.flora, patch.poolKg);
-                leftoverDemand.put(patch.flora, patch.leftoverDemand);
-                leftoverPool.put(patch.flora, patch.leftoverPool);
-                site += patch.siteFactor;
-                n++;
-            }
-            HexForageSnapshot snap = new HexForageSnapshot(
-                    dayKey, n > 0 ? site / n : 0.0, demand, pool, leftoverDemand, leftoverPool);
-            hexParcelRepository.publishForageSnapshotBlocking(hexId, ownerId, snap);
-        }
-    }
-
-    private void tickPollinationContracts(
-            String ownerId,
-            LocalDate day,
-            int dayKey,
-            Map<String, Double> collectedByHive,
-            @Nullable List<String> contractNotesOut) {
-        if (pollinationContractRepository == null) {
-            return;
-        }
-        List<String> notes = pollinationContractRepository.tickAfterForageBlocking(
-                ownerId, day, dayKey, collectedByHive);
-        if (notes != null && contractNotesOut != null) {
-            contractNotesOut.addAll(notes);
-        }
-    }
-
-    private boolean isNpcContractHex(@Nullable String hexId) {
-        if (hexId == null || hexId.isEmpty() || "_".equals(hexId)) {
-            return false;
-        }
-        HexParcel parcel = IberiaHexOverlayStore.findById(appContext, hexId);
-        return NpcContractCatalog.isNpcFarm(parcel);
-    }
-
-    /**
-     * Número de colmenas en el hex. Solo hilo de fondo.
-     */
     public int countHivesOnHexBlocking(String hexId) {
 
         if (hexId == null || hexId.isEmpty()) {
@@ -3632,7 +2976,7 @@ public class HiveRepository {
                 }
 
                 long nowMs = System.currentTimeMillis();
-                List<String> readyFloras = hexFloraRepository.listReadyFloraKeysBlocking(hex.id, nowMs);
+                List<String> readyFloras = hexFloraRepository.listReadyFloraKeysBlocking(hex.id, site, nowMs);
                 if (readyFloras.isEmpty()) {
                     mainHandler.post(() -> onMainMessage.accept(
                             "Este terreno aún no tiene flora lista. Espera a que termine la siembra."));
@@ -3709,6 +3053,68 @@ public class HiveRepository {
     }
 
     /** Opción de terreno propio para comprar colmena (id + etiqueta corta). */
+    public static final class SplitDest {
+        public final String hexId;
+        public final String siteId;
+        public final String label;
+        public final int free;
+        public final double km;
+
+        public SplitDest(String hexId, String siteId, String label, int free, double km) {
+            this.hexId = hexId;
+            this.siteId = siteId;
+            this.label = label;
+            this.free = free;
+            this.km = km;
+        }
+    }
+
+    public void listSplitDestinations(String ownerId, @Nullable HiveEntity parent,
+            Consumer<List<SplitDest>> onMain) {
+        ioExecutor.execute(() -> {
+            List<SplitDest> out = new ArrayList<>();
+            if (ownerId != null && parent != null) {
+                List<HexParcelOwnershipEntity> rows =
+                        hexParcelRepositoryDao(ownerId);
+                for (HexParcelOwnershipEntity row : rows) {
+                    if (row == null || !WarehouseRules.isApiarySite(row)) {
+                        continue;
+                    }
+                    if (row.hexId != null && row.hexId.equals(parent.hexId)
+                            && (parent.siteId == null || parent.siteId.equals(row.siteId))) {
+                        continue;
+                    }
+                    int n = hexParcelRepository.countHivesAtSiteBlocking(
+                            ownerId, row.hexId, row.siteId);
+                    int free = HexParcelGameRules.MAX_HIVES_PER_SITE - n;
+                    if (free <= 0) {
+                        continue;
+                    }
+                    double lat = Math.abs(row.siteLat) > 1e-8 ? row.siteLat : parent.lat;
+                    double lng = Math.abs(row.siteLng) > 1e-8 ? row.siteLng : parent.lng;
+                    HexParcel parcel = IberiaHexOverlayStore.findById(appContext, row.hexId);
+                    if (Math.abs(row.siteLat) < 1e-8 && parcel != null) {
+                        double[] pin = hexParcelRepository.apiaryPinForOwnerBlocking(
+                                ownerId, parcel, row.siteId);
+                        lat = pin[0];
+                        lng = pin[1];
+                    }
+                    double km = TranshumanceRules.haversineKm(parent.lat, parent.lng, lat, lng);
+                    String name = row.parcelName != null && !row.parcelName.trim().isEmpty()
+                            ? row.parcelName.trim() : row.hexId;
+                    out.add(new SplitDest(row.hexId, row.siteId, name, free, km));
+                }
+                out.sort(Comparator.comparingDouble(d -> d.km));
+            }
+            List<SplitDest> ready = out;
+            mainHandler.post(() -> onMain.accept(ready));
+        });
+    }
+
+    private List<HexParcelOwnershipEntity> hexParcelRepositoryDao(String ownerId) {
+        return AppDatabase.getInstance(appContext).hexParcelOwnershipDao().getAllForOwnerSync(ownerId);
+    }
+
     public static final class OwnedHexOption {
         public final String hexId;
         public final String label;
@@ -4045,7 +3451,7 @@ public class HiveRepository {
             return "Colmena no válida.";
         }
         if (!h.inWarehouse) {
-            return "Esa colmena no está en el almacén.";
+            return "Esa colmena no está en el obrador.";
         }
         if (!hexParcelRepository.hasOwnerSync(destHexId, ownerId)) {
             return "Solo puedes colocar stock en un apiario tuyo.";
@@ -4127,7 +3533,7 @@ public class HiveRepository {
 
                 if (h.inWarehouse) {
                     mainHandler.post(() -> onMainMessage.accept(
-                            "Esa colmena está en el almacén. Colócala en un apiario primero."));
+                            "Esa colmena está en el obrador. Colócala en un apiario primero."));
                     return;
                 }
 
@@ -4187,7 +3593,8 @@ public class HiveRepository {
 
                 if (hexParcelRepository.hasOwnerSync(hex.id, h.ownerId)) {
                     // terreno propio
-                } else if (NpcContractCatalog.isNpcFarm(hex) && pollinationContractRepository != null) {
+                } else if (pollinationContractRepository != null
+                        && pollinationContractRepository.getOpenForOwnerAndHexSync(h.ownerId, hex.id) != null) {
                     String err = pollinationContractRepository.addHivesBlocking(
                             h.ownerId, hex.id, Collections.singletonList(h.id));
                     mainHandler.post(() -> onMainMessage.accept(err));
@@ -4227,11 +3634,6 @@ public class HiveRepository {
                 try {
                     TruckLiveTrips.StartResult trip = TruckLiveTrips.start(
                             appContext, h, lat, lng, hex.id);
-                    if (trip == TruckLiveTrips.StartResult.TOO_LATE) {
-                        economyRepository.addToBalance(cost, "Devolución de la transhumancia");
-                        mainHandler.post(() -> onMainMessage.accept(TranshumanceRules.ERR_AFTER_DAILY_TICK));
-                        return;
-                    }
                     if (trip == TruckLiveTrips.StartResult.ALREADY_TRAVELING) {
                         economyRepository.addToBalance(cost, "Devolución de la transhumancia");
                         mainHandler.post(() -> onMainMessage.accept(
@@ -4305,7 +3707,8 @@ public class HiveRepository {
         ioExecutor.execute(() -> {
             try {
                 String err = trySplitHiveIntoEmptyNucBlocking(
-                        parentHiveId, ownerId, hexId, floraType, hiveName, superCount);
+                        parentHiveId, ownerId, hexId, floraType, hiveName, superCount,
+                        null, null, null);
                 if (onMainMessage != null) {
                     mainHandler.post(() -> onMainMessage.accept(err));
                 }
@@ -4367,13 +3770,73 @@ public class HiveRepository {
     /**
      * @return {@code null} si la división tuvo éxito; mensaje para el usuario si no.
      */
+    /**
+     * Si el apiario de la madre está lleno, crea el núcleo en otro apiario y lo manda en el camión elegido.
+     * El núcleo sale de donde está la madre.
+     */
+    public void splitAndSend(
+            String parentHiveId,
+            String ownerId,
+            String floraType,
+            String hiveName,
+            String destHexId,
+            String destSiteId,
+            String vehicleId,
+            Consumer<String> onMainMessage) {
+        ioExecutor.execute(() -> {
+            try {
+                HiveEntity parent = hiveDao.getHiveByIdSync(parentHiveId);
+                double[] stay = parent == null
+                        ? null : new double[]{parent.lat, parent.lng};
+                String[] created = new String[1];
+                String err = trySplitHiveIntoEmptyNucBlocking(
+                        parentHiveId, ownerId, destHexId, floraType, hiveName, 0,
+                        destSiteId, stay, created);
+                if (err == null && created[0] != null) {
+                    HiveEntity child = hiveDao.getHiveByIdSync(created[0]);
+                    HexParcel dest = IberiaHexOverlayStore.findById(appContext, destHexId);
+                    double[] pin = hexParcelRepository.apiaryPinForOwnerBlocking(
+                            ownerId, dest, destSiteId);
+                    if (child != null) {
+                        TruckLiveTrips.StartResult trip = TruckLiveTrips.startOnTruck(
+                                appContext, child, pin[0], pin[1], destHexId, vehicleId);
+                        if (trip == TruckLiveTrips.StartResult.STARTED) {
+                            TruckLiveTrips.attachDestFlora(
+                                    appContext, child.id, TruckTripEntity.SPLIT_MOVE);
+                        } else {
+                            child.lat = pin[0];
+                            child.lng = pin[1];
+                            saveHiveBlocking(child);
+                            if (trip == TruckLiveTrips.StartResult.NO_TRUCK) {
+                                err = appContext.getString(
+                                        com.apiculture.simulator.R.string.hive_split_truck_taken);
+                            }
+                        }
+                    }
+                }
+                if (onMainMessage != null) {
+                    String msg = err;
+                    mainHandler.post(() -> onMainMessage.accept(msg));
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "splitAndSend", e);
+                if (onMainMessage != null) {
+                    mainHandler.post(() -> onMainMessage.accept(formatThrowableForUser(e)));
+                }
+            }
+        });
+    }
+
     private String trySplitHiveIntoEmptyNucBlocking(
             String parentHiveId,
             String ownerId,
             String hexId,
             String floraType,
             String hiveName,
-            int superCount) {
+            int superCount,
+            @Nullable String moveSiteId,
+            @Nullable double[] stayAt,
+            @Nullable String[] createdId) {
         if (parentHiveId == null || parentHiveId.isEmpty()) {
             return "Colmena no válida.";
         }
@@ -4399,7 +3862,8 @@ public class HiveRepository {
             if (destHex == null || destHex.isEmpty()) {
                 return "Asigna un terreno a la colmena antes de dividirla.";
             }
-            if (h.hexId == null || !destHex.equals(h.hexId)) {
+            boolean relocating = moveSiteId != null && !moveSiteId.isEmpty();
+            if (!relocating && (h.hexId == null || !destHex.equals(h.hexId))) {
                 return "El núcleo se coloca en el mismo terreno que la colmena madre.";
             }
             if (!hexParcelRepository.hasOwnerSync(destHex, h.ownerId)) {
@@ -4415,11 +3879,12 @@ public class HiveRepository {
             }
             long nowMs = System.currentTimeMillis();
             String flora = HoneyMarketEngine.canonicalFloraKey(floraType);
-            if (!hexFloraRepository.isFloraReadyOnHexBlocking(destHex, flora, nowMs)) {
+            if (!relocating && !hexFloraRepository.isFloraReadyOnHexBlocking(destHex, flora, nowMs)) {
                 return "Esa flora no está disponible aún en este terreno.";
             }
+            String siteForCount = relocating ? moveSiteId : h.siteId;
             if (hexParcelRepository.countHivesAtSiteBlocking(
-                    h.ownerId, destHex, h.siteId) >= HexParcelGameRules.MAX_HIVES_PER_SITE) {
+                    h.ownerId, destHex, siteForCount) >= HexParcelGameRules.MAX_HIVES_PER_SITE) {
                 return "Este apiario ya tiene el máximo de colmenas permitidas.";
             }
             HexParcel hex = IberiaHexOverlayStore.findById(appContext, destHex);
@@ -4436,7 +3901,9 @@ public class HiveRepository {
             HivePopulationState spawnPop = s.splitOffFraction(spawnShare);
             h.populationStateJson = s.toJson();
             h.beeCount = s.totalBees();
-            double[] ll = hexParcelRepository.apiaryPinForOwnerBlocking(h.ownerId, hex);
+            double[] ll = stayAt != null
+                    ? stayAt
+                    : hexParcelRepository.apiaryPinForOwnerBlocking(h.ownerId, hex, siteForCount);
             HiveEntity nu = new HiveEntity();
             nu.id = UUID.randomUUID().toString();
             nu.ownerId = h.ownerId;
@@ -4444,7 +3911,7 @@ public class HiveRepository {
             nu.lat = ll[0];
             nu.lng = ll[1];
             nu.hexId = destHex;
-            nu.siteId = h.siteId;
+            nu.siteId = siteForCount;
             nu.floraType = flora;
             nu.superCount = supers;
             nu.elevationMeters = OpenMeteoElevation.resolveMetersPersistedBlocking(nu.lat, nu.lng);
@@ -4489,6 +3956,9 @@ public class HiveRepository {
                 Tasks.await(firestore.collection("hives").document(nu.id).set(nu, SetOptions.merge()));
             }
             grantXp(h.ownerId, XpAwards.BUY_HIVE);
+            if (createdId != null) {
+                createdId[0] = nu.id;
+            }
             return null;
         } catch (Exception e) {
             if (spent && price > 0.0) {
@@ -4589,14 +4059,14 @@ public class HiveRepository {
         }
     }
 
-    public void listReadyFlorasForHexAsync(String hexId, Consumer<List<String>> onMain) {
+    public void listReadyFlorasForHexAsync(String hexId, @Nullable String siteId, Consumer<List<String>> onMain) {
         if (onMain == null) {
             return;
         }
         ioExecutor.execute(() -> {
             try {
                 long nowMs = System.currentTimeMillis();
-                List<String> keys = hexFloraRepository.listReadyFloraKeysBlocking(hexId, nowMs);
+                List<String> keys = hexFloraRepository.listReadyFloraKeysBlocking(hexId, siteId, nowMs);
                 if (hexParcelRepository != null && !keys.isEmpty()) {
                     hexParcelRepository.syncHexParcelFlorasToCloudBlocking(hexId);
                 }
@@ -4622,7 +4092,7 @@ public class HiveRepository {
             String current = HoneyMarketEngine.canonicalFloraKey(h.floraType);
             for (CropTickResult.Removed r : cropTick.removed) {
                 if (h.hexId.equals(r.hexId) && current.equals(r.floraKey)) {
-                    List<String> ready = hexFloraRepository.listReadyFloraKeysBlocking(h.hexId, nowMs);
+                    List<String> ready = hexFloraRepository.listReadyFloraKeysBlocking(h.hexId, h.siteId, nowMs);
                     h.floraType = ready.isEmpty() ? HexFlora.MIL_FLORES : ready.get(0);
                     try {
                         saveHiveBlocking(h);
@@ -4648,7 +4118,7 @@ public class HiveRepository {
                 }
                 String want = HoneyMarketEngine.canonicalFloraKey(floraKey);
                 long nowMs = System.currentTimeMillis();
-                if (h.hexId == null || !hexFloraRepository.isFloraReadyOnHexBlocking(h.hexId, want, nowMs)) {
+                if (h.hexId == null || !hexFloraRepository.isFloraReadyOnHexBlocking(h.hexId, h.siteId, want, nowMs)) {
                     mainHandler.post(() -> onMainMessage.accept(
                             "Esa flora no está lista en este terreno."));
                     return;
@@ -4689,6 +4159,7 @@ public class HiveRepository {
             String hexId,
             String ownerId,
             String floraKey,
+            @Nullable String siteId,
             Consumer<String> onMain) {
         if (onMain == null) {
             return;
@@ -4698,10 +4169,17 @@ public class HiveRepository {
                 int playerLevel = playerProgressRepository != null
                         ? playerProgressRepository.getLevel(ownerId)
                         : 0;
+                String site = siteId;
+                if (site == null || site.isEmpty()) {
+                    java.util.List<HexParcelOwnershipEntity> sites =
+                            hexParcelRepository.listSitesOnHexBlocking(ownerId, hexId);
+                    site = sites.isEmpty() || sites.get(0).siteId == null ? "" : sites.get(0).siteId;
+                }
                 String msg = hexFloraRepository.plantAdditionalFloraBlocking(
                         hexId,
                         floraKey,
                         ownerId,
+                        site,
                         economyRepository,
                         System.currentTimeMillis(),
                         hexParcelRepository,
@@ -4715,6 +4193,67 @@ public class HiveRepository {
                 Log.e(TAG, "plantAdditionalFloraAsync", e);
                 mainHandler.post(() -> onMain.accept(formatThrowableForUser(e)));
             }
+        });
+    }
+
+    /** Pago al payés por la poda y el abonado de un frutal; {@code null} si fue bien. */
+    public void maintainTreeAsync(String hexId, String ownerId, String floraKey, @Nullable String siteId,
+            Consumer<String> onMain) {
+        if (onMain == null) {
+            return;
+        }
+        ioExecutor.execute(() -> {
+            try {
+                String msg = hexFloraRepository.maintainTreeBlocking(hexId, floraKey, ownerId, siteId, economyRepository,
+                        hexParcelRepository, LocalDate.now(GameCalendar.userTimeZone()));
+                if (msg == null) {
+                    hexParcelRepository.syncHexParcelFlorasToCloudBlocking(hexId);
+                }
+                mainHandler.post(() -> onMain.accept(msg));
+            } catch (Exception e) {
+                Log.e(TAG, "maintainTreeAsync", e);
+                mainHandler.post(() -> onMain.accept(formatThrowableForUser(e)));
+            }
+        });
+    }
+
+    /** Pep compra el fruto del apiario; {@code null} si fue bien. */
+    public void sellFruitAsync(String hexId, String ownerId, String floraKey, @Nullable String siteId,
+            Consumer<String> onMain) {
+        if (onMain == null) {
+            return;
+        }
+        ioExecutor.execute(() -> {
+            try {
+                String msg = hexFloraRepository.sellFruitBlocking(hexId, floraKey, ownerId, siteId, economyRepository,
+                        hexParcelRepository, LocalDate.now(GameCalendar.userTimeZone()));
+                if (msg == null) {
+                    hexParcelRepository.syncHexParcelFlorasToCloudBlocking(hexId);
+                }
+                mainHandler.post(() -> onMain.accept(msg));
+            } catch (Exception e) {
+                Log.e(TAG, "sellFruitAsync", e);
+                mainHandler.post(() -> onMain.accept(formatThrowableForUser(e)));
+            }
+        });
+    }
+
+    /** Terrenos con frutales sin mantener (punto rojo y aviso del apiario). */
+    public void hexesNeedingMaintenanceAsync(String ownerId, Consumer<java.util.Set<String>> onMain) {
+        if (onMain == null) {
+            return;
+        }
+        ioExecutor.execute(() -> {
+            java.util.Set<String> out;
+            try {
+                out = hexFloraRepository.hexesNeedingMaintenanceBlocking(ownerId,
+                        LocalDate.now(GameCalendar.userTimeZone()));
+            } catch (Exception e) {
+                Log.e(TAG, "hexesNeedingMaintenanceAsync", e);
+                out = java.util.Collections.emptySet();
+            }
+            java.util.Set<String> result = out;
+            mainHandler.post(() -> onMain.accept(result));
         });
     }
 

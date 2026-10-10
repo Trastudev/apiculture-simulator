@@ -176,7 +176,7 @@ public class HiveDetailFragment extends Fragment {
             binding.tvHiveHoneyCapWarn.setVisibility(View.GONE);
             binding.ivHiveSwarmDangerIcon.setVisibility(View.GONE);
             binding.tvHiveSwarmWarn.setVisibility(View.GONE);
-            binding.tvHiveHeaderHoney.setText(String.format(Locale.getDefault(), "%.1f kg",
+            binding.tvHiveHeaderHoney.setText(String.format(Locale.getDefault(), "%.2f kg",
                     Math.max(0.0, hive.honeyProduction)));
             binding.tvHiveHeaderBees.setText(String.format(Locale.getDefault(), "%,d", pop.workersAdult));
             bindHeaderQueen(hive, pop);
@@ -706,7 +706,7 @@ public class HiveDetailFragment extends Fragment {
         if (!isAdded() || hive == null || hive.hexId == null) {
             return;
         }
-        hiveViewModel.listReadyFlorasForHex(hive.hexId, floras -> {
+        hiveViewModel.listReadyFlorasForHex(hive.hexId, hive.siteId, floras -> {
             if (!isAdded() || floras == null || floras.isEmpty()) {
                 GameNotice.show(requireContext(), R.string.hive_buy_no_flora_ready);
                 return;
@@ -817,6 +817,10 @@ public class HiveDetailFragment extends Fragment {
                     }
                     if (kg > stock + 1e-6) {
                         GameNotice.show(requireContext(), getString(R.string.hive_harvest_too_much, stock));
+                        return;
+                    }
+                    if (com.apiculture.simulator.presentation.workshop.WorkshopUi.blocksHarvest(requireContext(), hive.ownerId)) {
+                        com.apiculture.simulator.presentation.workshop.WorkshopUi.showNeedWorkshop(this);
                         return;
                     }
                     java.util.Map<String, Double> cargo = new java.util.LinkedHashMap<>();
@@ -1447,8 +1451,8 @@ public class HiveDetailFragment extends Fragment {
                 }
                 binding.llHivePendingContract.setVisibility(View.VISIBLE);
                 binding.tvHivePendingContract.setText(line);
-                HexParcel destParcel = IberiaHexOverlayStore.findById(requireContext(), trip.destHexId);
-                boolean contractDest = !homebound && NpcContractCatalog.isNpcFarm(destParcel);
+                boolean contractDest = !homebound && hive.pendingContractHexId != null
+                        && hive.pendingContractHexId.equals(trip.destHexId);
                 binding.btnHivePendingYard.setVisibility(contractDest ? View.VISIBLE : View.GONE);
                 binding.btnHivePendingYard.setOnClickListener(contractDest
                         ? v -> openLiveTripYard(hive, trip.destHexId)

@@ -168,6 +168,7 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
     /** Hex libre cuya flora nativa aún no desbloquea el jugador: no se puede comprar. */
     private static final int HEX_FREE_LOCKED_FILL = Color.argb(HEX_FILL_ALPHA, 229, 115, 115);
     private static final int HEX_RESERVE_FILL = Color.argb(HEX_FILL_ALPHA, 255, 152, 0);
+    private static final int HEX_CONTRACT_FILL = Color.argb(HEX_FILL_ALPHA, 255, 235, 59);
     private static final int HEX_OWN_FILL = Color.argb(HEX_FILL_ALPHA, 186, 104, 200);
     /** Terrenos comprados por otros jugadores: azul. */
     private static final int HEX_OTHER_FILL = Color.argb(HEX_FILL_ALPHA, 41, 121, 255);
@@ -2408,9 +2409,7 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
                 HexParcel parcel = parcels.get(i);
                 boolean isOwn = ownHexIds.contains(parcel.id);
                 int fill;
-                if (NpcContractCatalog.isNpcFarm(parcel) && NpcContractCatalog.isReserve(parcel.id)) {
-                    fill = HEX_RESERVE_FILL;
-                } else if (isOwn) {
+                if (isOwn) {
                     fill = HEX_OWN_FILL;
                 } else {
                     boolean canBuy = ClimateUnlock.canBuyParcel(parcel, playerLevelForHex);
@@ -2681,64 +2680,11 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
                 lastTapLng = tapParcel.centroidLon;
             }
         }
-        if (tapParcel != null && NpcContractCatalog.isNpcFarm(tapParcel)) {
-            int level = ((ApicultureApp) requireContext().getApplicationContext())
-                    .getPlayerProgressRepository().getLevel(currentUserId);
-            if (level < 2) {
-                MarketPickerDialogs.showLocked(requireContext(),
-                        R.string.market_contracts_locked_title,
-                        R.string.market_contracts_locked);
-                return;
-            }
-            if (NpcContractCatalog.isReserve(tapParcel.id)) {
-                showReserveContractCard(tapParcel);
-                return;
-            }
-        }
         showOwnedHexInstallChoice(hexId);
     }
 
     private String climateLabelForParcel(@Nullable HexParcel parcel) {
         return ClimateUnlock.climateLabelForParcel(parcel);
-    }
-
-    private void showPrivateCropsDialog() {
-        android.view.View root = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_private_crops, null, false);
-        Dialog dialog = new Dialog(requireContext());
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(root);
-        dialog.setCancelable(true);
-        Window window = dialog.getWindow();
-        if (window != null) {
-            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-        root.findViewById(R.id.btn_private_ok).setOnClickListener(v -> dialog.dismiss());
-        dialog.show();
-    }
-
-    private void showReserveContractCard(@NonNull HexParcel parcel) {
-        LocalDate day = LocalDate.now(com.apiculture.simulator.domain.game.GameCalendar.userTimeZone());
-        java.util.List<com.apiculture.simulator.domain.game.NpcContractFarm> open =
-                NpcContractCatalog.openFarmsFor(parcel, day);
-        com.apiculture.simulator.domain.game.NpcContractFarm farm =
-                open.isEmpty() ? null : open.get(0);
-        if (farm == null) {
-            showPrivateCropsDialog();
-            return;
-        }
-        String window;
-        if (farm.terms != null && farm.terms.startDoy > 0 && farm.terms.endDoy > 0) {
-            java.util.List<FloraBloomWindow.Span> one = new java.util.ArrayList<>();
-            one.add(new FloraBloomWindow.Span(farm.terms.startDoy, farm.terms.endDoy));
-            window = FloraBloomWindow.formatUpcomingEs(one, day);
-        } else {
-            window = FloraBloomWindow.formatEsForParcel(farm.flora, parcel);
-        }
-        PollinationContractRepository.Offer offer = new PollinationContractRepository.Offer(
-                farm, 0, 0, false, false, false, false, window);
-        showContractPoint(offer);
     }
 
     private void showOwnedHexInstallChoice(@NonNull String hexId) {
@@ -2760,7 +2706,7 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
         }
         HexParcel under = IberiaHexOverlayStore.findContaining(
                 requireContext().getApplicationContext(), lastTapLat, lastTapLng);
-        if (under == null || NpcContractCatalog.isNpcFarm(under)) {
+        if (under == null) {
             GameNotice.show(requireContext(), R.string.map_hq_not_free);
             return;
         }
@@ -3376,8 +3322,7 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
         FloraSaturationBar.bindLines(
                 purchaseForm.llHexPurchaseSaturations, saturations, this::floraLabelForUi);
         purchaseForm.cbHexPurchaseWarehouse.setVisibility(View.GONE);
-        purchaseForm.editParcelName.setText(HexParcelRepository.newDefaultTerrenoName());
-        purchaseForm.editParcelName.post(() -> purchaseForm.editParcelName.selectAll());
+        purchaseForm.editParcelName.setText("");
 
         Dialog dialog = new Dialog(requireContext());
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -3390,9 +3335,9 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
         }
         purchaseForm.btnHexPurchaseCancel.setOnClickListener(v -> dialog.dismiss());
         purchaseForm.btnHexPurchaseConfirm.setOnClickListener(v -> {
-            String name = HexParcelRepository.sanitizeParcelName(
+            String name = com.apiculture.simulator.domain.game.EntityNames.clean(
                     purchaseForm.editParcelName.getText().toString());
-            if (name.isEmpty()) {
+            if (name == null) {
                 GameNotice.show(requireContext(), R.string.hex_purchase_name_required);
                 return;
             }
@@ -4224,8 +4169,10 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
                         GameNotice.show(requireContext(), R.string.market_order_fail_travel);
                     } else if (order.expired(System.currentTimeMillis())) {
                         GameNotice.show(requireContext(), R.string.market_order_fail_deadline);
-                    } else if (app.getEconomyRepository().getHoneyStockForFlora(order.floraKey) + 1e-9 < order.kg) {
-                        GameNotice.show(requireContext(), R.string.market_order_fail_stock);
+                    } else if (!HoneyLogistics.hasStockForOrder(requireContext(), currentUserId,
+                            app.getEconomyRepository(), order)) {
+                        GameNotice.show(requireContext(), order.wantsJars()
+                                ? R.string.market_order_fail_jars : R.string.market_order_fail_stock);
                     } else if (r == HoneyLogistics.Result.NO_FLEET) {
                         GameNotice.show(requireContext(), R.string.market_order_fail_truck);
                     } else if (app.getEconomyRepository().getBalance() + 1e-9 < travelB) {

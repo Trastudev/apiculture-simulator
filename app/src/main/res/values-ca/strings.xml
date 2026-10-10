@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="server_unavailable_title">Servidor no disponible</string>
-    <string name="server_unavailable_message">No hi ha connexió amb el servidor. No s\'ha pogut fer l\'acció.</string>
+    <string name="server_unavailable_message">No hi ha connexió amb el servidor. Torna-ho a provar fins que es restableixi; no es pot jugar sense ella.</string>
     <string name="login_session_rejected">El servidor respon, però no accepta la sessió de Google. Torna a entrar amb Google.</string>
     <string name="server_retry">Torna a provar la connexió</string>
     <string name="cd_app_logo">Logotip del joc</string>
@@ -54,7 +54,7 @@
     <string name="harvest_pick_apiary_sub">Tria l\'apiari. S\'indica la mel que es pot carregar.</string>
     <string name="harvest_pick_truck_title">Camió</string>
     <string name="harvest_pick_truck_sub">Camions lliures d\'aquest territori, del més proper al més llunyà.</string>
-    <string name="harvest_pick_apiary_kg">%1$.1f kg</string>
+    <string name="harvest_pick_apiary_kg">%1$.2f kg</string>
     <string name="harvest_pick_truck_line">Nivell %1$d · %2$.0f km · fins a %3$.0f kg</string>
     <string name="harvest_region_za">Sud-àfrica</string>
     <string name="harvest_no_truck_region">No hi ha cap camió lliure en aquest territori.</string>
@@ -121,7 +121,7 @@
     <string name="hive_alerts_none">Sense alertes</string>
     <string name="hive_honey_in_hive">A l\'arna: %1$s kg</string>
     <string name="fleet_name_length">Posa un nom de 2 a 32 lletres.</string>
-    <string name="fleet_need_warehouse">Primer construeix un magatzem.</string>
+    <string name="fleet_need_warehouse">Primer construeix un obrador.</string>
     <string name="apiaries_subtitle">Apiaris instal·lats. Entra per veure l\'apiari i les seves arnes.</string>
     <string name="rank_apprentice">Aprenent</string>
     <string name="rank_beginner">Apicultor principiant</string>
@@ -147,7 +147,7 @@
     <string name="dashboard_trips_empty">Cap camió en ruta.</string>
     <string name="dashboard_trip_hive">Trasllat d\'arna</string>
     <string name="dashboard_trip_collect">Recollida de mel</string>
-    <string name="dashboard_trip_collect_return">Mel al magatzem</string>
+    <string name="dashboard_trip_collect_return">Mel a l\'obrador</string>
     <string name="dashboard_trip_wholesale">Venda a l\'engròs</string>
     <string name="dashboard_trip_order">Comanda</string>
     <string name="dashboard_trip_leg_out">Anada</string>
@@ -203,7 +203,7 @@
     <string name="calculating_daily_kicker">Apiari</string>
     <string name="calculating_daily_title">Calculant la producció diària</string>
     <string name="cd_stat_balance">BeeCoins</string>
-    <string name="cd_stat_warehouse">Arnes al magatzem</string>
+    <string name="cd_stat_warehouse">Arnes a l\'obrador</string>
     <string name="climate_journey_kicker">Nova destinació</string>
     <string name="climate_journey_za_kicker">Nou continent</string>
     <string name="climate_journey_za_title">Sud-àfrica</string>
@@ -211,30 +211,37 @@
     <string name="crop_unlock_next">Següent</string>
     <string name="crop_unlock_subtitle">Ja el pots sembrar en terrenys on el clima ho admeti.</string>
     <string name="crop_unlock_title">Conreu desbloquejat</string>
-    <string name="dashboard_harvest_summary_kg">+%1$.1f kg</string>
+    <string name="dashboard_harvest_summary_kg">+%1$.2f kg</string>
     <string name="dashboard_harvest_summary_subtitle">De %1$d arnes · queden 3 kg de reserva a cadascuna</string>
-    <string name="dashboard_harvest_summary_total">Total: %1$.1f kg</string>
-    <string name="dashboard_trip_kg">%1$.1f kg</string>
+    <string name="dashboard_harvest_summary_total">Total: %1$.2f kg</string>
+    <string name="dashboard_trip_kg">%1$.2f kg</string>
     <string name="dashboard_trip_route">%1$s → %2$s</string>
+    <string name="trip_cancel_cd">Cancel·lar el viatge</string>
+    <string name="trip_cancel_title">Confirmar la cancel·lació del viatge</string>
+    <string name="trip_cancel_message">Segur que vols cancel·lar aquest viatge? El camió farà mitja volta des d\'on sigui. La càrrega i les arnes que porti tornen al seu lloc en arribar.</string>
+    <string name="trip_cancel_keep">Continuar el viatge</string>
+    <string name="trip_cancel_ok">Cancel·lar el viatge</string>
+    <string name="trip_cancel_done">El camió torna. La càrrega es torna en arribar.</string>
+    <string name="trip_cancel_already">Aquest viatge ja torna.</string>
     <string name="economy_close">Tancar</string>
     <string name="economy_empty">Encara no hi ha moviments. Els propers ingressos i despeses apareixeran aquí.</string>
     <string name="economy_title">Economia</string>
     <string name="entity_name_hint">Nom</string>
     <string name="fleet_bought_ship">Vaixell amarrat al port.</string>
-    <string name="fleet_bought_truck">El camió surt de la botiga cap al magatzem.</string>
+    <string name="fleet_bought_truck">El camió surt de la botiga cap a l\'obrador.</string>
     <string name="fleet_busy">en ruta</string>
     <string name="fleet_buy_home_ship">Port</string>
-    <string name="fleet_buy_home_truck">Magatzem</string>
+    <string name="fleet_buy_home_truck">Obrador</string>
     <string name="fleet_buy_ship">Comprar vaixell (6.000 B)</string>
     <string name="fleet_buy_truck">Comprar camió (1.200 B)</string>
     <string name="fleet_free">lliure</string>
     <string name="fleet_home_slots">%1$s · %2$d places</string>
     <string name="fleet_level_max">Nivell màxim</string>
     <string name="fleet_need_berth">Paga la quota d\'un port i deixa un amarrador lliure abans de comprar el vaixell.</string>
-    <string name="fleet_no_dest_warehouse">No hi ha cap altre magatzem de destinació.</string>
+    <string name="fleet_no_dest_warehouse">No hi ha cap altre obrador de destinació.</string>
     <string name="fleet_none">Encara no tens vehicles.</string>
     <string name="fleet_none_ships">No hi ha vaixells en aquest port.</string>
-    <string name="fleet_none_trucks">Aquest magatzem no té camions.</string>
+    <string name="fleet_none_trucks">Aquest obrador no té camions.</string>
     <string name="fleet_port_berth_ok">Amarrador comprat.</string>
     <string name="fleet_port_berths">Els teus amarradors: %1$d</string>
     <string name="fleet_port_buy">Comprar amarrador (%1$d B)</string>
@@ -243,7 +250,7 @@
     <string name="fleet_transfer">Transportar mel</string>
     <string name="fleet_transfer_amount">Quantitat</string>
     <string name="fleet_transfer_cost">%1$.2f B</string>
-    <string name="fleet_transfer_dest">Magatzem de destinació</string>
+    <string name="fleet_transfer_dest">Obrador de destinació</string>
     <string name="fleet_transfer_discount">Tarifa de trasllat, més baixa que la d\'una venda.</string>
     <string name="fleet_transfer_honey">Mel</string>
     <string name="fleet_transfer_kg">%1$.2f kg de %2$.2f kg</string>
@@ -254,11 +261,11 @@
     <string name="fleet_truck_line">Camió nv.%1$d · %2$.0f kg · %3$d arnes · %4$.0f km/h · %5$s</string>
     <string name="fleet_unnamed_ship">Vaixell</string>
     <string name="fleet_unnamed_truck">Camió</string>
-    <string name="fleet_unnamed_warehouse">Magatzem</string>
+    <string name="fleet_unnamed_warehouse">Obrador</string>
     <string name="fleet_upgrade">Pujar a nivell %1$d (%2$d B)</string>
     <string name="fleet_upgraded">Vehicle millorat.</string>
-    <string name="fleet_warehouse_no_honey">Aquest magatzem no té mel.</string>
-    <string name="fleet_warehouse_trucks">Camions d\'aquest magatzem</string>
+    <string name="fleet_warehouse_no_honey">Aquest obrador no té mel.</string>
+    <string name="fleet_warehouse_trucks">Camions d\'aquest obrador</string>
     <string name="flora_display_aguacate">Alvocat</string>
     <string name="flora_display_litchi">Litxi</string>
     <string name="flora_display_lucerna">Alfals</string>
@@ -268,25 +275,25 @@
     <string name="game_loading_tip_label">Consell</string>
     <string name="game_loading_title">Preparant la partida</string>
     <string name="harvest_need_warehouse_go_map">Ves al mapa</string>
-    <string name="harvest_need_warehouse_message">Per recol·lectar mel cal un magatzem en aquest territori. El camió sortirà d\'allà amb la collita.</string>
-    <string name="harvest_need_warehouse_title">Necessites un magatzem</string>
+    <string name="harvest_need_warehouse_message">Per recol·lectar mel cal un obrador en aquest territori. El camió sortirà d\'allà amb la collita.</string>
+    <string name="harvest_need_warehouse_title">Necessites un obrador</string>
     <string name="harvest_trips_cancel">Cancel·lar</string>
     <string name="harvest_trips_confirm">Enviar camions</string>
     <string name="harvest_trips_confirm_one">Enviar camió</string>
-    <string name="harvest_trips_left">Queden %1$d arnes: no caben al camió o al magatzem.</string>
-    <string name="harvest_trips_meta">%1$.1f kg · %2$s anada i tornada</string>
-    <string name="harvest_trips_meta_instant">%1$.1f kg · viatge llarg: arriba amb el tic diari</string>
-    <string name="harvest_trips_meta_km">%1$.1f kg · %2$.1f km fins a %3$s</string>
-    <string name="harvest_trips_plan">Cada camió surt del seu magatzem i recorre els apiaris pel camí més curt.</string>
+    <string name="harvest_trips_left">Queden %1$d arnes: no caben al camió o a l\'obrador.</string>
+    <string name="harvest_trips_meta">%1$.2f kg · %2$s anada i tornada</string>
+    <string name="harvest_trips_meta_instant">%1$.2f kg · viatge llarg: arriba amb el tic diari</string>
+    <string name="harvest_trips_meta_km">%1$.2f kg · %2$.1f km fins a %3$s</string>
+    <string name="harvest_trips_plan">Cada camió surt del seu obrador i recorre els apiaris pel camí més curt.</string>
     <string name="harvest_trips_route">%1$s surt de %2$s</string>
-    <string name="harvest_trips_skipped">%1$d arnes no es recol·lecten: no hi ha magatzem al seu territori.</string>
-    <string name="harvest_trips_subtitle">Tria el camió. Surt del seu magatzem.</string>
+    <string name="harvest_trips_skipped">%1$d arnes no es recol·lecten: no hi ha obrador al seu territori.</string>
+    <string name="harvest_trips_subtitle">Tria el camió. Surt del seu obrador.</string>
     <string name="harvest_trips_title">Confirmar la recol·lecció</string>
     <string name="harvest_trips_truck_level">Nivell %1$d</string>
     <string name="hex_dialog_close">Tancar</string>
     <string name="hex_npc_open_this_contract">Veure el contracte d\'aquesta finca</string>
     <string name="hex_npc_parcel_kicker">Finca de contracte</string>
-    <string name="hex_purchase_also_warehouse">Comprar també el magatzem (300,00 B)</string>
+    <string name="hex_purchase_also_warehouse">Comprar també l\'obrador (300,00 B)</string>
     <string name="hex_purchase_climate_label">Clima</string>
     <string name="hex_purchase_confirm_buy">Instal·lar apiari</string>
     <string name="hex_purchase_flora_label">Flora silvestre</string>
@@ -294,6 +301,8 @@
     <string name="hex_purchase_intro">En instal·lar aquest apiari podràs col·locar arnes i aprofitar la flora del lloc.</string>
     <string name="hex_purchase_kicker">Nou apiari</string>
     <string name="hex_purchase_name_hint">P. ex. El meu apiari del nord</string>
+    <string name="hex_purchase_name_required">Escriu un nom d\'almenys 2 lletres</string>
+    <string name="apiary_rename_title">Nom de l\'apiari</string>
     <string name="hex_purchase_name_label">Nom de l\'apiari</string>
     <string name="hex_purchase_price_chip">%1$.2f B</string>
     <string name="hex_purchase_title">Instal·lar apiari</string>
@@ -337,6 +346,19 @@
     <string name="hive_split_name_hint">P. ex. Nucli de primavera</string>
     <string name="hive_split_need_hex">Assigna un terreny a l\'arna abans de dividir-la.</string>
     <string name="hive_split_ok">Arna dividida: el nucli és al mateix terreny.</string>
+    <string name="hive_split_full_title">Apiari ple</string>
+    <string name="hive_split_full_message">Aquest apiari ja té 10 arnes. Tria\'n un altre amb lloc. L\'arna nova sortirà cap allà. Els més propers van primer.</string>
+    <string name="hive_split_dest_row">%1$s · %2$d lliures · %3$.0f km</string>
+    <string name="hive_split_no_room">No tens cap altre apiari amb lloc lliure.</string>
+    <string name="hive_split_truck_title">Tria camió</string>
+    <string name="hive_split_truck_message">Camions amb lloc per portar l\'arna a %1$s. Els més propers van primer.</string>
+    <string name="hive_split_truck_row">%1$s · %2$d llocs · %3$.0f km</string>
+    <string name="hive_split_no_truck">No hi ha cap camió lliure amb lloc per a una arna.</string>
+    <string name="hive_split_send_title">Confirmar l\'enviament</string>
+    <string name="hive_split_send_message">Vols crear l\'arna i enviar-la a %1$s amb %2$s?</string>
+    <string name="hive_split_sent">Arna creada. El camió la porta a l\'apiari triat.</string>
+    <string name="hive_split_truck_taken">No hi ha lloc en aquest camió. L\'arna queda ja a l\'apiari de destí.</string>
+    <string name="hive_split_too_late">El viatge no cap abans del tancament del dia. L\'arna queda a l\'apiari de destí.</string>
     <string name="hive_split_super_0">Sense alça · 8 kg — 100,00 B</string>
     <string name="hive_split_super_1">1 alça · 30 kg — 150,00 B</string>
     <string name="hive_split_super_2">2 alces · 60 kg — 200,00 B</string>
@@ -363,10 +385,10 @@
     <string name="level_up_title">Nivell %1$d!</string>
     <string name="map_build_choice_hive">Comprar arna</string>
     <string name="map_build_choice_title">Què vols construir?</string>
-    <string name="map_buy_warehouse">Comprar magatzem (300,00 B)</string>
-    <string name="map_buy_warehouse_info">Magatzem de nivell 1: 50 kg. Guarda les mels del teu nivell de jugador. El camió surt d\'aquí.</string>
-    <string name="map_buy_warehouse_ok">Magatzem comprat.</string>
-    <string name="map_buy_warehouse_title">Comprar magatzem</string>
+    <string name="map_buy_warehouse">Comprar obrador (300,00 B)</string>
+    <string name="map_buy_warehouse_info">Obrador de nivell 1: 50 kg. Guarda les mels del teu nivell de jugador. El camió surt d\'aquí.</string>
+    <string name="map_buy_warehouse_ok">Obrador comprat.</string>
+    <string name="map_buy_warehouse_title">Comprar obrador</string>
     <string name="map_hive_dialog_subtitle">Què vols fer amb aquesta arna?</string>
     <string name="map_hive_open_detail">Veure la fitxa</string>
     <string name="map_hive_transhumance">Traslladar</string>
@@ -374,7 +396,7 @@
     <string name="map_install_choice_apiary">Instal·lar un apiari</string>
     <string name="map_install_choice_hq">Instal·lar la seu central</string>
     <string name="map_install_choice_title">Què vols instal·lar?</string>
-    <string name="map_install_choice_warehouse">Instal·lar un magatzem</string>
+    <string name="map_install_choice_warehouse">Instal·lar un obrador</string>
     <string name="map_market_band_high">alt</string>
     <string name="map_market_band_low">baix</string>
     <string name="map_market_band_medium">mitjà</string>
@@ -389,13 +411,13 @@
     <string name="map_market_international_kicker">Mercat internacional</string>
     <string name="map_market_local_competition_hint">Els pobles solen pagar una mica més; les mels populars tenen més competència.</string>
     <string name="map_market_local_kicker">Mercat local</string>
-    <string name="map_market_no_warehouse">Necessites un magatzem en aquest territori.</string>
+    <string name="map_market_no_warehouse">Necessites un obrador en aquest territori.</string>
     <string name="map_plant_flora_button">Sembrar un conreu</string>
     <string name="map_plant_flora_pick">Tria un dels conreus que ja has desbloquejat per a aquest clima. Els anuals són barats i cal tornar a sembrar en acabar la floració. Els arbres duren, triguen més a entrar en producció i paguen poda i adob cada any.</string>
     <string name="map_plant_flora_title">Sembrar conreu</string>
     <string name="map_port_title">Port</string>
     <string name="map_sell_apiary">Vendre l\'apiari</string>
-    <string name="map_sell_apiary_blocked_hives">Hi ha %1$d arnes en aquest apiari. Buida l\'apiari (transhumància o magatzem) abans de vendre\'l.</string>
+    <string name="map_sell_apiary_blocked_hives">Hi ha %1$d arnes en aquest apiari. Buida l\'apiari (transhumància o obrador) abans de vendre\'l.</string>
     <string name="map_sell_apiary_blocked_hives_generic">Hi ha arnes en aquest apiari. Buida l\'apiari abans de vendre\'l.</string>
     <string name="map_sell_apiary_blocked_title">L\'apiari no és buit</string>
     <string name="map_sell_apiary_confirm">Rebràs %1$.2f B (el 50 %% del preu d\'instal·lació). Aquesta acció no es pot desfer.</string>
@@ -408,25 +430,25 @@
     <string name="map_sell_trip_line">%1$s\n%2$s → %3$s\nTemps restant: %4$s</string>
     <string name="map_sell_trip_line_cargo">%1$s · %2$s\n%3$s → %4$s\nTemps restant: %5$s</string>
     <string name="map_sell_trip_line_hive">Transhumància d\'arna\nTemps restant: %1$s</string>
-    <string name="map_sell_warehouse">Vendre el magatzem</string>
+    <string name="map_sell_warehouse">Vendre l\'obrador</string>
     <string name="map_sell_warehouse_blocked_title">Hi ha viatges en curs</string>
-    <string name="map_sell_warehouse_blocked_trips">Espera que acabin els viatges cap a aquest magatzem o des d\'aquest magatzem:</string>
+    <string name="map_sell_warehouse_blocked_trips">Espera que acabin els viatges cap a aquest obrador o des d\'aquest obrador:</string>
     <string name="map_sell_warehouse_confirm">Rebràs %1$.2f B (el 50 %% del preu de compra i de les ampliacions). Aquesta acció no es pot desfer.</string>
-    <string name="map_sell_warehouse_missing">No hi ha magatzem en aquest punt.</string>
-    <string name="map_sell_warehouse_ok">Magatzem venut. +%1$.2f B</string>
+    <string name="map_sell_warehouse_missing">No hi ha obrador en aquest punt.</string>
+    <string name="map_sell_warehouse_ok">Obrador venut. +%1$.2f B</string>
     <string name="map_vehicle_named">%1$s · nivell %2$d</string>
     <string name="map_warehouse_jars">Mel guardada</string>
     <string name="map_warehouse_kg">%1$.1f / %2$.0f kg</string>
     <string name="map_warehouse_level">Nivell %1$d</string>
-    <string name="map_warehouse_title">Magatzem</string>
+    <string name="map_warehouse_title">Obrador</string>
     <string name="map_warehouse_truck_slots">Places lliures: %1$d de %2$d</string>
     <string name="map_warehouse_upgrade">Pujar a nivell %1$d (%2$.2f B)</string>
-    <string name="map_warehouse_upgrade_ok">Magatzem millorat.</string>
+    <string name="map_warehouse_upgrade_ok">Obrador millorat.</string>
     <string name="map_za_locked_message">Sud-àfrica es desbloqueja al nivell 40.</string>
     <string name="market_contract_buy_add">Afegir a la comanda</string>
     <string name="market_contract_buy_cart_empty">Comanda buida. Afegeix nuclis d\'un en un o per quantitat.</string>
     <string name="market_contract_buy_cart_line">%1$d × %2$s · %3$.2f B</string>
-    <string name="market_contract_buy_hint">Les arnes noves s\'instal·len a la finca del contracte. En acabar passen al magatzem (terreny principal).</string>
+    <string name="market_contract_buy_hint">Les arnes noves s\'instal·len a la finca del contracte. En acabar passen a l\'obrador (terreny principal).</string>
     <string name="market_contract_buy_section">Comprar per a aquesta finca</string>
     <string name="market_contract_buy_unit_price">%1$.2f B / ut</string>
     <string name="market_contract_hive_honey_none">sense pecoreig</string>
@@ -454,7 +476,13 @@
     <string name="market_contracts_page">%1$d / %2$d</string>
     <string name="market_honey_page_next">Tipus de mel següents</string>
     <string name="market_honey_page_prev">Tipus de mel anteriors</string>
+    <string name="market_order_fail_stock">Al obrador seleccionat no hi ha prou mel d\'aquest tipus</string>
+    <string name="market_order_ok">El camió surt cap a %1$s</string>
+    <string name="market_order_fail_truck">No hi ha un camió lliure a l\'obrador que pugui dur aquesta comanda.</string>
+    <string name="market_order_fail">No s\'ha pogut acceptar la comanda</string>
     <string name="market_order_fail_travel">No tens BeeCoins per al viatge</string>
+    <string name="market_order_fail_deadline">Aquesta comanda ja ha caducat</string>
+    <string name="market_order_fail_slow">El camió no arribaria a temps</string>
     <string name="market_picker_close">Tancar</string>
     <string name="market_picker_distance">%1$.1f km</string>
     <string name="market_picker_empty">No hi ha mercats disponibles en aquesta regió.</string>
@@ -478,18 +506,18 @@
     <string name="market_sell_kicker">Venda</string>
     <string name="market_sell_max">Màxim</string>
     <string name="market_sell_need_amount">Tria una quantitat més gran que 0.</string>
-    <string name="market_sell_ok">Venda: %1$.1f kg a %2$.2f B/kg</string>
+    <string name="market_sell_ok">Venda: %1$.2f kg a %2$.2f B/kg</string>
     <string name="market_sell_over_demand">Avui la regió no absorbeix més de %1$.2f kg de %2$s.</string>
     <string name="market_sell_over_stock">No tens tanta mel d\'aquest tipus.</string>
     <string name="market_sell_price_stock">%1$.2f B/kg · Estoc %2$.2f kg</string>
     <string name="market_sell_price_stock_demand">%1$.2f B/kg · Estoc %2$.2f kg · Cupo regional %3$.2f kg · Màx. %4$.2f kg</string>
     <string name="market_sell_total">Cobres %1$.2f</string>
-    <string name="market_sell_truck">El camió surt al mercat amb %1$.1f kg</string>
+    <string name="market_sell_truck">El camió surt al mercat amb %1$.2f kg</string>
     <string name="market_sell_truck_subtitle">Tria quin camió porta la mel al mercat.</string>
     <string name="order_truck_confirm">Enviar aquest camió</string>
     <string name="order_truck_level_here">Nivell %1$d · la mel és aquí</string>
     <string name="order_truck_meta">Caixa %1$.0f kg · %2$.1f km · %3$.0f B</string>
-    <string name="order_truck_subtitle">Surt del seu magatzem amb la comanda.</string>
+    <string name="order_truck_subtitle">Surt del seu obrador amb la comanda.</string>
     <string name="order_truck_title">Tria el camió</string>
     <string name="startup_sim_summary_forage_from_neighbors">Les teves abelles en altres finques: +%1$s kg</string>
     <string name="startup_sim_summary_forage_taken_by_neighbors">Abelles veïnes a les teves finques: −%1$s kg</string>
@@ -506,7 +534,7 @@
     <string name="startup_sim_summary_totals_queen">Sense reina: %1$d arnes</string>
     <string name="startup_sim_summary_totals_swarm">Eixams: %1$d</string>
     <string name="startup_sim_summary_totals_velutina">Vespa velutina: %1$d arnes</string>
-    <string name="stock_hive_dialog_title">Magatzem d\'arnes</string>
+    <string name="stock_hive_dialog_title">Obrador d\'arnes</string>
     <string name="stock_hive_empty">No hi ha arnes en estoc.</string>
     <string name="trade_market_fee">La quota de %1$s és de %2$s B. La resta de mercats es paguen a part.</string>
     <string name="trade_market_locked">Aquest mercat internacional es desbloqueja al nivell %1$d.\nAra vas pel nivell %2$d.</string>
@@ -535,14 +563,14 @@
     <string name="truck_confirm_gross_label">Cobres:</string>
     <string name="truck_confirm_instant">Sense camió en directe: es cobra en confirmar.</string>
     <string name="truck_confirm_kicker">Confirmar l\'enviament</string>
-    <string name="truck_confirm_line">%1$s · %2$.1f kg · %3$.2f B/kg</string>
+    <string name="truck_confirm_line">%1$s · %2$.2f kg · %3$.2f B/kg</string>
     <string name="truck_confirm_net_label">Net:</string>
     <string name="truck_confirm_origin">Origen: %1$s</string>
     <string name="truck_confirm_road">%1$.2f km per carretera · %2$s</string>
     <string name="truck_confirm_road_fail">Sense ruta per carretera; s\'usarà la línia recta (%1$.2f km · %2$s).</string>
     <string name="truck_confirm_send">Enviar el camió</string>
     <string name="truck_confirm_travel_label">Cost del viatge:</string>
-    <string name="truck_live_download_title">Instal·lant carreteres</string>
+    <string name="truck_live_download_title">Descarregant mapes</string>
     <string name="truck_live_install_bytes">%1$s / %2$s MB</string>
     <string name="truck_live_install_bytes_unknown">%1$s MB</string>
     <string name="truck_live_install_connecting">Connectant…</string>
@@ -552,7 +580,7 @@
     <string name="truck_live_install_fail">No s\'ha pogut instal·lar el mapa de carreteres. Comprova la connexió; en tornar a obrir l\'app es tornarà a provar.</string>
     <string name="truck_live_install_kicker">Mapa</string>
     <string name="truck_live_install_percent">%1$d %%</string>
-    <string name="truck_live_install_wait">Espera que acabi la instal·lació. El camió farà servir aquestes carreteres al mapa.</string>
+    <string name="truck_live_install_wait">S\'estan descarregant els mapes de carreteres d\'Ibèria, Sud-àfrica i Madagascar. El camió els farà servir als viatges.</string>
     <string name="truck_route_error_copied">Error copiat. Envia\'l perquè el revisem.</string>
     <string name="truck_route_error_copy">Copiar</string>
     <string name="truck_route_error_kicker">Ruta</string>
@@ -610,7 +638,7 @@
     <string name="map_legend_shop">Botiga</string>
     <string name="map_legend_market">Mercat</string>
     <string name="map_legend_apiary">Apiari</string>
-    <string name="map_legend_warehouse">Magatzem</string>
+    <string name="map_legend_warehouse">Obrador</string>
     <string name="map_legend_order">Comanda</string>
     <string name="map_legend_contract">Contracte</string>
     <string name="map_reserve_private_title">Cultius privats</string>
@@ -618,8 +646,8 @@
     <string name="map_legend_port">Port</string>
     <string name="map_legend_intl_market">Mercat int.</string>
     <string name="map_help_title">Com jugar al mapa</string>
-    <string name="map_help_text">Toca un hexàgon lliure per instal·lar un apiari, un magatzem o la seu central. Hi ha una seu per Ibèria, Madagascar i Sud-àfrica: el mapa s\'hi centra en entrar.\n\nLes arnes es compren dins de l\'apiari (Els meus apiaris). Des de la targeta pots entrar, recol·lectar, transhumar o tornar al mapa.\n\nVerd: terreny lliure. Vermell: clima encara bloquejat. Morat: teu. Gris: d\'un altre jugador, només es pot mirar. Groc: finca de contracte; no es compra, s\'accepta a Mercat. Taronja: finca de reserva; en tocar-la veus la fitxa.\n\nLa vora de l\'hexàgon és el clima (llegenda de climes). Les icones marquen botiga, mercat, apiari, magatzem, comanda, contracte, port i mercat internacional.\n\nLa ruta del camió segueix la carretera: blau autopista, vermell nacional, groc comarcal, gris altres camins.\n\nEl filtre de flora deixa només els terrenys amb aquella planta.</string>
-    <string name="market_orders_hint">Comandes de mel de comerços i particulars. El camió surt del magatzem cap al poble del client.</string>
+    <string name="map_help_text">Toca un hexàgon lliure per instal·lar un apiari, un obrador o la seu central. Hi ha una seu per Ibèria, Madagascar i Sud-àfrica: el mapa s\'hi centra en entrar.\n\nLes arnes es compren dins de l\'apiari (Els meus apiaris). Des de la targeta pots entrar, recol·lectar, transhumar o tornar al mapa.\n\nVerd: terreny lliure. Vermell: clima encara bloquejat. Morat: teu. Gris: d\'un altre jugador, només es pot mirar. Groc: finca de contracte. No es compra. El contracte surt al mapa quan toca, segons el teu nivell i la floració.\n\nLa vora de l\'hexàgon és el clima (llegenda de climes). Les icones marquen botiga, mercat, apiari, obrador, comanda, contracte, port i mercat internacional.\n\nLa ruta del camió segueix la carretera: blau autopista, vermell nacional, groc comarcal, gris altres camins.\n\nEl filtre de flora deixa només els terrenys amb aquella planta.</string>
+    <string name="market_orders_hint">Comandes de mel de comerços i particulars. El camió surt de l\'obrador cap al poble del client.</string>
     <string name="market_order_distance_label">Distància</string>
     <string name="market_order_eta_label">Temps de viatge</string>
     <string name="market_contract_travel_label">Viatge</string>
@@ -636,6 +664,36 @@
     <string name="market_order_deadline_label">Lliurar abans de</string>
     <string name="market_order_countdown">En queden %1$s</string>
     <string name="market_order_accept">Acceptar la comanda</string>
+    <string name="orders_sort_label">Ordenar comandes</string>
+    <string name="orders_sort_distance">Per distància</string>
+    <string name="orders_sort_flora_distance">Per flora i distància</string>
+    <string name="order_delivery_title">Comanda lliurada</string>
+    <string name="order_delivery_thanks">Gràcies!</string>
+    <string name="order_delivery_npc_speech">«Moltes gràcies pel lliurament!»</string>
+    <string-array name="order_delivery_thanks_lines">
+        <item>Gràcies!</item>
+        <item>Quina puntualitat!</item>
+        <item>Just a temps!</item>
+        <item>Excel·lent!</item>
+        <item>Una meravella!</item>
+        <item>Quina aroma!</item>
+        <item>Perfecte!</item>
+        <item>Fins a la propera!</item>
+    </string-array>
+    <string-array name="order_delivery_speech_lines">
+        <item>«Moltes gràcies pel lliurament!»</item>
+        <item>«Quina puntualitat. Aquesta mel fa una olor meravellosa.»</item>
+        <item>«Just el que necessitava. Gràcies!»</item>
+        <item>«Els meus clients en quedaran encantats.»</item>
+        <item>«Un pot així no es troba cada dia.»</item>
+        <item>«Quina aroma. Ha valgut la pena esperar.»</item>
+        <item>«Ha arribat perfecta. Compta amb mi una altra vegada.»</item>
+        <item>«Et dec una. Aquesta mel és excel·lent.»</item>
+    </string-array>
+    <string name="order_delivery_sold_title">Kg venuts</string>
+    <string name="order_delivery_sold_amount">%1$.2f kg de %2$s</string>
+    <string name="order_delivery_earned_title">Beecoins aconseguits</string>
+    <string name="order_delivery_earned_amount">+%1$.2f B</string>
     <string name="ranking_title">Rànquing</string>
     <string name="ranking_title_global">Rànquing global</string>
     <string name="ranking_title_iberia">Rànquing Ibèria</string>
@@ -678,6 +736,7 @@
     <string name="flora_display_neret">Neret</string>
     <string name="flora_display_arboc">Arboç</string>
     <string name="flora_display_naranjos">Tarongina</string>
+    <string name="crop_name_naranjos">Taronger</string>
     <string name="flora_display_almendros">Ametller</string>
     <string name="flora_display_cerezos">Cirerer</string>
     <string name="flora_display_manzanos">Pomera</string>
@@ -729,8 +788,10 @@
     <string name="shop_title">Botiga</string>
     <string name="shop_balance">Saldo: %1$.0f B</string>
     <string name="shop_buy">Comprar</string>
+    <string name="shop_bought_units">Comprades %1$d unitats.</string>
     <string name="shop_price_eur">%1$.2f B</string>
     <string name="shop_owned">En tens: %1$d</string>
+    <string name="shop_insufficient_beecoins">No tens prou beecoins per comprar</string>
     <string name="shop_item_treat">Tractament contra la varroa</string>
     <string name="shop_item_treat_desc">Un tractament de 7 dies. Es gasta en aplicar-lo a una arna.</string>
     <string name="shop_item_feed">Apialiment</string>
@@ -764,12 +825,12 @@
     <string name="port_gqeberha">Port de Gqeberha</string>
     <string name="port_richards">Port de Richards Bay</string>
     <string name="port_saldanha">Port de Saldanha</string>
-    <string name="tutorial_c1_v01">Sóc en Lorenzo Langstroth. Aquesta explotació és teva. Comencem amb 20.000 beecoins i un calendari que avança dia a dia. Les abelles treballen mentre tu no hi ets.</string>
+    <string name="tutorial_c1_v01">Sóc en Lorenzo Langstroth. Aquesta explotació és teva. Comencem amb 45.000 beecoins i un calendari que avança dia a dia. Les abelles treballen mentre tu no hi ets.</string>
     <string name="tutorial_c1_v02">A dalt hi ha els teus diners i el teu nivell. Pujar de nivell obre climes nous. Vendre mel, instal·lar apiaris i comprar arnes donen experiència.</string>
     <string name="tutorial_c1_v03">El clima del dia decideix quant nèctar hi ha. Un dia dolent en produeix menys. La colònia continua. El clima del dia el pots consultar a les colmenes, que més endavant podràs veure.</string>
-    <string name="tutorial_c1_v04">Inici és el resum. Els apiaris són les teves finques. Al mapa pots entrar per instal·lar els teus apiaris i magatzems, i també podràs veure els teus viatges, les comandes i les ofertes de contractes de pol·linització, que veuràs més endavant. El mercat és on pots vendre la mel, a l\'engròs o per comanda. Des del menú Inici també pots triar un mercat i vendre.</string>
+    <string name="tutorial_c1_v04">Inici és el resum. Els apiaris són les teves finques. Al mapa pots entrar per instal·lar els teus apiaris i obradors, i també podràs veure els teus viatges, les comandes i les ofertes de contractes de pol·linització, que veuràs més endavant. El mercat és on pots vendre la mel, a l\'engròs o per comanda. Des del menú Inici també pots triar un mercat i vendre.</string>
     <string name="tutorial_c1_v05">El primer pas és instal·lar un apiari. Obre el mapa.</string>
-    <string name="tutorial_c1_v06">Al mapa veuràs hexàgons plens de diferents colors. El verd està disponible per instal·lar apiaris o magatzem. El vermell està bloquejat: aquell clima demana més nivell. El color de la vora de l\'hexàgon és el clima, i la llegenda de sota et diu quin és cadascun. Un hexàgon on tens un apiari o magatzem propi es pinta de violeta.</string>
+    <string name="tutorial_c1_v06">Al mapa veuràs hexàgons plens de diferents colors. El verd està disponible per instal·lar apiaris o obrador. El vermell està bloquejat: aquell clima demana més nivell. El color de la vora de l\'hexàgon és el clima, i la llegenda de sota et diu quin és cadascun. Un hexàgon on tens un apiari o obrador propi es pinta de violeta.</string>
     <string name="tutorial_c1_v07">Prem un punt dins d\'un hexàgon verd, on vulguis instal·lar el primer apiari.</string>
     <string name="tutorial_c1_v07b">Prem Instal·lar un apiari.</string>
     <string name="tutorial_c1_v08">La flora silvestre ja és al terreny. A sota veus les places, el clima i la saturació: folgat deixa marge, saturat ja no en dona més. El preu és el pagament de l\'apiari. Escriu el nom i confirma.</string>
@@ -778,20 +839,21 @@
     <string name="tutorial_c1_v10b">Tria la flor de la qual les abelles trauran el nèctar. En tocar-la s\'obre un gràfic: les melades i si aquella flor està disponible al llarg de l\'any. Queda\'t amb una que ara tingui melada.</string>
     <string name="tutorial_c1_v11_open">Prem l\'arna a l\'apiari.</string>
     <string name="tutorial_c1_v11">A dalt veus la mel, la reina i la varroa. La reina marca la cria. Si la varroa puja, tracta-la. Alimentar baixa el consum en dies fluixos.</string>
-    <string name="tutorial_c1_v12">Això és Recol·lectar. Sempre queden 3 kg a dins: aquesta reserva és el menjar de la colònia.</string>
-    <string name="tutorial_c1_v16">Sense magatzem no hi ha lloc per guardar la mel ni camions per transportar-la. Instal·la\'n un en un punt estratègic: haurà d\'anar als apiaris a recollir i als mercats o comandes a vendre.</string>
-    <string name="tutorial_c1_v16_pick">Tria un terreny lliure del mapa per instal·lar el primer magatzem. El mapa està centrat a l\'apiari que acabes de crear.</string>
-    <string name="tutorial_c1_v16_name">Posa un nom al magatzem. És obligatori. No pots sortir d\'aquest pas sense confirmar la compra.</string>
-    <string name="tutorial_c1_v17_shop">Ara necessitem un camió per recórrer el mapa, recollir la mel i vendre-la. Així ingresses beecoins i els tornes a posar al negoci. Prem la botiga: l\'he apropat, és la més propera al magatzem.</string>
+    <string name="tutorial_c1_v12">Això és Recol·lectar. Sempre queden 3 kg a dins: aquesta reserva és el menjar de la colònia.\nAlimentar baixa un 50 % el consum de mel de les abelles mentre dura.\nTractar la varroa la frena durant 7 dies. El tractament es compra a la botiga.\nCanviar reina substitueix l\'actual: d\'ella en depèn la cria.\nTranshumar porta l\'arna a un altre apiari amb camió. El preu depèn de la distància.</string>
+    <string name="tutorial_c1_v16">Sense obrador no hi ha lloc per guardar la mel ni camions per transportar-la. Instal·la\'n un en un punt estratègic: haurà d\'anar als apiaris a recollir i als mercats o comandes a vendre.</string>
+    <string name="tutorial_c1_v16_pick">Tria un terreny lliure del mapa per instal·lar el primer obrador. El mapa està centrat a l\'apiari que acabes de crear.</string>
+    <string name="tutorial_c1_v16_name">Posa un nom a l\'obrador. És obligatori. No pots sortir d\'aquest pas sense confirmar la compra.</string>
+    <string name="tutorial_c1_v16_buy">Nom a punt. Prem comprar l\'obrador.</string>
+    <string name="tutorial_c1_v17_shop">Ara necessitem un camió per recórrer el mapa, recollir la mel i vendre-la. Així ingresses beecoins i els tornes a posar al negoci.\nPica la Botiga: l\'he apropat, és la més propera a l\'obrador.</string>
     <string name="tutorial_c1_v17_buy">Compra un camió. En aquest pas només pots comprar el camió.</string>
-    <string name="tutorial_c1_v17_name">Posa un nom al camió i tria el magatzem. Les dues dades són obligatòries.</string>
-    <string name="tutorial_c1_v17_fleet">El joc ja et dona un camió amb el primer magatzem, així que ara en tens dos. En aquests primers nivells convé ampliar la flota alhora que compres caseres, per produir i vendre.</string>
-    <string name="tutorial_c1_v16_choice">Prem Instal·lar un magatzem. És l\'única opció per continuar.</string>
+    <string name="tutorial_c1_v17_name">Posa un nom al camió i tria l\'obrador. Les dues dades són obligatòries.</string>
+    <string name="tutorial_c1_v17_fleet">El joc ja et dona un camió amb el primer obrador, així que ara en tens dos. En aquests primers nivells convé ampliar la flota alhora que compres caseres, per produir i vendre.</string>
+    <string name="tutorial_c1_v16_choice">Prem Instal·lar un obrador. És l\'única opció per continuar.</string>
     <string name="tutorial_c1_v13">Avanço un dia perquè vegis el cicle. A la partida normal el dia corre sol.</string>
-    <string name="tutorial_c1_v14">A Inici, prem Recol·lectar. La mel va al magatzem; després prem Vendre i tria el mercat més proper o el que et convingui.</string>
+    <string name="tutorial_c1_v14">A Inici, prem Recol·lectar. La mel va a l\'obrador; després prem Vendre i tria el mercat més proper o el que et convingui.</string>
     <string name="tutorial_c1_v15_open">Obre el mercat per veure més detalls. Des d\'Inici també pots triar un mercat i vendre.</string>
-    <string name="tutorial_c1_v15">Cada tipus té el seu preu i la seva demanda. L\'enviament surt del magatzem cap al mercat de la província, quan el camió ja ha recollit la mel. A Comandes hi ha lliuraments concrets. A Contractes portes arnes a una finca aliena i cobres pel servei.</string>
-    <string name="tutorial_c1_v18">Això és l\'ofici: apiari, arna, dia, collita, magatzem i mercat. Quan facis alguna cosa nova, torno. Pots repetir aquest capítol des del menú del tauler.</string>
+    <string name="tutorial_c1_v15">Cada tipus té el seu preu i la seva demanda. L\'enviament surt de l\'obrador cap al mercat de la província, quan el camió ja ha recollit la mel. A Comandes hi ha lliuraments concrets. A Contractes portes arnes a una finca aliena i cobres pel servei.</string>
+    <string name="tutorial_c1_v18">Això és l\'ofici: apiari, arna, dia, collita, obrador i mercat. Quan facis alguna cosa nova, torno. Pots repetir aquest capítol des del menú del tauler.</string>
     <string name="tutorial_c2_v01">Alimentar cobreix un dia o set. En aquests dies la colònia consumeix menys mel.</string>
     <string name="tutorial_c2_v02">El tractament contra la varroa dura 7 dies. Si la deixes pujar, la colònia se\'n va en orris.</string>
     <string name="tutorial_c2_v03">Una reina nova canvia la qualitat de la cria. La reserva de 3 kg no es toca en recol·lectar.</string>
@@ -799,7 +861,7 @@
     <string name="tutorial_c3_v02">El conreu es sembra, espera i dona un altre tipus de mel.</string>
     <string name="tutorial_c4_v01">Les arnes viatgen per carretera. Mentre van de camí no produeixen a la destinació.</string>
     <string name="tutorial_c4_v02">Serveix per seguir una floració o per complir un contracte de pol·linització.</string>
-    <string name="tutorial_c5_v01">Una comanda es compleix amb mel del magatzem i un camió fins al client.</string>
+    <string name="tutorial_c5_v01">Una comanda es compleix amb mel de l\'obrador i un camió fins al client.</string>
     <string name="tutorial_c5_v02">Un contracte es compleix portant arnes a l\'apiari d\'aquella finca. Cobres pel servei, no per la mel.</string>
     <string name="tutorial_c5_v03">Obre el menú Mercat.</string>
     <string name="tutorial_c5_v04">Prem Contractes.</string>
@@ -811,11 +873,11 @@
     <string name="tutorial_c5_v10">El viatge és el que costa portar cada arna. La tornada no es cobra.</string>
     <string name="tutorial_c5_v11">La recompensa és el pagament si compleixes el mínim. La mel que recullin continua sent teva.</string>
     <string name="tutorial_c5_v12">Transhumar arnes tria les que van a la finca. No cal fer-ho ara.</string>
-    <string name="tutorial_c6_v01">El camió porta mel i, segons el nivell, arnes. Les places surten del nivell del magatzem.</string>
+    <string name="tutorial_c6_v01">El camió porta mel i, segons el nivell, arnes. Les places surten del nivell de l\'obrador.</string>
     <string name="tutorial_c6_v02">Abans de sortir veus origen, destinació, cobrament, cost del viatge i net. La ruta queda dibuixada al mapa.</string>
     <string name="tutorial_c7_v01">El clima %1$s ja és obert. Al mapa, aquests hexàgons passen de vermell a verd.</string>
     <string name="tutorial_c8_v01">A partir del nivell 30 pots fer servir el port. La quota són 10.000 B. Allà amarres un vaixell. L\'amarrador és teu i costa 2.500 B.</string>
-    <string name="tutorial_c8_v02">El vaixell mou mel entre regions. No mou arnes. El camió porta la càrrega del magatzem al port, i el vaixell segueix per mar.</string>
+    <string name="tutorial_c8_v02">El vaixell mou mel entre regions. No mou arnes. El camió porta la càrrega de l\'obrador al port, i el vaixell segueix per mar.</string>
     <string name="tutorial_c8_v03">La ruta del vaixell es veu al mapa, igual que el camió a la carretera.</string>
     <string name="tutorial_c8_v04">Al nivell 35 pagues 15.000 B per cada mercat internacional. Vens on la mel val més, descomptant el viatge.</string>
     <string name="game_loading_status_balance">Llegint el balanç de joc…</string>
@@ -832,14 +894,119 @@
         <item>El pecoreig diari es calcula a les 8:00. Si deixes mel a l\'arna, les abelles mengen de les reserves.</item>
         <item>Un terreny saturat produeix menys: reparteix les arnes o busca una floració nova.</item>
         <item>Els contractes de pol·linització s\'accepten des de l\'apiari. El camió surt a les 8:00 del dia programat.</item>
-        <item>Recol·lecta mel al magatzem i ven al mercat, o compleix comandes per un millor preu.</item>
+        <item>Recol·lecta mel a l\'obrador i ven al mercat, o compleix comandes per un millor preu.</item>
         <item>La varroa creix amb cria i calor. Tracta a temps i vigila la salut de la reina.</item>
         <item>Cada clima (Ibèria, Sud-àfrica, Madagascar) té floracions diferents: viatja quan desbloquegis la zona.</item>
         <item>Si hi ha perill d\'eixam, divideix l\'arna abans de perdre població.</item>
-        <item>El magatzem guarda la mel per tipus. Les comandes demanen un tipus concret: no la barregis a cegues.</item>
+        <item>L\'obrador guarda la mel per tipus. Les comandes demanen un tipus concret: no la barregis a cegues.</item>
     </string-array>
     <string name="honey_reserves_title">Reserva de mel</string>
-    <string name="honey_reserves_total" formatted="false">Total als magatzems: %1$.1f kg</string>
+    <string name="honey_reserves_total" formatted="false">Total als obradors: %1$.2f kg</string>
     <string name="honey_reserves_empty">No hi ha mel en reserva actualment.</string>
     <string name="tutorial_c5_v13" formatted="false">Per començar amb els contractes, recorda que hi ha d\'haver cultius en floració de l\'època desbloquejats per al teu nivell. Revisa tant Madagascar com Iberia depenent de l\'estació meteorològica de cada territori.</string>
+    <string name="apiary_3d_open">Veure en 3D</string>
+    <string name="apiary_3d_use_hive_card">Aquesta acció es fa des de la fitxa del rusc.</string>
+    <string name="crop_tick_tree_due">Els %1$s de %2$s necessiten poda i adob: entra a l\'apiari en 3D i parla amb el pagès.</string>
+    <string name="apiary_yard_maint_banner">Els teus fruiters necessiten manteniment. Entra en 3D i parla amb el pagès.</string>
+    <string name="apiary_3d_stung_locked">T\'han picat massa: no pots tornar a aquest apiari en 3D fins demà.</string>
+    <string name="workshop_name">Obrador</string>
+    <string name="workshop_format_bulk">bidó</string>
+    <string name="workshop_format_jar_1000">pot d\'1 kg</string>
+    <string name="workshop_format_jar_500">pot de 500 g</string>
+    <string name="workshop_format_jar_250">pot de 250 g</string>
+    <string name="market_order_ask_jars">%1$d × %2$s de %3$s</string>
+    <string name="market_order_ask_drum">%1$.2f kg de %2$s en bidó</string>
+    <string name="workshop_mix_part">%1$d × %2$s</string>
+    <string name="market_order_ask_mix">%1$s de %2$s</string>
+    <string name="market_order_fail_jars">No hi ha prou pots. Els pots surten de l\'obrador on es van envasar.</string>
+    <string name="harvest_need_workshop">Necessites un obrador per extreure la mel.</string>
+    <string name="workshop_subtitle">Les alces passen per recepció, desoperculat, extracció, maduració i envasat. Tot continua amb l\'app tancada.</string>
+    <string name="workshop_build_title">Construeix el teu obrador</string>
+    <string name="workshop_build_intro">Cada obrador guarda la mel i la processa. Porta de sèrie la sala de recepció; la resta de màquines es compren a part.</string>
+    <string name="workshop_build_here">Construir a %1$s (%2$d B)</string>
+    <string name="workshop_build_no_warehouse">Primer necessites un obrador. Instal·la\'l des del mapa.</string>
+    <string name="workshop_go_map">Anar al mapa</string>
+    <string name="workshop_built_at">Obrador %1$s</string>
+    <string name="workshop_change_obrador">canviar d\'obrador</string>
+    <string name="workshop_machines">Maquinària</string>
+    <string name="workshop_machine_reception">Sala de recepció</string>
+    <string name="workshop_machine_uncapper">Desoperculadora</string>
+    <string name="workshop_machine_extractor">Extractor</string>
+    <string name="workshop_machine_maturer">Madurador</string>
+    <string name="workshop_machine_packer">Envasadora</string>
+    <string name="workshop_machine_missing">Sense comprar</string>
+    <string name="workshop_machine_level">Nivell %1$d de %2$d</string>
+    <string name="workshop_machine_info_reception">Repòs de %1$s. Sense límit de tandes.</string>
+    <string name="workshop_machine_info_time">%1$s per cada %2$d kg</string>
+    <string name="workshop_machine_info_packer">%1$d kg per tanda en el temps base</string>
+    <string name="workshop_machine_info_maturer">Dipòsits: %1$d · repòs de %2$s</string>
+    <string name="workshop_machine_buy">Comprar (%1$d B)</string>
+    <string name="workshop_machine_upgrade">Millorar a nivell %1$d (%2$d B)</string>
+    <string name="workshop_machine_max">Nivell màxim</string>
+    <string name="workshop_machine_bought">Màquina a punt.</string>
+    <string name="workshop_batches">Tandes</string>
+    <string name="workshop_batches_empty">No hi ha tandes. Les alces que recullis arribaran aquí.</string>
+    <string name="workshop_batch_title">%1$s · %2$s kg</string>
+    <string name="workshop_batch_from">De %1$s</string>
+    <string name="workshop_batch_running">%1$s · falten %2$s</string>
+    <string name="workshop_batch_queued">A la cua per a %1$s</string>
+    <string name="workshop_batch_no_machine">Aturada: falta %1$s</string>
+    <string name="workshop_batch_need_format">Tria l\'envàs per envasar-la</string>
+    <string name="workshop_batch_format">Envàs: %1$s</string>
+    <string name="workshop_batch_choose">Triar envàs</string>
+    <string name="workshop_batch_change">Canviar envàs</string>
+    <string name="workshop_format_title">Com envases %1$s kg de %2$s?</string>
+    <string name="workshop_format_option_bulk">%1$s · va a l\'obrador · preu ×%2$.2f</string>
+    <string name="workshop_format_option_jars">%1$s · %2$d pots · preu ×%3$.2f</string>
+    <string name="workshop_stock">Envasat</string>
+    <string name="workshop_stock_empty">Encara no hi ha pots. El bidó passa directament a l\'obrador.</string>
+    <string name="workshop_stock_row">%1$d × %2$s de %3$s</string>
+    <string name="workshop_sell_jars">Vendre</string>
+    <string name="workshop_sell_title">Vendre %1$s de %2$s</string>
+    <string name="workshop_sell_amount">%1$d de %2$d pots</string>
+    <string name="workshop_sell_hint">Un camió d\'aquest obrador els porta al mercat més proper que demani aquesta mel.</string>
+    <string name="workshop_sell_confirm">Enviar al mercat</string>
+    <string name="workshop_sell_started">El camió surt cap al mercat amb %1$d pots.</string>
+    <string name="workshop_sell_instant">Venuts %1$d pots.</string>
+    <string name="workshop_sell_no_demand">Cap mercat no demana ara aquesta mel.</string>
+    <string name="workshop_sell_no_cash">No tens BeeCoins per al transport.</string>
+    <string name="workshop_sell_no_truck">No hi ha cap camió lliure en aquest obrador.</string>
+    <string name="workshop_sell_failed">No s\'ha pogut vendre.</string>
+    <string name="workshop_wax">Cera</string>
+    <string name="workshop_wax_kg">%1$.2f kg · es paga a %2$.0f B/kg</string>
+    <string name="workshop_sell_wax">Vendre cera</string>
+    <string name="workshop_wax_sold">Cera venuda.</string>
+    <string name="workshop_built_ok">Obrador construït.</string>
+    <string name="workshop_need_title">Necessites un obrador</string>
+    <string name="workshop_need_message">La mel s\'extreu en un obrador. Compra\'n un al mapa per poder collir.</string>
+    <string name="workshop_need_go">Anar a l\'obrador</string>
+    <string name="workshop_dash_build">Construeix el teu obrador per poder collir.</string>
+    <string name="workshop_dash_format">Tandes esperant envàs: %1$d</string>
+    <string name="workshop_dash_machine">Falta %1$s i hi ha tandes esperant.</string>
+    <string name="workshop_dash_running">Tandes en procés: %1$d</string>
+    <string name="workshop_dash_stock">A punt per vendre: %1$d pots</string>
+    <string name="workshop_dash_wax">Cera per vendre: %1$.2f kg</string>
+    <string name="workshop_warehouse_open">Obrir l\'obrador</string>
+    <string name="workshop_warehouse_build">Construir l\'obrador aquí</string>
+    <string name="workshop_err_pick_parcel">Tria una parcel·la teva.</string>
+    <string name="workshop_err_already">Ja tens un obrador.</string>
+    <string name="workshop_err_need_warehouse">Necessites un obrador.</string>
+    <string name="workshop_err_login">Inicia la sessió per fer servir l\'obrador.</string>
+    <string name="workshop_err_build_first">Primer construeix l\'obrador.</string>
+    <string name="workshop_err_max">Aquesta màquina ja és al màxim.</string>
+    <string name="workshop_err_not_upgradable">La sala de recepció no es millora.</string>
+    <string name="workshop_err_none">No tens obrador.</string>
+    <string name="workshop_err_packing">Aquesta tanda ja s\'està envasant.</string>
+    <string name="workshop_err_no_wax">No tens cera per vendre.</string>
+    <!-- Capítols 9 i 10 del tutorial: obrador. -->
+    <string name="tutorial_c9_v01">A partir d\'ara, la mel que culls va a l\'obrador. Allà s\'extreu i s\'envasa. Sense obrador no es pot collir.</string>
+    <string name="tutorial_c9_v02">Prem Obrador a Inici.</string>
+    <string name="tutorial_c9_v03">Cada obrador guarda la mel i la processa. Porta de sèrie la sala de recepció, i el que envasis es queda aquí mateix.</string>
+    <string name="tutorial_c9_v04">Compra la desoperculadora, l\'extractor, el madurador i l\'envasadora. Són 10.500 B. Si en falta una, les tandes s\'aturen allà.</string>
+    <string name="tutorial_c9_v05">Cada tanda passa per recepció, desoperculat, extracció, maduració i envasat. Cada màquina treballa una tanda alhora i les altres esperen a la cua. El temps corre encara que tanquis l\'app.</string>
+    <string name="tutorial_c9_v06">Ja pots collir. El camió porta les alces a l\'obrador. Quan arribi la primera tanda, t\'ensenyo a envasar-la.</string>
+    <string name="tutorial_c10_v01">Ha arribat la teva primera tanda. Aquí veus a quina màquina és i quant li falta.</string>
+    <string name="tutorial_c10_v02">Prem Triar envàs. El bidó va a l\'obrador i es ven a granel. Els pots es paguen força millor, i com més petit el pot, més per quilo, però triguen més a envasar-se.</string>
+    <string name="tutorial_c10_v03">Els pots es queden a l\'obrador. Ven-los al mercat o porta\'ls a les comandes que demanen pots. La cera surt en desopercular i es ven a 9 B/kg.</string>
+    <string name="tutorial_c10_v04">Cada nivell d\'una màquina n\'escurça el temps i hi cap més mel per tanda. El madurador suma un dipòsit per nivell.</string>
 </resources>

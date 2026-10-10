@@ -200,20 +200,44 @@ public class HexFloraRepository {
     }
 
     public List<String> listReadyFloraKeysBlocking(String hexId, long nowMs) {
+        return listReadyFloraKeysBlocking(hexId, null, nowMs);
+    }
+
+    /**
+     * Flora lista para las colmenas de un apiario. La silvestre es del hexágono.
+     * Un cultivo solo entra si lo sembró ese apiario ({@code siteId}).
+     */
+    public List<String> listReadyFloraKeysBlocking(String hexId, @Nullable String siteId, long nowMs) {
         List<HexParcelFloraEntity> rows = listEntriesForHexBlocking(hexId);
         List<String> keys = new ArrayList<>();
         for (HexParcelFloraEntity e : rows) {
-            if (isEntryReady(e, nowMs)) {
-                keys.add(HoneyMarketEngine.canonicalFloraKey(e.floraKey));
+            if (!isEntryReady(e, nowMs)) {
+                continue;
             }
+            String key = HoneyMarketEngine.canonicalFloraKey(e.floraKey);
+            if (HexFlora.isPlantation(key) && (siteId == null || !siteId.equals(e.siteId))) {
+                continue;
+            }
+            keys.add(key);
         }
         Collections.sort(keys);
         return keys;
     }
 
+    /** Algún apiario del hexágono tiene esta flora lista (la silvestre cuenta siempre). */
     public boolean isFloraReadyOnHexBlocking(String hexId, String floraKey, long nowMs) {
         String want = HoneyMarketEngine.canonicalFloraKey(floraKey);
-        for (String k : listReadyFloraKeysBlocking(hexId, nowMs)) {
+        for (HexParcelFloraEntity e : listEntriesForHexBlocking(hexId)) {
+            if (isEntryReady(e, nowMs) && want.equals(HoneyMarketEngine.canonicalFloraKey(e.floraKey))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isFloraReadyOnHexBlocking(String hexId, @Nullable String siteId, String floraKey, long nowMs) {
+        String want = HoneyMarketEngine.canonicalFloraKey(floraKey);
+        for (String k : listReadyFloraKeysBlocking(hexId, siteId, nowMs)) {
             if (k.equals(want)) {
                 return true;
             }
@@ -314,6 +338,8 @@ public class HexFloraRepository {
             m.put("readyAt", e.readyAtEpochMs);
             m.put("expireAtDayKey", e.expireAtDayKey);
             m.put("lastMaintainedYear", e.lastMaintainedYear);
+            m.put("siteId", e.siteId != null ? e.siteId : "");
+            m.put("fruitSoldYear", e.fruitSoldYear);
             out.add(m);
         }
         return out;
@@ -347,6 +373,9 @@ public class HexFloraRepository {
             e.readyAtEpochMs = firestoreLong(m.get("readyAt"));
             e.expireAtDayKey = (int) firestoreLong(m.get("expireAtDayKey"));
             e.lastMaintainedYear = (int) firestoreLong(m.get("lastMaintainedYear"));
+            Object site = m.get("siteId");
+            e.siteId = site instanceof String ? (String) site : "";
+            e.fruitSoldYear = (int) firestoreLong(m.get("fruitSoldYear"));
             if (HexFlora.isPlantation(key) && e.plantedAtEpochMs == 0L && e.readyAtEpochMs == 0L) {
                 continue;
             }
@@ -369,11 +398,13 @@ public class HexFloraRepository {
             String hexId,
             String floraKey,
             String ownerId,
+            @Nullable String siteId,
             EconomyRepository economy,
             long nowMs,
             HexParcelRepository hexParcelRepository,
             int playerLevel) {
-        if (hexId == null || hexId.isEmpty() || ownerId == null || ownerId.isEmpty()) {
+        if (hexId == null || hexId.isEmpty() || ownerId == null || ownerId.isEmpty()
+                || siteId == null || siteId.isEmpty()) {
             return "Datos no válidos.";
         }
         if (GameServer.enabled() && !GameServer.isAvailable()) {
@@ -398,8 +429,8 @@ public class HexFloraRepository {
         migrateLegacyIfNeededBlocking(hexId);
         List<HexParcelFloraEntity> existing = parcelDao.listForHexSync(hexId);
         for (HexParcelFloraEntity e : existing) {
-            if (HoneyMarketEngine.canonicalFloraKey(e.floraKey).equals(key)) {
-                return "Esta flora ya está en el terreno (o en crecimiento).";
+            if (HoneyMarketEngine.canonicalFloraKey(e.floraKey).equals(key) && siteId.equals(e.siteId)) {
+                return "Este apiario ya tiene ese cultivo (o está creciendo).";
             }
         }
         int cost = CropRules.plantCostEuros(key);
@@ -412,12 +443,111 @@ public class HexFloraRepository {
         HexParcelFloraEntity row = new HexParcelFloraEntity();
         row.hexId = hexId;
         row.floraKey = key;
+        row.siteId = siteId;
         row.plantedAtEpochMs = nowMs;
         row.readyAtEpochMs = readyAt;
         row.expireAtDayKey = CropRules.expireDayKey(key, parcel, readyOn);
-        row.lastMaintainedYear = CropRules.isTree(key) ? readyOn.getYear() : 0;
+        row.lastMaintainedYear = 0;
         parcelDao.upsert(row);
         return null;
+    }
+
+    /** Pep compra el fruto una vez por año, cuando el árbol ya produce y está en época de fruto. */
+    @Nullable
+    public String sellFruitBlocking(String hexId, String floraKey, String ownerId, @Nullable String siteId,
+            EconomyRepository economy, HexParcelRepository hexParcelRepository, LocalDate today) {
+        if (hexId == null || siteId == null || siteId.isEmpty() || today == null
+                || !hexParcelRepository.hasOwnerSync(hexId, ownerId)) {
+            return "Este terreno no es tuyo.";
+        }
+        if (GameServer.enabled() && !GameServer.isAvailable()) {
+            return "No hay conexión con el servidor. No se puede realizar esta acción.";
+        }
+        String key = HoneyMarketEngine.canonicalFloraKey(floraKey);
+        HexParcel parcel = IberiaHexOverlayStore.findById(appContext, hexId);
+        HexParcelFloraEntity row = null;
+        for (HexParcelFloraEntity e : parcelDao.listForHexSync(hexId)) {
+            if (key.equals(HoneyMarketEngine.canonicalFloraKey(e.floraKey)) && siteId.equals(e.siteId)) {
+                row = e;
+                break;
+            }
+        }
+        long now = System.currentTimeMillis();
+        if (row == null || !CropRules.isTree(key) || !isEntryReady(row, now)
+                || !CropRules.inFruit(key, parcel, today)) {
+            return "Todavía no hay fruto que recoger.";
+        }
+        if (row.fruitSoldYear == today.getYear()) {
+            return "La cosecha de este año ya está vendida.";
+        }
+        int pay = CropRules.fruitSaleEuros(key);
+        row.fruitSoldYear = today.getYear();
+        parcelDao.upsert(row);
+        economy.addToBalance(pay, "Cosecha de " + key);
+        return null;
+    }
+
+    /**
+     * El payés poda y abona un frutal. Se puede pagar desde {@link CropRules#TREE_MAINTENANCE_EARLY_DAYS}
+     * días antes de que venza; el siguiente vence un año después del pago.
+     */
+    @Nullable
+    public String maintainTreeBlocking(String hexId, String floraKey, String ownerId, @Nullable String siteId,
+            EconomyRepository economy, HexParcelRepository hexParcelRepository, LocalDate today) {
+        if (hexId == null || hexId.isEmpty() || ownerId == null || ownerId.isEmpty()) {
+            return "Datos no válidos.";
+        }
+        if (GameServer.enabled() && !GameServer.isAvailable()) {
+            return "No hay conexión con el servidor. No se puede realizar esta acción.";
+        }
+        if (!hexParcelRepository.hasOwnerSync(hexId, ownerId)) {
+            return "Este terreno no es tuyo.";
+        }
+        String key = HoneyMarketEngine.canonicalFloraKey(floraKey);
+        HexParcelFloraEntity row = null;
+        for (HexParcelFloraEntity e : parcelDao.listForHexSync(hexId)) {
+            if (HoneyMarketEngine.canonicalFloraKey(e.floraKey).equals(key)
+                    && (siteId == null || siteId.isEmpty() || siteId.equals(e.siteId))) {
+                row = e;
+                break;
+            }
+        }
+        if (row == null || !CropRules.isTree(key) || !isEntryReady(row, System.currentTimeMillis())) {
+            return "Aquí no hay árboles que mantener.";
+        }
+        if (!CropRules.canMaintainNow(row.plantedAtEpochMs, row.lastMaintainedYear, today)) {
+            return "Todavía no toca: los árboles están bien cuidados.";
+        }
+        int fee = CropRules.treeMaintenanceEuros(key);
+        if (!economy.trySpend(fee, "Mantenimiento de " + key)) {
+            return "Saldo insuficiente (" + fee + " B).";
+        }
+        LocalDate due = CropRules.maintenanceDueDate(row.plantedAtEpochMs, row.lastMaintainedYear);
+        row.lastMaintainedYear = GameCalendar.toDayKey(today.isBefore(due) ? due : today);
+        parcelDao.upsert(row);
+        return null;
+    }
+
+    /** Terrenos del jugador con algún frutal cuyo mantenimiento ya venció. */
+    public java.util.Set<String> hexesNeedingMaintenanceBlocking(String ownerId, LocalDate today) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (ownerId == null || ownerId.isEmpty()) {
+            return out;
+        }
+        long now = System.currentTimeMillis();
+        for (HexParcelOwnershipEntity own : ownershipDao.getAllForOwnerSync(ownerId)) {
+            if (own == null || own.hexId == null || out.contains(own.hexId)) {
+                continue;
+            }
+            for (HexParcelFloraEntity e : parcelDao.listForHexSync(own.hexId)) {
+                if (CropRules.isTree(e.floraKey) && isEntryReady(e, now)
+                        && CropRules.isMaintenanceDue(e.plantedAtEpochMs, e.lastMaintainedYear, today)) {
+                    out.add(own.hexId);
+                    break;
+                }
+            }
+        }
+        return out;
     }
 
     public CropTickResult tickCropsForOwnerBlocking(
@@ -458,7 +588,7 @@ public class HexFloraRepository {
                         touched.add(hexId);
                     }
                     if (e.expireAtDayKey > 0 && dayKey >= e.expireAtDayKey) {
-                        parcelDao.deleteByHexAndKey(hexId, e.floraKey);
+                        parcelDao.deleteByHexKeySite(hexId, e.floraKey, e.siteId != null ? e.siteId : "");
                         removed.add(new CropTickResult.Removed(hexId, key));
                         touched.add(hexId);
                         notes.add(appContext.getString(R.string.crop_tick_annual_ended, key, parcelName));
@@ -468,27 +598,8 @@ public class HexFloraRepository {
                 if (!CropRules.isTree(key) || !isEntryReady(e, nowMs)) {
                     continue;
                 }
-                if (e.lastMaintainedYear <= 0) {
-                    e.lastMaintainedYear = year;
-                    parcelDao.upsert(e);
-                    touched.add(hexId);
-                    continue;
-                }
-                if (doy != CropRules.TREE_MAINTENANCE_DOY || e.lastMaintainedYear >= year) {
-                    continue;
-                }
-                int fee = CropRules.treeMaintenanceEuros(key);
-                if (economy != null && economy.trySpend(fee,
-                        "Mantenimiento de " + key + " en " + parcelName)) {
-                    e.lastMaintainedYear = year;
-                    parcelDao.upsert(e);
-                    touched.add(hexId);
-                    notes.add(appContext.getString(R.string.crop_tick_tree_maintained, key, parcelName, (double) fee));
-                } else {
-                    parcelDao.deleteByHexAndKey(hexId, e.floraKey);
-                    removed.add(new CropTickResult.Removed(hexId, key));
-                    touched.add(hexId);
-                    notes.add(appContext.getString(R.string.crop_tick_tree_lost, key, parcelName));
+                if (CropRules.maintenanceDueDate(e.plantedAtEpochMs, e.lastMaintainedYear).equals(day)) {
+                    notes.add(appContext.getString(R.string.crop_tick_tree_due, key, parcelName));
                 }
             }
         }
@@ -503,8 +614,9 @@ public class HexFloraRepository {
             return Collections.emptyList();
         }
         List<FloraPlantingProgressRow> out = new ArrayList<>();
+        java.util.Set<String> seenHex = new java.util.HashSet<>();
         for (HexParcelOwnershipEntity own : ownershipDao.getAllForOwnerSync(ownerId)) {
-            if (own == null || own.hexId == null) {
+            if (own == null || own.hexId == null || !seenHex.add(own.hexId)) {
                 continue;
             }
             migrateLegacyIfNeededBlocking(own.hexId);

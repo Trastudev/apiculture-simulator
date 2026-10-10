@@ -598,9 +598,6 @@ public class PollinationContractRepository {
         int openFarms = stats != null ? stats[1] : 1;
         double occ = PollinationContractRules.occupancy(activeBucket, Math.max(1, openFarms));
         boolean reservesOpen = PollinationContractRules.reservesOpen(occ);
-        if (farm.reserve && !reservesOpen && !includeHiddenReserve) {
-            return null;
-        }
         int layers = PollinationContractRules.maxLayers(occ, reservesOpen);
         int taken = activeByHex.getOrDefault(parcel.id, 0);
         boolean occupied = !mineHere && taken >= layers;
@@ -776,9 +773,6 @@ public class PollinationContractRepository {
         double occ = PollinationContractRules.occupancy(
                 stats != null ? stats[0] : 0, stats != null ? Math.max(1, stats[1]) : 1);
         boolean reservesOpen = PollinationContractRules.reservesOpen(occ);
-        if (farm.reserve && !reservesOpen) {
-            return "Ese campo aún no sale a contrato.";
-        }
         int layers = PollinationContractRules.maxLayers(occ, reservesOpen);
         int taken = activeByHex.getOrDefault(hexId, 0);
         if (taken >= layers) {
@@ -1098,7 +1092,7 @@ public class PollinationContractRepository {
                 return out;
             }
             if (h.inWarehouse) {
-                out.error = "Esa colmena está en el almacén.";
+                out.error = "Esa colmena está en el obrador.";
                 return out;
             }
             if (TranshumanceRules.hasPendingContractMove(h)) {

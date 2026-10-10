@@ -129,6 +129,103 @@ public class DashboardFragment extends Fragment {
         }
         startFloraPlantingTicker();
         startTripTicker();
+        refreshWorkshopCard();
+    }
+
+    private long workshopCardAt;
+
+    /** Aviso del obrador en el inicio: construirlo, elegir envase, máquina que falta o algo que vender. */
+    private void refreshWorkshopCard() {
+        if (binding == null || !isAdded()) {
+            return;
+        }
+        workshopCardAt = System.currentTimeMillis();
+        String uid = PlayerAuth.getInstance().getUid();
+        android.content.Context c = requireContext();
+        java.util.List<com.apiculture.simulator.domain.workshop.WorkshopState> all =
+                com.apiculture.simulator.data.repository.WorkshopStore.all(c, uid);
+        java.util.List<String> alerts = new java.util.ArrayList<>();
+        java.util.List<String> info = new java.util.ArrayList<>();
+        if (all.isEmpty()) {
+            if (com.apiculture.simulator.presentation.workshop.WorkshopUi.blocksHarvest(c, uid)) {
+                alerts.add(getString(R.string.workshop_dash_build));
+            }
+        } else {
+            // Todos los obradores juntos: tandas, tarros y cera.
+            int waitingFormat = 0;
+            String missing = null;
+            int batchCount = 0;
+            double wax = 0;
+            java.util.List<com.apiculture.simulator.domain.workshop.WorkshopState.Packed> packed = new java.util.ArrayList<>();
+            for (com.apiculture.simulator.domain.workshop.WorkshopState o : all) {
+                batchCount += o.batches.size();
+                wax += o.waxKg;
+                packed.addAll(o.packed);
+                for (com.apiculture.simulator.domain.workshop.WorkshopState.Batch b : o.batches) {
+                    if (b.waitingFormat()) {
+                        waitingFormat++;
+                    } else if (!b.inMachine && missing == null && o.level(b.stage) <= 0) {
+                        missing = com.apiculture.simulator.presentation.workshop.WorkshopUi.machineName(c, b.stage);
+                    }
+                }
+            }
+            com.apiculture.simulator.domain.workshop.WorkshopState s = new com.apiculture.simulator.domain.workshop.WorkshopState();
+            s.waxKg = wax;
+            s.packed.addAll(packed);
+            for (int i = 0; i < batchCount; i++) {
+                s.batches.add(new com.apiculture.simulator.domain.workshop.WorkshopState.Batch());
+            }
+            if (missing != null) {
+                alerts.add(getString(R.string.workshop_dash_machine, missing));
+            }
+            if (waitingFormat > 0) {
+                alerts.add(getString(R.string.workshop_dash_format, waitingFormat));
+            }
+            if (!s.batches.isEmpty()) {
+                // Capítulo 10. Primera tanda en el obrador.
+                com.apiculture.simulator.presentation.tutorial.TutorialBus.emit(
+                        com.apiculture.simulator.presentation.tutorial.TutorialEvent.WORKSHOP_BATCH);
+            }
+            int running = s.batches.size() - waitingFormat;
+            if (running > 0) {
+                info.add(getString(R.string.workshop_dash_running, running));
+            }
+            int jars = 0;
+            for (com.apiculture.simulator.domain.workshop.WorkshopState.Packed p : s.packed) {
+                if (p.format != com.apiculture.simulator.domain.workshop.WorkshopRules.Format.BULK) {
+                    jars += Math.max(0, p.jars);
+                }
+            }
+            if (jars > 0) {
+                info.add(getString(R.string.workshop_dash_stock, jars));
+            }
+            if (s.waxKg >= 0.5) {
+                info.add(getString(R.string.workshop_dash_wax, s.waxKg));
+            }
+        }
+        binding.llWorkshopLines.removeAllViews();
+        if (alerts.isEmpty() && info.isEmpty()) {
+            binding.cardWorkshop.setVisibility(View.GONE);
+            return;
+        }
+        binding.cardWorkshop.setVisibility(View.VISIBLE);
+        for (String line : alerts) {
+            binding.llWorkshopLines.addView(workshopLine(line, R.color.dash_warning));
+        }
+        for (String line : info) {
+            binding.llWorkshopLines.addView(workshopLine(line, R.color.dash_text_card));
+        }
+    }
+
+    @NonNull
+    private TextView workshopLine(@NonNull String text, int colorRes) {
+        TextView t = new TextView(requireContext());
+        t.setText(text);
+        t.setTextSize(15);
+        t.setTypeface(t.getTypeface(), android.graphics.Typeface.BOLD);
+        t.setTextColor(androidx.core.content.ContextCompat.getColor(requireContext(), colorRes));
+        t.setPadding(0, 2, 0, 2);
+        return t;
     }
 
     private void refreshWeekChart(String ownerId) {
@@ -145,20 +242,40 @@ public class DashboardFragment extends Fragment {
             for (int i = 0; i < cols; i++) {
                 max = Math.max(max, values[i]);
             }
+            float density = getResources().getDisplayMetrics().density;
             int full = chart.getHeight();
             if (full <= 0) {
-                full = Math.round(110f * getResources().getDisplayMetrics().density);
+                full = Math.round(110f * density);
             }
+            int labelSpace = Math.round(16f * density);
+            int usable = Math.max(labelSpace, full - labelSpace);
             for (int i = 0; i < cols; i++) {
                 View col = chart.getChildAt(i);
                 if (!(col instanceof FrameLayout) || ((FrameLayout) col).getChildCount() == 0) {
                     continue;
                 }
-                View bar = ((FrameLayout) col).getChildAt(0);
+                FrameLayout frame = (FrameLayout) col;
+                View bar = frame.getChildAt(0);
                 ViewGroup.LayoutParams lp = bar.getLayoutParams();
-                lp.height = Math.max(Math.round(4f * getResources().getDisplayMetrics().density),
-                        (int) (full * (values[i] / max)));
+                lp.height = Math.max(Math.round(4f * density),
+                        (int) (usable * (values[i] / max)));
                 bar.setLayoutParams(lp);
+                TextView kg = frame.getChildCount() > 1 && frame.getChildAt(1) instanceof TextView
+                        ? (TextView) frame.getChildAt(1)
+                        : new TextView(frame.getContext());
+                if (kg.getParent() == null) {
+                    FrameLayout.LayoutParams labelLp = new FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT);
+                    labelLp.gravity = android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL;
+                    kg.setLayoutParams(labelLp);
+                    kg.setGravity(android.view.Gravity.CENTER);
+                    kg.setMaxLines(1);
+                    kg.setTextColor(ContextCompat.getColor(frame.getContext(), R.color.dash_text_card));
+                    kg.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 9f);
+                    frame.addView(kg);
+                }
+                kg.setText(String.format(Locale.getDefault(), "%.2f kg", values[i]));
             }
         });
     }
@@ -417,6 +534,10 @@ public class DashboardFragment extends Fragment {
         NavController nav = Navigation.findNavController(view);
         binding.tileQuickHarvest.setOnClickListener(v -> startHarvestWizard(viewModel));
         binding.tileQuickSell.setOnClickListener(v -> MarketPickerDialogs.show(this));
+        binding.tileQuickWorkshop.setOnClickListener(v ->
+                com.apiculture.simulator.presentation.workshop.WorkshopUi.open(this));
+        binding.cardWorkshop.setOnClickListener(v ->
+                com.apiculture.simulator.presentation.workshop.WorkshopUi.open(this));
         binding.btnInventoryQueens.setOnClickListener(v -> showQueensInventory(viewModel, nav));
         binding.btnInventoryTreatments.setOnClickListener(v -> showCountInventory(
                 viewModel.treatInventoryCount().getValue(),
@@ -621,32 +742,23 @@ public class DashboardFragment extends Fragment {
         }
         final String uid = sessionUser.getUid();
         boolean admin = Boolean.TRUE.equals(viewModel.isAdmin().getValue());
-        MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.dashboard_reset_confirm_title)
-                .setMessage(admin
-                        ? R.string.dashboard_reset_choose
-                        : R.string.dashboard_reset_confirm_message)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(admin
-                        ? R.string.dashboard_reset_mine
-                        : android.R.string.ok, (d, w) -> resetMine(viewModel, uid));
-        if (admin) {
-            dialog.setNeutralButton(R.string.dashboard_reset_all, (d, w) -> confirmResetEveryone(viewModel, uid));
-        }
-        dialog.show();
-    }
-
-    private void confirmResetEveryone(@NonNull DashboardViewModel viewModel, @NonNull String uid) {
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.dashboard_reset_all_title)
-                .setMessage(R.string.dashboard_reset_all_message)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.dashboard_reset_all, (d, w) -> resetEveryone(viewModel, uid))
-                .show();
-    }
-
-    private void resetMine(@NonNull DashboardViewModel viewModel, @NonNull String uid) {
-        viewModel.resetGameToStarterState(uid, msg -> finishReset(viewModel, uid, msg));
+        GameNotice.confirm(requireContext(),
+                getString(admin
+                        ? R.string.dashboard_reset_all_title
+                        : R.string.dashboard_reset_confirm_title),
+                getString(admin
+                        ? R.string.dashboard_reset_all_message
+                        : R.string.dashboard_reset_confirm_message),
+                android.R.string.ok,
+                android.R.string.cancel,
+                () -> {
+                    if (admin) {
+                        resetEveryone(viewModel, uid);
+                    } else {
+                        resetMine(viewModel, uid);
+                    }
+                },
+                null);
     }
 
     private void resetEveryone(@NonNull DashboardViewModel viewModel, @NonNull String uid) {
@@ -666,6 +778,10 @@ public class DashboardFragment extends Fragment {
                     app.resetPlayerToStarterState(uid, gen == null ? 0L : gen,
                             msg -> finishReset(viewModel, uid, msg)));
         });
+    }
+
+    private void resetMine(@NonNull DashboardViewModel viewModel, @NonNull String uid) {
+        viewModel.resetGameToStarterState(uid, msg -> finishReset(viewModel, uid, msg));
     }
 
     private void finishReset(@NonNull DashboardViewModel viewModel, @NonNull String uid,
@@ -727,6 +843,10 @@ public class DashboardFragment extends Fragment {
     private void showHarvestApiaries(@NonNull DashboardViewModel viewModel, @NonNull String uid,
             @NonNull List<HiveEntity> hives, @NonNull List<HoneyLogistics.ApiaryHarvest> apiaries,
             @NonNull PlayableMapRegion region) {
+        if (com.apiculture.simulator.presentation.workshop.WorkshopUi.blocksHarvest(requireContext(), uid)) {
+            com.apiculture.simulator.presentation.workshop.WorkshopUi.showNeedWorkshop(this);
+            return;
+        }
         List<HoneyLogistics.ApiaryHarvest> inRegion = new ArrayList<>();
         List<String> labels = new ArrayList<>();
         List<String> metas = new ArrayList<>();
@@ -861,9 +981,11 @@ public class DashboardFragment extends Fragment {
         }
         binding.tileQuickHarvest.setEnabled(enabled);
         binding.tileQuickSell.setEnabled(enabled);
+        binding.tileQuickWorkshop.setEnabled(enabled);
         float alpha = enabled ? 1f : 0.55f;
         binding.tileQuickHarvest.setAlpha(alpha);
         binding.tileQuickSell.setAlpha(alpha);
+        binding.tileQuickWorkshop.setAlpha(alpha);
     }
 
     private void setResetControlsEnabled(boolean enabled) {
@@ -918,11 +1040,20 @@ public class DashboardFragment extends Fragment {
             TextView tvFlora = row.findViewById(R.id.tv_planting_flora);
             ImageView ivFlora = row.findViewById(R.id.iv_planting_flora);
             tvParcel.setText(r.parcelLabel);
-            tvFlora.setText(r.floraKey);
+            tvFlora.setText(plantingFloraLabel(r.floraKey));
             ivFlora.setImageResource(
                     com.apiculture.simulator.presentation.hive.HiveSiteSummaryUi.floraHoneyJarIcon(r.floraKey));
             binding.llFloraPlantings.addView(row);
         }
+    }
+
+    /** El naranjo se nombra como árbol; el resto usa el nombre de la flora ya traducido. */
+    private String plantingFloraLabel(String floraKey) {
+        if ("Campo de naranjos".equals(floraKey)) {
+            return getString(R.string.crop_name_naranjos);
+        }
+        return com.apiculture.simulator.presentation.hive.HiveSiteSummaryUi.floraLabel(
+                requireContext(), floraKey);
     }
 
     private void tickFloraPlantingRowsUi() {
@@ -944,10 +1075,7 @@ public class DashboardFragment extends Fragment {
             long elapsed = Math.min(total, Math.max(0L, now - r.plantedAtEpochMs));
             int prog = (int) Math.min(1000L, (1000L * elapsed) / total);
             bar.setProgress(prog);
-            long hours = rem / 3_600_000L;
-            long mins = (rem % 3_600_000L) / 60_000L;
-            long secs = (rem % 60_000L) / 1000L;
-            cd.setText(String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, mins, secs));
+            cd.setText(HoneyLogistics.formatCountdown(rem));
         }
     }
 
@@ -968,8 +1096,11 @@ public class DashboardFragment extends Fragment {
     private void startTripTicker() {
         stopTripTicker();
         tripTickRunnable = () -> {
-            bindTripRows();
+            tickTripCountdowns();
             kickDueTrips();
+            if (System.currentTimeMillis() - workshopCardAt > 15_000L) {
+                refreshWorkshopCard();
+            }
             dashFloraHandler.postDelayed(tripTickRunnable, 1000L);
         };
         dashFloraHandler.post(tripTickRunnable);
@@ -1018,6 +1149,37 @@ public class DashboardFragment extends Fragment {
         });
     }
 
+    /** Solo cambia el texto de las cuentas atrás. La fila se reconstruye cuando cambia el viaje. */
+    private void tickTripCountdowns() {
+        if (binding == null) {
+            return;
+        }
+        refreshCountdownLabels(binding.dashTrips.llTripRows);
+    }
+
+    private void refreshCountdownLabels(@NonNull View root) {
+        Object tag = root.getTag(R.id.tv_trip_eta);
+        if (tag instanceof java.util.function.LongSupplier && root instanceof TextView) {
+            TextView label = (TextView) root;
+            String next = HoneyLogistics.formatRemaining(
+                    ((java.util.function.LongSupplier) tag).getAsLong());
+            if (!next.contentEquals(label.getText())) {
+                label.setText(next);
+            }
+        }
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                refreshCountdownLabels(group.getChildAt(i));
+            }
+        }
+    }
+
+    private void stampCountdown(@NonNull TextView label, @NonNull java.util.function.LongSupplier remainingMs) {
+        label.setTag(R.id.tv_trip_eta, remainingMs);
+        label.setText(HoneyLogistics.formatRemaining(remainingMs.getAsLong()));
+    }
+
     private void bindTripRows() {
         if (binding == null) {
             return;
@@ -1038,6 +1200,14 @@ public class DashboardFragment extends Fragment {
             View row = inflater.inflate(R.layout.item_trip_row, host, false);
             bindHiveTripRow(row, trip, now);
             row.setOnClickListener(v -> openMapAt(nav, pos[0], pos[1], trip.hiveId));
+            if (TruckTripEntity.SPLIT_MOVE.equals(trip.destFlora)) {
+                View cancel = row.findViewById(R.id.btn_trip_cancel);
+                if (cancel != null) {
+                    cancel.setVisibility(View.GONE);
+                }
+            } else {
+                wireTripCancel(row, () -> confirmCancelHive(trip.hiveId));
+            }
             lines.add(new TripLine(TruckTripRules.remainingMs(trip, now), row));
         }
         for (List<CargoTripEntity> bundle : cargoBundles(uid)) {
@@ -1056,6 +1226,14 @@ public class DashboardFragment extends Fragment {
                 bindCargoTripRow(row, focus, now);
             }
             row.setOnClickListener(v -> openMapAt(nav, pos[0], pos[1], focus.id));
+            if (!CargoTripEntity.PHASE_RETURN.equals(focus.phase)) {
+                wireTripCancel(row, () -> confirmCancelCargo(focus.id));
+            } else {
+                View cancel = row.findViewById(R.id.btn_trip_cancel);
+                if (cancel != null) {
+                    cancel.setVisibility(View.GONE);
+                }
+            }
             lines.add(new TripLine(CargoTripRules.remainingMs(focus, now), row));
         }
         lines.sort((a, b) -> Long.compare(a.remainingMs, b.remainingMs));
@@ -1100,6 +1278,65 @@ public class DashboardFragment extends Fragment {
         binding.dashTrips.svTripRows.scrollTo(0, keptScroll);
     }
 
+    private void wireTripCancel(@NonNull View row, @NonNull Runnable confirm) {
+        View cancel = row.findViewById(R.id.btn_trip_cancel);
+        if (cancel == null) {
+            return;
+        }
+        cancel.setOnClickListener(v -> confirm.run());
+    }
+
+    private void confirmCancelCargo(@NonNull String tripId) {
+        if (!isAdded()) {
+            return;
+        }
+        GameNotice.confirm(requireContext(),
+                getString(R.string.trip_cancel_title),
+                getString(R.string.trip_cancel_message),
+                R.string.trip_cancel_keep,
+                R.string.trip_cancel_ok,
+                null,
+                () -> HoneyLogistics.cancelTrip(requireContext(), tripId, err -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    if (err == null) {
+                        GameNotice.showSuccess(requireContext(), R.string.trip_cancel_done);
+                    } else {
+                        GameNotice.show(requireContext(), err);
+                    }
+                }));
+    }
+
+    private void confirmCancelHive(@NonNull String hiveId) {
+        if (!isAdded()) {
+            return;
+        }
+        GameNotice.confirm(requireContext(),
+                getString(R.string.trip_cancel_title),
+                getString(R.string.trip_cancel_message),
+                R.string.trip_cancel_keep,
+                R.string.trip_cancel_ok,
+                null,
+                () -> {
+                    android.content.Context app = requireContext().getApplicationContext();
+                    tripUpkeep.execute(() -> {
+                        boolean turned = TruckLiveTrips.cancel(app, hiveId);
+                        if (!isAdded()) {
+                            return;
+                        }
+                        requireActivity().runOnUiThread(() -> {
+                            if (!isAdded()) {
+                                return;
+                            }
+                            GameNotice.show(requireContext(), turned
+                                    ? R.string.trip_cancel_done
+                                    : R.string.trip_cancel_already);
+                        });
+                    });
+                });
+    }
+
     private void bindHiveTripRow(@NonNull View row, @NonNull TruckTripEntity trip, long now) {
         ImageView cargo = row.findViewById(R.id.iv_trip_cargo);
         ImageView from = row.findViewById(R.id.iv_trip_from);
@@ -1114,8 +1351,8 @@ public class DashboardFragment extends Fragment {
         ((TextView) row.findViewById(R.id.tv_trip_route)).setText(getString(
                 R.string.dashboard_trip_route,
                 getString(R.string.dashboard_place_apiary), tripLabel(trip.destHexId)));
-        ((TextView) row.findViewById(R.id.tv_trip_eta)).setText(
-                HoneyLogistics.formatRemaining(TruckTripRules.remainingMs(trip, now)));
+        stampCountdown(row.findViewById(R.id.tv_trip_eta),
+                () -> TruckTripRules.remainingMs(trip, System.currentTimeMillis()));
     }
 
     private void showTripCargo(@NonNull View row, @Nullable Map<String, Double> cargo) {
@@ -1187,8 +1424,8 @@ public class DashboardFragment extends Fragment {
         bindTripLeg(row, back);
         ((TextView) row.findViewById(R.id.tv_trip_route)).setText(
                 getString(R.string.dashboard_trip_route, fromLabel, toLabel));
-        ((TextView) row.findViewById(R.id.tv_trip_eta)).setText(
-                HoneyLogistics.formatRemaining(CargoTripRules.remainingMs(trip, now)));
+        stampCountdown(row.findViewById(R.id.tv_trip_eta),
+                () -> CargoTripRules.remainingMs(trip, System.currentTimeMillis()));
     }
 
     @NonNull
@@ -1239,12 +1476,16 @@ public class DashboardFragment extends Fragment {
         int warehouse = R.drawable.ic_almacen_miel;
         for (int i = 0; i < tour.size(); i++) {
             HoneyLogistics.TourLeg leg = tour.get(i);
-            long time = HoneyLogistics.legRemaining(head, tour, i, now);
+            int index = i;
+            long time = HoneyLogistics.legRemaining(head, tour, index, now);
             addTripLeg(inflater, legs,
                     leg.fromWarehouse ? warehouse : hive,
                     leg.toWarehouse ? warehouse : hive,
                     leg.fromLabel, leg.toLabel, time, !leg.current, leg.done,
-                    HoneyLogistics.carriedOnLeg(head, tour, i));
+                    HoneyLogistics.carriedOnLeg(head, tour, index),
+                    leg.current && !leg.done
+                            ? () -> HoneyLogistics.legRemaining(head, tour, index, System.currentTimeMillis())
+                            : null);
         }
     }
 
@@ -1281,7 +1522,9 @@ public class DashboardFragment extends Fragment {
             long time = pending ? trip.durationMs : CargoTripRules.remainingMs(trip, now);
             addTripLeg(inflater, legs, tripIcon(trip, true), tripIcon(trip, false),
                     SeaportCatalog.present(requireContext(), trip.originLabel, trip.originHexId),
-                    SeaportCatalog.present(requireContext(), trip.destLabel, trip.destHexId), time, pending);
+                    SeaportCatalog.present(requireContext(), trip.destLabel, trip.destHexId), time, pending,
+                    false, null,
+                    pending ? null : () -> CargoTripRules.remainingMs(trip, System.currentTimeMillis()));
         }
         for (CargoTripEntity trip : ordered) {
             if (!hasNextStop(trip)) {
@@ -1294,25 +1537,20 @@ public class DashboardFragment extends Fragment {
             int toIcon = chainIcon(trip);
             addTripLeg(inflater, legs, fromIcon, toIcon,
                     SeaportCatalog.present(requireContext(), trip.destLabel, trip.destHexId),
-                    SeaportCatalog.present(requireContext(), trip.chainLabel, trip.chainHexId), hop, true, false);
+                    SeaportCatalog.present(requireContext(), trip.chainLabel, trip.chainHexId), hop, true);
         }
     }
 
     private void addTripLeg(@NonNull LayoutInflater inflater, @NonNull LinearLayout host,
             int fromIcon, int toIcon, @Nullable String fromLabel, @Nullable String toLabel,
             long timeMs, boolean pending) {
-        addTripLeg(inflater, host, fromIcon, toIcon, fromLabel, toLabel, timeMs, pending, false);
+        addTripLeg(inflater, host, fromIcon, toIcon, fromLabel, toLabel, timeMs, pending, false, null, null);
     }
 
     private void addTripLeg(@NonNull LayoutInflater inflater, @NonNull LinearLayout host,
             int fromIcon, int toIcon, @Nullable String fromLabel, @Nullable String toLabel,
-            long timeMs, boolean pending, boolean done) {
-        addTripLeg(inflater, host, fromIcon, toIcon, fromLabel, toLabel, timeMs, pending, done, null);
-    }
-
-    private void addTripLeg(@NonNull LayoutInflater inflater, @NonNull LinearLayout host,
-            int fromIcon, int toIcon, @Nullable String fromLabel, @Nullable String toLabel,
-            long timeMs, boolean pending, boolean done, @Nullable Map<String, Double> load) {
+            long timeMs, boolean pending, boolean done, @Nullable Map<String, Double> load,
+            @Nullable java.util.function.LongSupplier liveRemaining) {
         View leg = inflater.inflate(R.layout.item_trip_leg, host, false);
         ((ImageView) leg.findViewById(R.id.iv_leg_from)).setImageResource(fromIcon);
         ((ImageView) leg.findViewById(R.id.iv_leg_to)).setImageResource(toIcon);
@@ -1329,10 +1567,19 @@ public class DashboardFragment extends Fragment {
         TextView time = leg.findViewById(R.id.tv_leg_time);
         if (done) {
             time.setText("");
-        } else {
+            time.setTag(R.id.tv_trip_eta, null);
+        } else if (pending) {
+            time.setTag(R.id.tv_trip_eta, null);
             time.setText(HoneyLogistics.formatRemaining(timeMs));
-            time.setTextColor(ContextCompat.getColor(requireContext(),
-                    pending ? R.color.dash_muted : R.color.dash_text_card));
+            time.setTextColor(ContextCompat.getColor(requireContext(), R.color.dash_muted));
+        } else {
+            time.setTextColor(ContextCompat.getColor(requireContext(), R.color.dash_text_card));
+            if (liveRemaining != null) {
+                stampCountdown(time, liveRemaining);
+            } else {
+                time.setTag(R.id.tv_trip_eta, null);
+                time.setText(HoneyLogistics.formatRemaining(timeMs));
+            }
         }
         host.addView(leg);
     }
@@ -1413,7 +1660,7 @@ public class DashboardFragment extends Fragment {
             return getString(R.string.dashboard_place_origin);
         }
         String text = label.trim();
-        if ("Almacén".equals(text) || "Almacen".equals(text)) {
+        if ("Obrador".equals(text) || "Almacen".equals(text)) {
             return getString(R.string.map_warehouse_title);
         }
         if ("Apiario".equals(text)) {

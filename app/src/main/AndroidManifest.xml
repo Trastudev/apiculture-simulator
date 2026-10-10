@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Audiencia 13+. Fuera del programa Familias, así que el identificador de publicidad está permitido. -->
@@ -18,7 +19,8 @@
         android:supportsRtl="true"
         android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.ApicultureSimulator"
-        android:usesCleartextTraffic="${USES_CLEARTEXT}">
+        android:usesCleartextTraffic="${USES_CLEARTEXT}"
+        tools:remove="android:appCategory">
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -36,6 +38,26 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <activity
+            android:name="com.unity3d.player.UnityPlayerActivity"
+            tools:node="remove" />
+
+        <activity
+            android:name=".unity.Apiary3DActivity"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+            android:exported="false"
+            android:hardwareAccelerated="false"
+            android:resizeableActivity="true"
+            android:screenOrientation="landscape"
+            android:theme="@style/UnityThemeSelector">
+            <meta-data
+                android:name="unityplayer.UnityActivity"
+                android:value="true" />
+            <meta-data
+                android:name="notch_support"
+                android:value="true" />
         </activity>
 
         <receiver

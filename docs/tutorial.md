@@ -85,6 +85,33 @@ Si Ramón está hablando, el capítulo nuevo espera.
 Continental al 5, altiplano de Madagascar al 10, atlántico al 15, tropical al 20, alta montaña al 25,
 desierto al 30, sur al 35, Sudáfrica al 40.
 
+## Obrador
+
+Desde que el obrador es obligatorio, sin él no se cosecha (salvo la cosecha guiada del capítulo 1).
+Lo ven también quienes ya jugaban antes de esta versión.
+
+**Capítulo 9. Obrador.** Sale al acabar o saltar el capítulo 1. Si el jugador ya tiene todas las máquinas, se da por hecho.
+
+| # | Pantalla | Qué dice Ramón | Cómo se avanza |
+|---|---|---|---|
+| 1 | Cualquiera | La miel cosechada va al obrador, donde se extrae y se envasa. Sin obrador no se cosecha. | Siguiente |
+| 2 | Inicio, casilla Obrador | Pulsa Obrador en Inicio. | Abrir el obrador |
+| 3 | Obrador | Cada almacén es un obrador: guarda la miel y la procesa, y trae de serie la sala de recepción. | Siguiente (ya está construido) |
+| 4 | Obrador, máquinas | Desoperculadora, extractor, madurador y envasadora: 10.500 B. | Las cinco máquinas compradas |
+| 5 | Obrador | Recorrido de la tanda, cola por máquina y tiempo con la app cerrada. | Siguiente |
+| 6 | Cualquiera | Ya puedes cosechar. El camión lleva las alzas al obrador. | Siguiente |
+
+**Capítulo 10. Primera tanda.** Sale cuando hay alguna tanda en el obrador (desde Inicio o desde el obrador).
+
+| # | Pantalla | Qué dice Ramón | Cómo se avanza |
+|---|---|---|---|
+| 1 | Obrador, tandas | En qué máquina está la tanda y cuánto le falta. | Siguiente |
+| 2 | Obrador, tandas | Elegir envase: el bidón va al almacén y se vende a granel; los tarros pagan bastante más, y más por kilo cuanto más pequeños, pero tardan más. | Envase elegido |
+| 3 | Obrador, tarros y cera | Los tarros se venden en el mercado o en las comandas que los piden. Cera a 9 B/kg. | Siguiente |
+| 4 | Cualquiera | Cada nivel acorta el tiempo y sube los kilos por tanda; el madurador suma depósitos. | Siguiente |
+
+Los 45.000 B iniciales cubren el capítulo 1 y los 16.500 B del obrador básico.
+
 ## Mercado internacional
 
 Se activa al abrir un puerto o al comprar el primer barco.

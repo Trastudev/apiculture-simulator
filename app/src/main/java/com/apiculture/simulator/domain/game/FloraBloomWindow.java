@@ -152,6 +152,26 @@ public final class FloraBloomWindow {
         return formatEs(spansForParcel(floraKey, parcel));
     }
 
+    /** Como {@link #formatEs} pero con los meses en el idioma de la partida. */
+    public static String formatForParcel(String floraKey, HexParcel parcel, Locale locale) {
+        List<Span> spans = spansForParcel(floraKey, parcel);
+        if (spans == null || spans.isEmpty()) {
+            return "—";
+        }
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("d MMM", locale);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < spans.size(); i++) {
+            if (i > 0) {
+                sb.append(" / ");
+            }
+            Span s = spans.get(i);
+            sb.append(fmt.format(dateOf(s.startDoy)));
+            sb.append(" – ");
+            sb.append(fmt.format(dateOf(s.endDoy)));
+        }
+        return sb.toString();
+    }
+
     /**
      * 0 si hoy está en mielada; si no, días hasta el próximo inicio (da la vuelta al año).
      */

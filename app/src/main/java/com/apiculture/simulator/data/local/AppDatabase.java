@@ -54,7 +54,7 @@ import com.apiculture.simulator.data.local.entity.TruckTripEntity;
                 HoneyOrderEntity.class,
                 PollinationOfferEntity.class
         },
-        version = 46,
+        version = 48,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -486,6 +486,33 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    private static final Migration MIGRATION_47_48 = new Migration(47, 48) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE honey_orders ADD COLUMN format TEXT");
+        }
+    };
+
+    private static final Migration MIGRATION_46_47 = new Migration(46, 47) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS hex_parcel_flora_new ("
+                    + "hexId TEXT NOT NULL, floraKey TEXT NOT NULL, "
+                    + "plantedAtEpochMs INTEGER NOT NULL, readyAtEpochMs INTEGER NOT NULL, "
+                    + "expireAtDayKey INTEGER NOT NULL, lastMaintainedYear INTEGER NOT NULL, "
+                    + "siteId TEXT NOT NULL, fruitSoldYear INTEGER NOT NULL, "
+                    + "PRIMARY KEY(hexId, floraKey, siteId))");
+            db.execSQL("INSERT INTO hex_parcel_flora_new "
+                    + "(hexId, floraKey, plantedAtEpochMs, readyAtEpochMs, expireAtDayKey, lastMaintainedYear, siteId, fruitSoldYear) "
+                    + "SELECT hexId, floraKey, plantedAtEpochMs, readyAtEpochMs, expireAtDayKey, lastMaintainedYear, "
+                    + "CASE WHEN floraKey LIKE 'Campo %' THEN COALESCE(("
+                    + "SELECT o.siteId FROM hex_parcel_ownership o WHERE o.hexId = hex_parcel_flora.hexId "
+                    + "ORDER BY o.isPrimary DESC LIMIT 1), '') ELSE '' END, 0 FROM hex_parcel_flora");
+            db.execSQL("DROP TABLE hex_parcel_flora");
+            db.execSQL("ALTER TABLE hex_parcel_flora_new RENAME TO hex_parcel_flora");
+        }
+    };
+
     private static final Migration MIGRATION_45_46 = new Migration(45, 46) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase db) {
@@ -548,7 +575,7 @@ public abstract class AppDatabase extends RoomDatabase {
                             MIGRATION_32_33, MIGRATION_33_34, MIGRATION_34_35, MIGRATION_35_36, MIGRATION_36_37,
                             MIGRATION_37_38, MIGRATION_38_39, MIGRATION_39_40, MIGRATION_40_41,
                             MIGRATION_41_42, MIGRATION_42_43, MIGRATION_43_44, MIGRATION_44_45,
-                            MIGRATION_45_46)
+                            MIGRATION_45_46, MIGRATION_46_47, MIGRATION_47_48)
                     .build();
                 }
             }

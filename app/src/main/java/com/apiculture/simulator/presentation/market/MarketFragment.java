@@ -34,6 +34,7 @@ import com.apiculture.simulator.domain.game.HoneyOrder;
 import com.apiculture.simulator.domain.game.HoneyOrderCatalog;
 import com.apiculture.simulator.domain.market.HoneyMarketEngine;
 import com.apiculture.simulator.data.repository.HoneyOrderStore;
+import com.apiculture.simulator.data.repository.WarehouseHoneyStore;
 import com.apiculture.simulator.data.repository.PollinationOfferStore;
 import com.apiculture.simulator.domain.game.GameCalendar;
 import com.apiculture.simulator.domain.map.PlayableMapRegion;
@@ -81,6 +82,9 @@ public class MarketFragment extends Fragment {
     private final List<ItemHoneyOrderBinding> boundOrderRows = new ArrayList<>();
     private int contractsPage;
     private int ordersPage;
+    /** Flora elegida en el filtro. Nulo enseña todas, de la más cercana a la más lejana. */
+    @Nullable
+    private String selectedOrderFlora;
     private boolean contractsLoading;
     private boolean contractsRefreshQueued;
     private boolean suppressRegionToggle;
@@ -127,14 +131,20 @@ public class MarketFragment extends Fragment {
         binding.btnContractsNext.setOnClickListener(v -> showContractsPage(contractsPage + 1));
         binding.btnOrdersPrev.setOnClickListener(v -> showOrdersPage(ordersPage - 1, true));
         binding.btnOrdersNext.setOnClickListener(v -> showOrdersPage(ordersPage + 1, true));
+        binding.btnOrdersPrevBottom.setOnClickListener(v -> showOrdersPage(ordersPage - 1, true));
+        binding.btnOrdersNextBottom.setOnClickListener(v -> showOrdersPage(ordersPage + 1, true));
         binding.tileStatHoney.setOnClickListener(v -> HoneyReservesDialogs.show(requireContext(), app.getEconomyRepository(), currentUid(), viewModel.getSelectedWarehouseHexId()));
         setupRegionToggle();
         refreshWarehouseSelector();
+        setupOrdersSortSelector();
 
         binding.marketTabToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked || suppressMarketTab) {
                 return;
             }
+            contractsPage = 0;
+            ordersPage = 0;
+            lastOrdersBindFp = null;
             boolean contracts = checkedId == R.id.btn_market_contracts;
             if (contracts && !contractsUnlocked()) {
                 suppressMarketTab = true;
@@ -156,6 +166,11 @@ public class MarketFragment extends Fragment {
             binding.tvContractsHint.setVisibility(contracts ? View.VISIBLE : View.GONE);
             binding.llContracts.setVisibility(contracts ? View.VISIBLE : View.GONE);
             binding.tvOrdersHint.setVisibility(orders ? View.VISIBLE : View.GONE);
+            if (orders) {
+                setupOrdersSortSelector();
+            } else if (binding.inputLayoutOrdersSort != null) {
+                binding.inputLayoutOrdersSort.setVisibility(View.GONE);
+            }
             binding.llOrders.setVisibility(orders ? View.VISIBLE : View.GONE);
             if (contracts) {
                 // Capítulo 5. Pestaña de contratos.
@@ -178,6 +193,7 @@ public class MarketFragment extends Fragment {
                 orderTick.removeCallbacks(orderTickRun);
                 binding.tvOrdersEmpty.setVisibility(View.GONE);
                 binding.llOrdersPager.setVisibility(View.GONE);
+                binding.llOrdersPagerBottom.setVisibility(View.GONE);
             }
         });
 
@@ -452,6 +468,67 @@ public class MarketFragment extends Fragment {
         visibleOrders = HoneyOrderCatalog.openNearest(
                 lastOrders, region, lat, lng, System.currentTimeMillis(),
                 Integer.MAX_VALUE, playerLevel());
+        if (selectedOrderFlora != null) {
+            String want = HoneyMarketEngine.canonicalFloraKey(selectedOrderFlora);
+            for (int i = visibleOrders.size() - 1; i >= 0; i--) {
+                HoneyOrder order = visibleOrders.get(i);
+                String key = order == null ? "" : HoneyMarketEngine.canonicalFloraKey(order.floraKey);
+                if (!want.equals(key)) {
+                    visibleOrders.remove(i);
+                }
+            }
+        }
+    }
+
+    private void setupOrdersSortSelector() {
+        if (binding == null || binding.spinnerOrdersSort == null) {
+            return;
+        }
+        String hexId = selectedWarehouseEntity != null ? selectedWarehouseEntity.hexId : null;
+        java.util.Map<String, Double> stock = WarehouseHoneyStore.at(
+                requireContext(), currentUid(), hexId);
+        List<String> floraKeys = new ArrayList<>();
+        for (java.util.Map.Entry<String, Double> entry : stock.entrySet()) {
+            if (entry.getKey() != null && entry.getValue() != null && entry.getValue() > 1e-9) {
+                floraKeys.add(entry.getKey());
+            }
+        }
+        floraKeys.sort((a, b) -> HiveSiteSummaryUi.floraLabel(requireContext(), a)
+                .compareToIgnoreCase(HiveSiteSummaryUi.floraLabel(requireContext(), b)));
+        boolean show = binding.btnMarketOrders.isChecked() && !floraKeys.isEmpty();
+        binding.inputLayoutOrdersSort.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (!show) {
+            if (floraKeys.isEmpty()) {
+                selectedOrderFlora = null;
+            }
+            return;
+        }
+        if (selectedOrderFlora == null || !floraKeys.contains(selectedOrderFlora)) {
+            selectedOrderFlora = floraKeys.get(0);
+        }
+        List<String> labels = new ArrayList<>();
+        for (int i = 0; i < floraKeys.size(); i++) {
+            labels.add(HiveSiteSummaryUi.floraLabel(requireContext(), floraKeys.get(i)));
+        }
+        int selected = floraKeys.indexOf(selectedOrderFlora);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                requireContext(), android.R.layout.simple_dropdown_item_1line, labels);
+        binding.spinnerOrdersSort.setAdapter(adapter);
+        binding.spinnerOrdersSort.setText(labels.get(selected), false);
+        binding.spinnerOrdersSort.setOnItemClickListener((parent, view, position, id) -> {
+            if (position < 0 || position >= floraKeys.size()) {
+                return;
+            }
+            String next = floraKeys.get(position);
+            if (next.equals(selectedOrderFlora)) {
+                return;
+            }
+            selectedOrderFlora = next;
+            ordersPage = 0;
+            lastOrdersBindFp = null;
+            rebuildVisibleOrders(orderWarehouse);
+            showOrdersPage(0, true);
+        });
     }
 
     private void bindOrderCards(@Nullable HexParcel warehouse) {
@@ -468,10 +545,11 @@ public class MarketFragment extends Fragment {
     }
 
     @NonNull
-    private static String ordersBindFingerprint(@NonNull List<HoneyOrder> orders, int page,
+    private String ordersBindFingerprint(@NonNull List<HoneyOrder> orders, int page,
             @Nullable HexParcel warehouse) {
         StringBuilder sb = new StringBuilder(64);
         sb.append(page).append('|');
+        sb.append(selectedOrderFlora != null ? selectedOrderFlora : "-").append('|');
         sb.append(warehouse != null && warehouse.id != null ? warehouse.id : "-").append('|');
         for (HoneyOrder o : orders) {
             if (o == null) {
@@ -500,6 +578,7 @@ public class MarketFragment extends Fragment {
         if (slice.isEmpty()) {
             binding.tvOrdersEmpty.setVisibility(View.VISIBLE);
             binding.llOrdersPager.setVisibility(View.GONE);
+            binding.llOrdersPagerBottom.setVisibility(View.GONE);
             return;
         }
         binding.tvOrdersEmpty.setVisibility(View.GONE);
@@ -512,13 +591,25 @@ public class MarketFragment extends Fragment {
         }
         boolean pager = size > pageSize;
         binding.llOrdersPager.setVisibility(pager ? View.VISIBLE : View.GONE);
+        binding.llOrdersPagerBottom.setVisibility(pager ? View.VISIBLE : View.GONE);
         if (pager) {
-            binding.tvOrdersPage.setText(getString(R.string.market_contracts_page,
-                    ordersPage + 1, pages));
-            binding.btnOrdersPrev.setEnabled(ordersPage > 0);
-            binding.btnOrdersNext.setEnabled(ordersPage < pages - 1);
-            binding.btnOrdersPrev.setAlpha(ordersPage > 0 ? 1f : 0.35f);
-            binding.btnOrdersNext.setAlpha(ordersPage < pages - 1 ? 1f : 0.35f);
+            String pageText = getString(R.string.market_contracts_page, ordersPage + 1, pages);
+            binding.tvOrdersPage.setText(pageText);
+            binding.tvOrdersPageBottom.setText(pageText);
+
+            boolean canPrev = ordersPage > 0;
+            boolean canNext = ordersPage < pages - 1;
+            binding.btnOrdersPrev.setEnabled(canPrev);
+            binding.btnOrdersNext.setEnabled(canNext);
+            binding.btnOrdersPrevBottom.setEnabled(canPrev);
+            binding.btnOrdersNextBottom.setEnabled(canNext);
+
+            float prevAlpha = canPrev ? 1f : 0.35f;
+            float nextAlpha = canNext ? 1f : 0.35f;
+            binding.btnOrdersPrev.setAlpha(prevAlpha);
+            binding.btnOrdersNext.setAlpha(nextAlpha);
+            binding.btnOrdersPrevBottom.setAlpha(prevAlpha);
+            binding.btnOrdersNextBottom.setAlpha(nextAlpha);
         }
         if (scrollTop && pageChanged) {
             binding.getRoot().scrollTo(0, 0);
@@ -561,6 +652,8 @@ public class MarketFragment extends Fragment {
                 MarketPickerDialogs.showSouthAfricaLocked(requireContext());
                 return;
             }
+            ordersPage = 0;
+            contractsPage = 0;
             MapRegionPrefs.set(requireContext(), next);
             if (next == PlayableMapRegion.IBERIA) {
                 // Capítulo 5. Iberia en contratos.
@@ -629,10 +722,12 @@ public class MarketFragment extends Fragment {
                 if (position >= 0 && position < currentRegionWarehouses.size()) {
                     selectedWarehouseEntity = currentRegionWarehouses.get(position);
                     viewModel.setSelectedWarehouse(selectedWarehouseEntity.hexId);
+                    ordersPage = 0;
                     applyWarehouseToCurrentTab();
                 }
             });
         }
+        setupOrdersSortSelector();
     }
 
     /** El almacén solo ordena Mercados y Comandas. En Contratos no se muestra. */
@@ -652,10 +747,11 @@ public class MarketFragment extends Fragment {
         }
         if (binding.btnMarketWholesale.isChecked()) {
             bindMarketList();
-        } else if (binding.btnMarketOrders.isChecked()) {
+        } else         if (binding.btnMarketOrders.isChecked()) {
             orderWarehouse = selectedWarehouseParcel();
             orderWarehouseRegion = selectedRegion();
             lastOrdersBindFp = null;
+            setupOrdersSortSelector();
             bindOrderCards(orderWarehouse);
         }
     }
@@ -776,7 +872,8 @@ public class MarketFragment extends Fragment {
             return;
         }
         orderAcceptOpen = true;
-        HoneyLogistics.orderTruckOptions(requireContext(), currentUid(), order, choice -> {
+        HoneyLogistics.orderTruckOptions(requireContext(), currentUid(), order,
+                viewModel.getSelectedWarehouseHexId(), choice -> {
             if (!isAdded()) {
                 orderAcceptOpen = false;
                 return;
@@ -818,8 +915,10 @@ public class MarketFragment extends Fragment {
                         GameNotice.show(requireContext(), R.string.market_order_fail_travel);
                     } else if (order.expired(System.currentTimeMillis())) {
                         GameNotice.show(requireContext(), R.string.market_order_fail_deadline);
-                    } else if (app.getEconomyRepository().getHoneyStockForFlora(order.floraKey) + 1e-9 < order.kg) {
-                        GameNotice.show(requireContext(), R.string.market_order_fail_stock);
+                    } else if (!HoneyLogistics.hasStockForOrder(requireContext(), currentUid(),
+                            app.getEconomyRepository(), order)) {
+                        GameNotice.show(requireContext(), order.wantsJars()
+                                ? R.string.market_order_fail_jars : R.string.market_order_fail_stock);
                     } else if (r == HoneyLogistics.Result.NO_FLEET) {
                         GameNotice.show(requireContext(), R.string.market_order_fail_truck);
                     } else if (app.getEconomyRepository().getBalance() + 1e-9 < travelB) {

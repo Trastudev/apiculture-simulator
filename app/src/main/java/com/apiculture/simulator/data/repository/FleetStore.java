@@ -176,7 +176,7 @@ public final class FleetStore {
         v.id = UUID.randomUUID().toString();
         v.ownerId = ownerId;
         v.kind = "truck";
-        v.name = "Del almacén";
+        v.name = "Del obrador";
         v.level = 1;
         v.homeId = hexId;
         all.add(v);
@@ -194,11 +194,11 @@ public final class FleetStore {
             return "Ya tienes un camión con ese nombre.";
         }
         if (ownerId == null || hexId == null) {
-            return "Elige un almacén.";
+            return "Elige un obrador.";
         }
         HexParcelOwnershipEntity row = warehouseRow(context, ownerId, hexId);
         if (row == null || !row.hasWarehouse) {
-            return "Ese almacén no existe.";
+            return "Ese obrador no existe.";
         }
         int slots = FleetRules.truckSlots(Math.max(1, row.warehouseLevel));
         int used = 0;
@@ -208,7 +208,7 @@ public final class FleetStore {
             }
         }
         if (used >= slots) {
-            return "Ese almacén no tiene plaza libre para otro camión.";
+            return "Ese obrador no tiene plaza libre para otro camión.";
         }
         int cost = FleetRules.purchaseCostB(FleetRules.Kind.TRUCK);
         if (!economy.trySpend(cost, "Compra del camión " + name)) {
@@ -509,6 +509,33 @@ public final class FleetStore {
      * Reserva un hueco de colmena. El id de la colmena queda en el vehículo
      * solo como última reserva; los huecos se cuentan en {@link Vehicle#hiveTrips}.
      */
+    @Nullable
+    public static Vehicle reserveTruck(@NonNull Context context, @Nullable String ownerId,
+            @Nullable String vehicleId, @Nullable String hiveId) {
+        if (ownerId == null || vehicleId == null) {
+            return null;
+        }
+        List<Vehicle> all = vehicles(context, ownerId);
+        Vehicle chosen = null;
+        for (Vehicle v : all) {
+            if (v != null && vehicleId.equals(v.id)) {
+                chosen = v;
+                break;
+            }
+        }
+        if (chosen == null || !chosen.isTruck() || chosen.honeyBusy()) {
+            return null;
+        }
+        int slots = FleetRules.hiveSlots(FleetRules.Kind.TRUCK, chosen.level);
+        if (chosen.hiveTrips >= slots) {
+            return null;
+        }
+        chosen.hiveTrips += 1;
+        chosen.hiveIds = appendId(chosen.hiveIds, hiveId);
+        writeVehicles(context, ownerId, all);
+        return chosen;
+    }
+
     @Nullable
     public static Vehicle reserveHive(@NonNull Context context, @Nullable String ownerId,
             @Nullable String hiveId) {

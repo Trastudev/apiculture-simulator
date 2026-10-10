@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">ApiSim</string>
     <string name="server_unavailable_title">Server unavailable</string>
-    <string name="server_unavailable_message">No connection to the server. The action could not be completed.</string>
+    <string name="server_unavailable_message">No connection to the server. Retry until it is back; you cannot play without it.</string>
     <string name="server_retry">Retry connection</string>
     <string name="cd_app_logo">Game logo</string>
     <string name="dashboard_default_player">Beekeeper</string>
@@ -61,15 +61,15 @@
     <string name="dashboard_view_map">View map</string>
     <string name="dashboard_harvest">Harvest</string>
     <string name="dashboard_sell">Sell</string>
-    <string name="map_buy_warehouse">Buy warehouse (300.00 B)</string>
-    <string name="map_buy_warehouse_title">Buy warehouse</string>
-    <string name="map_buy_warehouse_info">Level 1 warehouse: 50 kg. Stores honeys for your player level. The truck leaves from here.</string>
-    <string name="map_buy_warehouse_ok">Warehouse bought.</string>
+    <string name="map_buy_warehouse">Buy honey house (300.00 B)</string>
+    <string name="map_buy_warehouse_title">Buy honey house</string>
+    <string name="map_buy_warehouse_info">Level 1 honey house: 50 kg. Stores honeys for your player level. The truck leaves from here.</string>
+    <string name="map_buy_warehouse_ok">Honey house bought.</string>
     <string name="map_build_choice_title">What do you want to build?</string>
     <string name="map_build_choice_hive">Buy hive</string>
     <string name="map_install_choice_title">What do you want to install?</string>
     <string name="map_install_choice_apiary">Install an apiary</string>
-    <string name="map_install_choice_warehouse">Install a warehouse</string>
+    <string name="map_install_choice_warehouse">Install a honey house</string>
     <string name="map_install_choice_hq">Install headquarters</string>
     <string name="map_hq_title">Headquarters</string>
     <string name="map_hq_region">%1$s headquarters</string>
@@ -81,26 +81,26 @@
     <string name="map_hq_move_message">You already have headquarters in %1$s. Move it to this point?</string>
     <string name="map_hq_info">The map centers here when you enter this territory. Tap a free plot and choose \"Install headquarters\" to move it.</string>
     <string name="map_other_apiary_kicker">Another player\'s apiary</string>
-    <string name="map_tap_warehouse_exists">There is already a warehouse here. Tap its icon to view it.</string>
+    <string name="map_tap_warehouse_exists">There is already a honey house here. Tap its icon to view it.</string>
     <string name="map_apiary_placed">Apiary placed.</string>
-    <string name="harvest_need_warehouse_title">You need a warehouse</string>
-    <string name="harvest_need_warehouse_message">To harvest honey you need a warehouse in this territory. The truck will leave from there with the harvest.</string>
+    <string name="harvest_need_warehouse_title">You need a honey house</string>
+    <string name="harvest_need_warehouse_message">To harvest honey you need a honey house in this territory. The truck will leave from there with the harvest.</string>
     <string name="harvest_need_warehouse_go_map">Go to map</string>
     <string name="harvest_trips_title">Confirm harvest</string>
-    <string name="harvest_trips_subtitle">Choose the truck. It leaves from its warehouse.</string>
-    <string name="harvest_trips_plan">Each truck leaves from its warehouse and visits the apiaries along the shortest path.</string>
+    <string name="harvest_trips_subtitle">Choose the truck. It leaves from its honey house.</string>
+    <string name="harvest_trips_plan">Each truck leaves from its honey house and visits the apiaries along the shortest path.</string>
     <string name="harvest_trips_truck_level">Level %1$d</string>
     <string name="harvest_trips_route">%1$s leaves from %2$s</string>
-    <string name="harvest_trips_meta">%1$.1f kg · %2$s round trip</string>
-    <string name="harvest_trips_meta_km">%1$.1f kg · %2$.1f km to %3$s</string>
-    <string name="harvest_trips_meta_instant">%1$.1f kg · long trip: arrives with the daily tick</string>
+    <string name="harvest_trips_meta">%1$.2f kg · %2$s round trip</string>
+    <string name="harvest_trips_meta_km">%1$.2f kg · %2$.1f km to %3$s</string>
+    <string name="harvest_trips_meta_instant">%1$.2f kg · long trip: arrives with the daily tick</string>
     <string name="harvest_trips_confirm">Send trucks</string>
     <string name="harvest_trips_confirm_one">Send truck</string>
     <string name="harvest_trips_cancel">Cancel</string>
-    <string name="harvest_trips_skipped">%1$d hives will not be harvested: no warehouse in their territory.</string>
-    <string name="harvest_trips_left">%1$d hives left: they do not fit in the truck or the warehouse.</string>
+    <string name="harvest_trips_skipped">%1$d hives will not be harvested: no honey house in their territory.</string>
+    <string name="harvest_trips_left">%1$d hives left: they do not fit in the truck or the honey house.</string>
     <string name="harvest_no_truck">No free trucks. Wait until the one on the road returns.</string>
-    <string name="harvest_warehouse_full">The warehouse is full. The honey stays in the hives.</string>
+    <string name="harvest_warehouse_full">The honey house is full. The honey stays in the hives.</string>
     <string name="map_market_title">%1$s market</string>
     <string name="map_market_local_kicker">Local market</string>
     <string name="map_market_capital_kicker">Capital market</string>
@@ -113,7 +113,7 @@
     <string name="map_market_competition_note">Competition %1$s · %2$.1f %% vs base</string>
     <string name="map_market_empty_stock">You have no honey to sell here.</string>
     <string name="map_market_review">Review shipment</string>
-    <string name="map_market_no_warehouse">You need a warehouse in this territory.</string>
+    <string name="map_market_no_warehouse">You need a honey house in this territory.</string>
     <string name="map_market_demand_label">Market and honey profile</string>
     <string name="map_market_profile_row">Vol. %1$s · comp. %2$s</string>
     <string name="map_market_band_high">high</string>
@@ -134,7 +134,7 @@
     <string name="truck_confirm_send">Send truck</string>
     <string name="truck_confirm_back">Back</string>
     <string name="truck_confirm_instant">No live truck: you are paid on confirm.</string>
-    <string name="map_warehouse_title">Warehouse</string>
+    <string name="map_warehouse_title">Honey house</string>
     <string name="map_warehouse_kg">%1$.1f / %2$.0f kg</string>
     <string name="map_warehouse_jars">Stored honey</string>
     <string name="map_warehouse_level">Level %1$d</string>
@@ -142,20 +142,20 @@
     <string name="map_warehouse_unlock_next">Next: %1$s</string>
     <string name="map_warehouse_unlock_none">No more honey types</string>
     <string name="map_warehouse_upgrade">Upgrade to level %1$d (%2$.2f B)</string>
-    <string name="map_warehouse_upgrade_ok">Warehouse upgraded.</string>
+    <string name="map_warehouse_upgrade_ok">Honey house upgraded.</string>
     <string name="map_sell_apiary">Sell apiary</string>
-    <string name="map_sell_warehouse">Sell warehouse</string>
+    <string name="map_sell_warehouse">Sell honey house</string>
     <string name="map_sell_confirm">Sell</string>
     <string name="map_sell_apiary_confirm">You will receive %1$.2f B (50 %% of the install price). This cannot be undone.</string>
     <string name="map_sell_warehouse_confirm">You will receive %1$.2f B (50 %% of the purchase price and upgrades). This cannot be undone.</string>
     <string name="map_sell_apiary_ok">Apiary sold. +%1$.2f B</string>
-    <string name="map_sell_warehouse_ok">Warehouse sold. +%1$.2f B</string>
-    <string name="map_sell_warehouse_missing">There is no warehouse at this point.</string>
+    <string name="map_sell_warehouse_ok">Honey house sold. +%1$.2f B</string>
+    <string name="map_sell_warehouse_missing">There is no honey house at this point.</string>
     <string name="map_sell_apiary_blocked_title">The apiary is not empty</string>
-    <string name="map_sell_apiary_blocked_hives">There are %1$d hives in this apiary. Empty the apiary (transhumance or warehouse) before selling it.</string>
+    <string name="map_sell_apiary_blocked_hives">There are %1$d hives in this apiary. Empty the apiary (transhumance or honey house) before selling it.</string>
     <string name="map_sell_apiary_blocked_hives_generic">There are hives in this apiary. Empty the apiary before selling it.</string>
     <string name="map_sell_warehouse_blocked_title">Trips in progress</string>
-    <string name="map_sell_warehouse_blocked_trips">Wait until trips to or from this warehouse finish:</string>
+    <string name="map_sell_warehouse_blocked_trips">Wait until trips to or from this honey house finish:</string>
     <string name="map_sell_trip_kind_collect">Harvest (outbound)</string>
     <string name="map_sell_trip_kind_collect_back">Harvest (return)</string>
     <string name="map_sell_trip_kind_wholesale">Wholesale sale</string>
@@ -171,7 +171,7 @@
     <string name="harvest_pick_apiary_sub">Choose the apiary. Loadable honey is shown.</string>
     <string name="harvest_pick_truck_title">Truck</string>
     <string name="harvest_pick_truck_sub">Free trucks in this territory, from nearest to farthest.</string>
-    <string name="harvest_pick_apiary_kg">%1$.1f kg</string>
+    <string name="harvest_pick_apiary_kg">%1$.2f kg</string>
     <string name="harvest_pick_truck_line">Level %1$d · %2$.0f km · up to %3$.0f kg</string>
     <string name="harvest_region_iberia">Iberia</string>
     <string name="harvest_region_madagascar">Madagascar</string>
@@ -180,10 +180,10 @@
     <string name="dashboard_harvest_all_session">Invalid session. Sign in again.</string>
     <string name="dashboard_harvest_summary_title">Honey harvested</string>
     <string name="dashboard_harvest_summary_subtitle">From %1$d hives · 3 kg reserve left in each</string>
-    <string name="dashboard_harvest_summary_total">Total: %1$.1f kg</string>
-    <string name="dashboard_harvest_summary_kg">+%1$.1f kg</string>
+    <string name="dashboard_harvest_summary_total">Total: %1$.2f kg</string>
+    <string name="dashboard_harvest_summary_kg">+%1$.2f kg</string>
     <string name="dashboard_sell_all_ok">You listed %1$.2f kg for sale on the market. Income: %2$.0f B.</string>
-    <string name="dashboard_sell_all_none">There is no honey in the warehouse to sell. Harvest first.</string>
+    <string name="dashboard_sell_all_none">There is no honey in the honey house to sell. Harvest first.</string>
     <string name="dashboard_sell_all_partial">Sold %1$.2f kg (%2$.0f B). Could not sell the rest: %3$s</string>
     <string name="dashboard_sell_all_market">The market is not ready. Try again in a few seconds.</string>
     <string name="game_notice_kicker">Apiary</string>
@@ -240,16 +240,16 @@
     <string name="admin_events_title">Global events</string>
     <string name="admin_back">Back</string>
     <string name="admin_trips_title">Trips in progress</string>
-    <string name="admin_trips_subtitle">Pick a trip. It completes the sale, pickup or deliveries now, and the truck returns to its warehouse.</string>
+    <string name="admin_trips_subtitle">Pick a trip. It completes the sale, pickup or deliveries now, and the truck returns to its honey house.</string>
     <string name="admin_trips_empty">No trips in progress.</string>
     <string name="admin_trips_finish">Finish now</string>
     <string name="admin_trips_confirm_title">Finish this trip?</string>
-    <string name="admin_trips_confirm_work">Anything still left on the way (sell, pick up or drop honey) will happen now and the truck will head back to its warehouse.</string>
-    <string name="admin_trips_confirm_home">This trip is already returning. It will arrive at the warehouse now.</string>
+    <string name="admin_trips_confirm_work">Anything still left on the way (sell, pick up or drop honey) will happen now and the truck will head back to its honey house.</string>
+    <string name="admin_trips_confirm_home">This trip is already returning. It will arrive at the honey house now.</string>
     <string name="admin_trips_confirm_hive">The hive will arrive at its destination now.</string>
     <string name="admin_trips_ok_hive">The hive is already at the destination.</string>
-    <string name="admin_trips_ok_return">Done. The truck is returning to its warehouse.</string>
-    <string name="admin_trips_ok_home">The truck is already at the warehouse.</string>
+    <string name="admin_trips_ok_return">Done. The truck is returning to its honey house.</string>
+    <string name="admin_trips_ok_home">The truck is already at the honey house.</string>
     <string name="admin_trips_fail">Could not finish the trip.</string>
     <string name="admin_trips_kind_collect">Pickup</string>
     <string name="admin_trips_kind_wholesale">Sale</string>
@@ -299,7 +299,7 @@
     <string name="admin_grants_remote_ok">Done. The player will see it when their game syncs.</string>
     <string name="admin_grants_all_ok">Done for all players.</string>
     <string name="admin_grants_balance">Balance: %1$.0f B</string>
-    <string name="admin_grants_honey_stock">Warehouse honey: %1$.1f kg</string>
+    <string name="admin_grants_honey_stock">Honey house honey: %1$.1f kg</string>
     <string name="admin_grants_xp_line">Level %1$d · %2$d / %3$d XP</string>
     <string name="admin_grants_coins_title">Add BeeCoins</string>
     <string name="admin_grants_coins_hint">Amount (B)</string>
@@ -317,13 +317,13 @@
     <string name="admin_hive_honey_add">Add to selected</string>
     <string name="admin_hive_honey_need">Select at least one hive.</string>
     <string name="admin_hive_honey_line">%1$s · %2$s · %3$.1f kg</string>
-    <string name="admin_hive_honey_stored">in the hive warehouse</string>
+    <string name="admin_hive_honey_stored">in the hive honey house</string>
     <string name="admin_hive_honey_ok">+%1$.1f kg of %2$s in %3$d hives.</string>
     <string name="admin_hive_honey_partial">%1$d hives had no room for more honey.</string>
     <string name="admin_hive_honey_full">Those hives are already at maximum honey.</string>
     <string name="admin_grants_need_amount">Enter an amount greater than 0.</string>
     <string name="admin_grants_coins_ok">+%1$.0f B added. Balance: %2$.0f B</string>
-    <string name="admin_grants_honey_ok">+%1$.1f kg of %2$s. Warehouse: %3$.1f kg</string>
+    <string name="admin_grants_honey_ok">+%1$.1f kg of %2$s. Honey house: %3$.1f kg</string>
     <string name="admin_grants_xp_ok">+%1$d XP. Level %2$d (%3$d / %4$d)</string>
     <string name="admin_global_reset_title">Global game reset</string>
     <string name="admin_global_reset_subtitle">Clears cloud hives, plots, economy, inventory and ranking for all players (and bots). Keeps name and brand. Each device resets when the app opens; bots on the next tick.</string>
@@ -332,7 +332,7 @@
     <string name="admin_global_reset_confirm_message">This cannot be undone. All players\' game progress in Firestore will be cleared. Profiles (name/brand) are kept.</string>
     <string name="admin_global_reset_busy">Running global reset…</string>
     <string name="admin_global_reset_local_ok">Your local game has also been reset.</string>
-    <string name="admin_global_reset_forced_notice">An administrator has reset the games. You start from scratch with 20,000.00 beecoins.</string>
+    <string name="admin_global_reset_forced_notice">An administrator has reset the games. You start from scratch with 45,000.00 beecoins.</string>
     <string name="dashboard_global_event_kicker">Global event</string>
     <string name="dashboard_global_event_live">In progress</string>
     <string name="dashboard_global_event_ended_badge">Ended</string>
@@ -342,8 +342,8 @@
     <string name="dashboard_global_event_surge_graphic">Worldwide honey demand. Price +50%%. Demand ×%1$s.</string>
     <string name="dashboard_global_event_progress">Progress: %1$d%% of demand (%2$.0f / %3$.0f kg)</string>
     <string name="dashboard_global_event_progress_short">%1$.0f / %2$.0f kg · %3$d%%</string>
-    <string name="dashboard_global_event_my_kg">You sold %1$.1f kg of %2$s</string>
-    <string name="dashboard_global_event_my_kg_short">You: %1$.1f kg</string>
+    <string name="dashboard_global_event_my_kg">You sold %1$.2f kg of %2$s</string>
+    <string name="dashboard_global_event_my_kg_short">You: %1$.2f kg</string>
     <string name="dashboard_global_event_milestones">Milestones: 15% · 30% · 50% · 75% · 100%</string>
     <string name="dashboard_global_event_rewards">Rewards if you take part: 15% 200.00 B · 30% 10 treatments · 50% 250.00 B · 75% 10 bee feed · 100% 5 queens 100%</string>
     <string name="dashboard_event_ms_15">200.00 B</string>
@@ -361,8 +361,8 @@
     <string name="dashboard_global_event_dismiss">Close</string>
     <string name="dashboard_global_event_sell">Sell event honey</string>
     <string name="dashboard_global_event_sell_flora">Sell %1$s</string>
-    <string name="dashboard_global_event_sell_kg">Sell %1$s · %2$.1f kg</string>
-    <string name="dashboard_global_event_sell_none">You have no %1$s honey in the warehouse. Harvest first.</string>
+    <string name="dashboard_global_event_sell_kg">Sell %1$s · %2$.2f kg</string>
+    <string name="dashboard_global_event_sell_none">You have no %1$s honey in the honey house. Harvest first.</string>
     <string name="dashboard_global_event_sell_ok">You sold %1$.2f kg of %2$s in the event. Income: %3$.0f B.</string>
     <string name="dashboard_global_event_sell_not_live">This event does not allow sales now.</string>
     <string name="dashboard_global_event_claimed">Reward claimed.</string>
@@ -371,13 +371,13 @@
     <string name="dashboard_global_event_velutina">Velutina attack: −%1$.0f%% workers in selected climates.</string>
     <string name="dashboard_menu_reset_game">Reset game</string>
     <string name="dashboard_reset_confirm_title">Reset game?</string>
-    <string name="dashboard_reset_confirm_message">Hives, plots, trips, contracts, orders, plantings, inventory, headquarters, honey, level and your event contributions will be cleared. Profile (name and brand) is kept. You start with 20,000.00 beecoins.</string>
+    <string name="dashboard_reset_confirm_message">Hives, plots, trips, contracts, orders, plantings, inventory, headquarters, honey, level and your event contributions will be cleared. Profile (name and brand) is kept. You start with 45,000.00 beecoins.</string>
     <string name="dashboard_reset_choose">You can reset only your game or everyone\'s, bots included. Profile (name and brand) is kept. No hives, plots, trips or event contributions remain.</string>
     <string name="dashboard_reset_mine">Only my game</string>
     <string name="dashboard_reset_all">Everyone, including bots</string>
     <string name="dashboard_reset_all_title">Reset everyone?</string>
-    <string name="dashboard_reset_all_message">Every player\'s and bots\' game is cleared: hives, plots, ranking, daily market and event contributions. Profiles are kept. Everyone starts again with 20,000.00 beecoins.</string>
-    <string name="dashboard_reset_done">Game reset: 20,000.00 beecoins, no plots or hives.</string>
+    <string name="dashboard_reset_all_message">Every player\'s and bots\' game is cleared: hives, plots, ranking, daily market and event contributions. Profiles are kept. Everyone starts again with 45,000.00 beecoins.</string>
+    <string name="dashboard_reset_done">Game reset: 45,000.00 beecoins, no plots or hives.</string>
     <string name="dashboard_reset_error">Could not reset the game.</string>
     <string name="privacy_policy">Privacy policy</string>
     <string name="account_delete">Delete account and data</string>
@@ -425,8 +425,8 @@
     <string name="market_picker_south_africa_locked_title">South Africa locked</string>
     <string name="market_picker_south_africa_locked">South Africa unlocks at level 40.</string>
     <string name="market_picker_locked_close">Got it</string>
-    <string name="market_picker_warehouse">your warehouse</string>
-    <string name="market_picker_no_origin">no warehouse</string>
+    <string name="market_picker_warehouse">your honey house</string>
+    <string name="market_picker_no_origin">no honey house</string>
     <string name="market_picker_provincial">Provincial market</string>
     <string name="market_picker_local">Local market</string>
     <string name="market_picker_international">International market</string>
@@ -440,7 +440,7 @@
     <string name="market_sell_confirm">Sell</string>
     <string name="market_sell_price_stock">%1$.2f B/kg · Stock %2$.2f kg</string>
     <string name="market_sell_price_stock_demand">%1$.2f B/kg · Stock %2$.2f kg · Regional quota %3$.2f kg · Max %4$.2f kg</string>
-    <string name="market_pill_demand">Demand today: %1$.1f kg</string>
+    <string name="market_pill_demand">Demand today: %1$.2f kg</string>
     <string name="market_sell_over_demand">Today the region will not take more than %1$.2f kg of %2$s.</string>
     <string name="market_sell_fail_demand">The region is no longer asking for more of that honey today.</string>
     <string name="market_sell_total">You earn %1$.2f</string>
@@ -450,7 +450,7 @@
     <string name="market_stat_honey">Honey</string>
     <string name="market_stat_players">Players</string>
     <string name="market_stat_balance_value">%1$.0f B</string>
-    <string name="market_stat_honey_value">%1$.1f kg</string>
+    <string name="market_stat_honey_value">%1$.2f kg</string>
     <string name="market_stat_players_value">%1$d</string>
     <string name="calculating_daily_kicker">Apiary</string>
     <string name="calculating_daily_title">Calculating daily production</string>
@@ -473,22 +473,22 @@
         <item>Daily foraging is calculated at 8:00. If you leave honey in the hive, the bees eat from their reserves.</item>
         <item>A saturated plot produces less: spread the hives out or look for new bloom.</item>
         <item>Pollination contracts are accepted from the apiary. The truck leaves at 8:00 on the scheduled day.</item>
-        <item>Harvest honey to the warehouse and sell on the market or fill orders for a better price.</item>
+        <item>Harvest honey to the honey house and sell on the market or fill orders for a better price.</item>
         <item>Varroa grows with brood and heat. Treat in time and watch the queen\'s health.</item>
         <item>Each climate (Iberia, South Africa, Madagascar) has different blooms: travel when you unlock the zone.</item>
         <item>If there is swarming risk, split the hive before you lose population.</item>
-        <item>The warehouse stores honey by type. Orders ask for a specific type: do not mix blindly.</item>
+        <item>The honey house stores honey by type. Orders ask for a specific type: do not mix blindly.</item>
     </string-array>
     <string name="hive_detail_prev">Previous hive in the apiary</string>
     <string name="hive_detail_next">Next hive in the apiary</string>
     <string name="hive_detail_yard_index">%1$d / %2$d</string>
-    <string name="market_sell_ok">Sale: %1$.1f kg at %2$.2f B/kg</string>
+    <string name="market_sell_ok">Sale: %1$.2f kg at %2$.2f B/kg</string>
     <string name="market_sell_fail_stock">Not enough stock of that type</string>
     <string name="market_sell_fail_reason">Could not complete the sale: %1$s</string>
     <string name="market_tab_wholesale">Market</string>
     <string name="market_tab_contracts">Contracts</string>
     <string name="market_tab_orders">Orders</string>
-    <string name="market_orders_hint">Honey orders from shops and individuals. The truck leaves the warehouse for the customer\'s town.</string>
+    <string name="market_orders_hint">Honey orders from shops and individuals. The truck leaves the honey house for the customer\'s town.</string>
     <string name="market_orders_empty">No orders nearby today.</string>
     <string name="market_orders_prev">Previous orders page</string>
     <string name="market_orders_next">Next orders page</string>
@@ -500,11 +500,11 @@
     <string name="market_order_en_route">Truck on the way</string>
     <string name="market_order_ok">The truck is heading to %1$s</string>
     <string name="market_order_instant">Delivery recorded: %1$.0f B</string>
-    <string name="market_order_fail_stock">Not enough of that honey type in the warehouse</string>
-    <string name="market_order_fail_truck">No free truck at the warehouse that can take this order.</string>
+    <string name="market_order_fail_stock">The selected honey house does not have enough of that honey type</string>
+    <string name="market_order_fail_truck">No free truck at the honey house that can take this order.</string>
     <string name="market_order_fail">Could not accept the order</string>
     <string name="order_truck_title">Choose the truck</string>
-    <string name="order_truck_subtitle">It leaves its warehouse with the order.</string>
+    <string name="order_truck_subtitle">It leaves its honey house with the order.</string>
     <string name="market_sell_truck_subtitle">Choose which truck takes the honey to the market.</string>
     <string name="order_truck_meta">Box %1$.0f kg · %2$.1f km · %3$.0f B</string>
     <string name="order_truck_level_here">Level %1$d · the honey is here</string>
@@ -519,7 +519,37 @@
     <string name="market_order_distance_label">Distance</string>
     <string name="market_order_distance">%1$.2f km</string>
     <string name="market_order_travel">−%1$.2f</string>
-    <string name="market_sell_truck">The truck leaves for the market with %1$.1f kg</string>
+    <string name="orders_sort_label">Sort orders</string>
+    <string name="orders_sort_distance">By distance</string>
+    <string name="orders_sort_flora_distance">By flora and distance</string>
+    <string name="order_delivery_title">Order Delivered</string>
+    <string name="order_delivery_thanks">Thank you!</string>
+    <string name="order_delivery_npc_speech">"Thank you very much for the delivery!"</string>
+    <string-array name="order_delivery_thanks_lines">
+        <item>Thank you!</item>
+        <item>Right on time!</item>
+        <item>Just in time!</item>
+        <item>Excellent!</item>
+        <item>Wonderful!</item>
+        <item>What an aroma!</item>
+        <item>Perfect!</item>
+        <item>Until next time!</item>
+    </string-array>
+    <string-array name="order_delivery_speech_lines">
+        <item>"Thank you very much for the delivery!"</item>
+        <item>"Right on time. This honey smells wonderful."</item>
+        <item>"Just what I needed. Thank you!"</item>
+        <item>"My customers are going to love this."</item>
+        <item>"You do not find a jar like this every day."</item>
+        <item>"What an aroma. It was worth the wait."</item>
+        <item>"It arrived perfect. Count on me again."</item>
+        <item>"I owe you one. This honey is excellent."</item>
+    </string-array>
+    <string name="order_delivery_sold_title">Kg Sold</string>
+    <string name="order_delivery_sold_amount">%1$.2f kg of %2$s</string>
+    <string name="order_delivery_earned_title">Beecoins Earned</string>
+    <string name="order_delivery_earned_amount">+%1$.2f B</string>
+    <string name="market_sell_truck">The truck leaves for the market with %1$.2f kg</string>
     <string name="hive_harvest_ok_truck">Harvested: %1$.2f kg. The truck is going to pick it up.</string>
     <string name="dashboard_trips_title">Trips</string>
     <string name="dashboard_trips_empty">No truck on the road.</string>
@@ -528,14 +558,21 @@
     <string name="dashboard_place_dest">Destination</string>
     <string name="dashboard_trip_hive">Hive transfer</string>
     <string name="dashboard_trip_collect">Honey pickup</string>
-    <string name="dashboard_trip_collect_return">Honey to warehouse</string>
+    <string name="dashboard_trip_collect_return">Honey to honey house</string>
     <string name="dashboard_trip_wholesale">Wholesale sale</string>
     <string name="dashboard_trip_order">Order</string>
     <string name="dashboard_trip_route">%1$s → %2$s</string>
+    <string name="trip_cancel_cd">Cancel trip</string>
+    <string name="trip_cancel_title">Confirm trip cancellation</string>
+    <string name="trip_cancel_message">Are you sure you want to cancel this trip? The truck will turn back from where it is. Any cargo and hives it is carrying are returned when it arrives.</string>
+    <string name="trip_cancel_keep">Continue the trip</string>
+    <string name="trip_cancel_ok">Cancel the trip</string>
+    <string name="trip_cancel_done">The truck is heading back. The cargo is returned on arrival.</string>
+    <string name="trip_cancel_already">That trip is already heading back.</string>
     <string name="dashboard_trip_leg_out">Outbound</string>
     <string name="dashboard_trip_leg_back">Return</string>
     <string name="dashboard_trip_eta">Time left: %1$s</string>
-    <string name="dashboard_trip_kg">%1$.1f kg</string>
+    <string name="dashboard_trip_kg">%1$.2f kg</string>
     <string name="market_contracts_empty">No contract pays off from your apiaries. Move the hives closer or wait for another bloom.</string>
     <string name="market_contracts_hint">Pollination contracts on climate fields.</string>
     <string name="market_contracts_locked_title">Contracts locked</string>
@@ -567,7 +604,7 @@
     <string name="market_contract_pick_hives_cta">Choose hives</string>
     <string name="market_contract_too_far">Unavailable due to distance</string>
     <string name="market_contract_travel_over_reward">Travel cost is higher than the reward. Any honey they collect is still yours: you decide if it is worth it.</string>
-    <string name="market_contract_progress">%1$.1f / %2$.1f kg · %3$d%%</string>
+    <string name="market_contract_progress">%1$.2f / %2$.2f kg · %3$d%%</string>
     <string name="market_contract_occupied">Occupied</string>
     <string name="market_contract_mine">In progress</string>
     <string name="market_contract_accepted">Accepted</string>
@@ -605,7 +642,7 @@
     <string name="market_contract_need_hive">Select at least one hive.</string>
     <string name="market_contract_need_hive_or_buy">Select at least one hive.</string>
     <string name="market_contract_buy_section">Buy for this farm</string>
-    <string name="market_contract_buy_hint">New hives are installed on the contract farm. When it ends they go to the warehouse (main plot).</string>
+    <string name="market_contract_buy_hint">New hives are installed on the contract farm. When it ends they go to the honey house (main plot).</string>
     <string name="market_contract_buy_add">Add to order</string>
     <string name="market_contract_buy_cart_empty">Order empty. Add nuclei one by one or by quantity.</string>
     <string name="market_contract_buy_cart_line">%1$d × %2$s · %3$.2f B</string>
@@ -628,8 +665,8 @@
     <string name="cd_stat_honey">Honey in stock</string>
     <string name="cd_stat_honey_harvested">Honey harvested</string>
     <string name="cd_stat_bees">Adult workers</string>
-    <string name="cd_stat_warehouse">Hives in warehouse</string>
-    <string name="stock_hive_dialog_title">Hive warehouse</string>
+    <string name="cd_stat_warehouse">Hives in honey house</string>
+    <string name="stock_hive_dialog_title">Hive honey house</string>
     <string name="stock_hive_empty">No hives in stock.</string>
     <string name="stock_hive_place">Place here</string>
     <string name="stock_hive_stat_pop">Population</string>
@@ -638,10 +675,10 @@
     <string name="stock_hive_stat_health">Health</string>
     <string name="stock_hive_stat_varroa">Varroa</string>
     <string name="stock_hive_placed_ok">Hive placed in the apiary.</string>
-    <string name="hex_mark_primary">Mark as warehouse</string>
-    <string name="hex_primary_already">Main warehouse</string>
-    <string name="hex_primary_ok">This plot is now your warehouse.</string>
-    <string name="hex_own_parcel_kicker_primary">Your main plot · warehouse</string>
+    <string name="hex_mark_primary">Mark as honey house</string>
+    <string name="hex_primary_already">Main honey house</string>
+    <string name="hex_primary_ok">This plot is now your honey house.</string>
+    <string name="hex_own_parcel_kicker_primary">Your main plot · honey house</string>
     <string name="hive_card_obreras_label">Workers</string>
     <string name="hive_card_obreras_line">Workers %1$s</string>
     <string name="hive_detail_pop_headline_obreras">%1$s adult workers</string>
@@ -750,7 +787,7 @@
     <string name="transhumance_ok">Transhumance under way.</string>
     <string name="apiary_card_orphans">No plot assigned</string>
     <string name="apiary_yard_buy_hive">New hive</string>
-    <string name="apiary_yard_place_stock">Place from warehouse</string>
+    <string name="apiary_yard_place_stock">Place from honey house</string>
     <string name="apiary_yard_empty">This apiary has no hives yet. Place the first one in the meadow.</string>
     <string name="apiary_yard_visit_title">%2$s\'s apiary %1$s</string>
     <string name="apiary_yard_visit_empty">This apiary has no hives in view.</string>
@@ -820,9 +857,9 @@
     <string name="map_hive_dialog_subtitle">What do you want to do with this hive?</string>
     <string name="hex_purchase_title">Install apiary</string>
     <string name="hex_purchase_kicker">New apiary</string>
-    <string name="hex_purchase_warehouse_title">Install warehouse</string>
-    <string name="hex_purchase_warehouse_kicker">New warehouse</string>
-    <string name="hex_purchase_ok_warehouse">Plot and warehouse installed.</string>
+    <string name="hex_purchase_warehouse_title">Install honey house</string>
+    <string name="hex_purchase_warehouse_kicker">New honey house</string>
+    <string name="hex_purchase_ok_warehouse">Plot and honey house installed.</string>
     <string name="hex_purchase_intro">Installing this apiary lets you place hives and use the local flora.</string>
     <string name="hex_purchase_price_chip">%1$.2f B</string>
     <string name="hex_purchase_flora_label">Wild flora</string>
@@ -869,7 +906,7 @@
     <string name="map_road_comarcal">Regional</string>
     <string name="map_road_other">Other</string>
     <string name="map_help_title">How to play the map</string>
-    <string name="map_help_text">Tap a free hexagon to install an apiary, a warehouse or headquarters. There is one headquarters each for Iberia, Madagascar and South Africa: the map centers there when you enter.\n\nHives are bought inside the apiary (My apiaries). From the card you can enter, harvest, move hives or return to the map.\n\nGreen: free plot. Red: climate still locked. Purple: yours. Grey: another player\'s, view only. Yellow: contract farm; not for sale, accept it in Market. Orange: reserve farm; tap it to see the contract card.\n\nThe hex border is the climate (climate legend). Icons mark shop, market, apiary, warehouse, order, contract, port and international market.\n\nThe truck route follows the road: blue motorway, red national, yellow regional, grey other roads.\n\nThe flora filter shows only plots with that plant.</string>
+    <string name="map_help_text">Tap a free hexagon to install an apiary, a honey house or headquarters. There is one headquarters each for Iberia, Madagascar and South Africa: the map centers there when you enter.\n\nHives are bought inside the apiary (My apiaries). From the card you can enter, harvest, move hives or return to the map.\n\nGreen: free plot. Red: climate still locked. Purple: yours. Grey: another player\'s, view only. Yellow: contract farm. Not for sale. The contract appears on the map when it is due, according to your level and the bloom.\n\nThe hex border is the climate (climate legend). Icons mark shop, market, apiary, honey house, order, contract, port and international market.\n\nThe truck route follows the road: blue motorway, red national, yellow regional, grey other roads.\n\nThe flora filter shows only plots with that plant.</string>
     <string name="map_cd_move_flora_filter">Move the flora filter</string>
     <string name="map_flora_filter_title">Flora</string>
     <string name="map_flora_filter_all">All</string>
@@ -882,7 +919,8 @@
     <string name="hex_purchase_native_note">No planting or wait: the plot already has that flora type.</string>
     <string name="hex_purchase_name_label">Apiary name</string>
     <string name="hex_purchase_name_hint">E.g. My north apiary</string>
-    <string name="hex_purchase_name_required">Enter a name for the apiary</string>
+    <string name="hex_purchase_name_required">Enter a name of at least 2 letters</string>
+    <string name="apiary_rename_title">Apiary name</string>
     <string name="flora_display_romero">Rosemary</string>
     <string name="flora_display_tomillo">Thyme</string>
     <string name="flora_display_bosque">Forest</string>
@@ -893,6 +931,7 @@
     <string name="flora_display_neret">Neret</string>
     <string name="flora_display_arboc">Strawberry tree</string>
     <string name="flora_display_naranjos">Orange blossom</string>
+    <string name="crop_name_naranjos">Orange tree</string>
     <string name="flora_display_almendros">Almond</string>
     <string name="flora_display_cerezos">Cherry</string>
     <string name="hive_sell_button">Sell hive (%1$.2f B)</string>
@@ -911,7 +950,7 @@
     <string name="map_legend_shop">Shop</string>
     <string name="map_legend_market">Market</string>
     <string name="map_legend_apiary">Apiary</string>
-    <string name="map_legend_warehouse">Warehouse</string>
+    <string name="map_legend_warehouse">Honey house</string>
     <string name="map_legend_order">Order</string>
     <string name="map_legend_contract">Contract</string>
     <string name="map_legend_port">Port</string>
@@ -944,8 +983,8 @@
     <string name="flora_display_sisal">Sisal</string>
     <string name="hex_purchase_confirm">Install</string>
     <string name="hex_purchase_ok">Apiary installed.</string>
-    <string name="hex_purchase_also_warehouse">Also buy warehouse (300.00 B)</string>
-    <string name="hex_purchase_ok_with_warehouse">Apiary and warehouse installed.</string>
+    <string name="hex_purchase_also_warehouse">Also buy honey house (300.00 B)</string>
+    <string name="hex_purchase_ok_with_warehouse">Apiary and honey house installed.</string>
     <string name="hex_open_apiary_yard">Open apiary</string>
     <string name="dashboard_flora_plantings_section">Flora plantings in progress</string>
     <string name="map_plant_flora_button">Plant a crop</string>
@@ -965,7 +1004,7 @@
     <string name="map_transhumance_cancelled">Transhumance cancelled.</string>
     <string name="map_transhumance_confirm_title">Confirm transhumance</string>
     <string name="map_transhumance_confirm_ok">Move</string>
-    <string name="map_transhumance_confirm_message">Cost: %1$.2f B. It must arrive before 8:00 of the daily calculation. In extreme cold or strong heat the colony loses health and bees; a mild climate recovers them.</string>
+    <string name="map_transhumance_confirm_message">Cost: %1$.2f B. In extreme cold or strong heat the colony loses health and bees; a mild climate recovers them.</string>
     <string name="map_transhumance_contract_confirm_message">Cost: %1$.2f B. It will be scheduled for the first day of the contract; until then the hive keeps foraging where it is.</string>
     <string name="map_transhumance_busy">This hive is still on the way.</string>
     <string name="map_transhumance_day_change_title">Day change</string>
@@ -1020,6 +1059,19 @@
     <string name="cd_worker_trend_up">Worker growth</string>
     <string name="cd_worker_trend_down">Worker decrease</string>
     <string name="hive_split_ok">Hive split: the nucleus is on the same plot.</string>
+    <string name="hive_split_full_title">Apiary full</string>
+    <string name="hive_split_full_message">This apiary already has 10 hives. Choose another with room. The new hive will travel there. Closest first.</string>
+    <string name="hive_split_dest_row">%1$s · %2$d free · %3$.0f km</string>
+    <string name="hive_split_no_room">You have no other apiary with free space.</string>
+    <string name="hive_split_truck_title">Choose a truck</string>
+    <string name="hive_split_truck_message">Trucks with room to take the hive to %1$s. Closest first.</string>
+    <string name="hive_split_truck_row">%1$s · %2$d slots · %3$.0f km</string>
+    <string name="hive_split_no_truck">No free truck has room for a hive.</string>
+    <string name="hive_split_send_title">Confirm shipment</string>
+    <string name="hive_split_send_message">Create the hive and send it to %1$s with %2$s?</string>
+    <string name="hive_split_sent">Hive created. The truck is taking it to the chosen apiary.</string>
+    <string name="hive_split_truck_taken">That truck has no room. The hive is already at the destination apiary.</string>
+    <string name="hive_split_too_late">The trip does not fit before the day closes. The hive stays at the destination apiary.</string>
     <string name="dashboard_no_event_title">No active event</string>
     <string name="dashboard_no_event_subtitle">Special events coming soon.</string>
     <string name="dashboard_swarm_risk_title">Swarming risk</string>
@@ -1069,8 +1121,10 @@
     <string name="shop_title">Shop</string>
     <string name="shop_balance">Balance: %1$.0f B</string>
     <string name="shop_buy">Buy</string>
+    <string name="shop_bought_units">Bought %1$d units.</string>
     <string name="shop_price_eur">%1$.2f B</string>
     <string name="shop_owned">You have: %1$d</string>
+    <string name="shop_insufficient_beecoins">You do not have enough Beecoins to buy</string>
     <string name="shop_item_treat">Antivarroa treatment</string>
     <string name="shop_item_treat_desc">A 7-day treatment. Used up when applied to a hive.</string>
     <string name="shop_item_feed">Bee feed</string>
@@ -1156,12 +1210,12 @@
     <string name="truck_live_ask_message">Do you want to see the transhumance truck move on the map in real time (~70 km/h)? The app downloads and installs the road maps for Iberia (~160 MB), South Africa and Madagascar into the game folder by itself: no unzipping needed. The trip is calculated on the phone.</string>
     <string name="truck_live_ask_yes">Yes, show the truck</string>
     <string name="truck_live_ask_no">Not now</string>
-    <string name="truck_live_download_title">Installing roads</string>
+    <string name="truck_live_download_title">Downloading maps</string>
     <string name="truck_live_download_title_region">Installing roads (%1$s)</string>
     <string name="truck_live_download_desc">Saving the graph in the game folder…</string>
     <string name="truck_live_download_started">The app is installing the road map in the background. You do not need to unzip anything.</string>
     <string name="truck_live_install_kicker">Map</string>
-    <string name="truck_live_install_wait">Wait until install finishes. The truck will use these roads on the map.</string>
+    <string name="truck_live_install_wait">The road maps for Iberia, South Africa and Madagascar are downloading. The truck will use them for trips.</string>
     <string name="truck_live_install_connecting">Connecting…</string>
     <string name="truck_live_install_percent">%1$d %%</string>
     <string name="truck_live_install_bytes">%1$s / %2$s MB</string>
@@ -1178,7 +1232,7 @@
     <string name="truck_route_error_copy">Copy</string>
     <string name="truck_route_error_copied">Error copied. Send it for review.</string>
     <string name="fleet_shop_title">Fleet</string>
-    <string name="fleet_shop_hint">Trucks at warehouses and ships at ports. Level raises cargo and speed.</string>
+    <string name="fleet_shop_hint">Trucks at honey houses and ships at ports. Level raises cargo and speed.</string>
     <string name="fleet_buy_truck">Buy truck (1,200 B)</string>
     <string name="fleet_buy_ship">Buy ship (6,000 B)</string>
     <string name="fleet_none">You have no vehicles yet.</string>
@@ -1189,13 +1243,13 @@
     <string name="fleet_ship_line">Ship lv.%1$d · %2$.0f kg · %3$.0f km/h · %4$s</string>
     <string name="fleet_upgrade">Upgrade to level %1$d (%2$d B)</string>
     <string name="fleet_level_max">Maximum level</string>
-    <string name="fleet_warehouse_trucks">Trucks at this warehouse</string>
-    <string name="fleet_bought_truck">The truck leaves the shop for the warehouse.</string>
+    <string name="fleet_warehouse_trucks">Trucks at this honey house</string>
+    <string name="fleet_bought_truck">The truck leaves the shop for the honey house.</string>
     <string name="fleet_item_truck">Truck</string>
-    <string name="fleet_item_truck_desc">Leaves this shop and stays at the warehouse you choose.</string>
+    <string name="fleet_item_truck_desc">Leaves this shop and stays at the honey house you choose.</string>
     <string name="fleet_item_ship">Ship</string>
     <string name="fleet_item_ship_desc">Moors at the port you choose. It does not travel from the shop.</string>
-    <string name="fleet_none_trucks">This warehouse has no trucks.</string>
+    <string name="fleet_none_trucks">This honey house has no trucks.</string>
     <string name="fleet_none_ships">There are no ships at this port.</string>
     <string name="fleet_bought_ship">Ship moored at the port.</string>
     <string name="fleet_upgraded">Vehicle upgraded.</string>
@@ -1231,7 +1285,7 @@
     <string name="fleet_port_buy">Buy berth (%1$d B)</string>
     <string name="fleet_port_berth_ok">Berth bought.</string>
     <string name="entity_name_hint">Name</string>
-    <string name="fleet_buy_home_truck">Warehouse</string>
+    <string name="fleet_buy_home_truck">Honey house</string>
     <string name="fleet_buy_home_ship">Port</string>
     <string name="fleet_unnamed_truck">Truck</string>
     <string name="fleet_unnamed_ship">Ship</string>
@@ -1240,7 +1294,7 @@
     <string name="fleet_transfer_honey">Honey</string>
     <string name="fleet_transfer_amount">Amount</string>
     <string name="fleet_transfer_kg">%1$.2f kg of %2$.2f kg</string>
-    <string name="fleet_transfer_dest">Destination warehouse</string>
+    <string name="fleet_transfer_dest">Destination honey house</string>
     <string name="fleet_transfer_km">%1$.2f km</string>
     <string name="fleet_transfer_cost">%1$.2f B</string>
     <string name="fleet_transfer_discount">Transfer fare, lower than a sale.</string>
@@ -1258,7 +1312,7 @@
     <string name="tutorial_skip_all">Skip the tutorial</string>
     <string name="tutorial_day">Advance one day</string>
     <string name="tutorial_menu">Tutorial</string>
-    <string name="tutorial_c1_v01">I\'m Lorenzo Langstroth. This operation is yours. We start with 20,000 beecoins and a calendar that moves day by day. The bees work while you\'re away.</string>
+    <string name="tutorial_c1_v01">I\'m Lorenzo Langstroth. This operation is yours. We start with 45,000 beecoins and a calendar that moves day by day. The bees work while you\'re away.</string>
     <string name="tutorial_c1_v02">Up top are your money and your level. Leveling up opens new climates. Selling honey, installing apiaries and buying hives grant experience.</string>
     <string name="tutorial_c1_v03">The day\'s weather decides how much nectar there is. A bad day produces less. The colony keeps going.</string>
     <string name="tutorial_c1_v04">Home is the summary. Apiaries are your farms. The map is where you install. The market is where honey goes out. From Home you can also pick a market and sell.</string>
@@ -1272,14 +1326,14 @@
     <string name="tutorial_c1_v10b">Choose the flower the bees will take nectar from. Tapping it opens a chart: the honey flows and whether that flower is available through the year. Pick one that has a flow now.</string>
     <string name="tutorial_c1_v11_open">Tap the hive in the apiary.</string>
     <string name="tutorial_c1_v11">Up top you see honey, the queen and varroa. The queen drives brood. If varroa rises, treat it. Feeding lowers consumption on weak days.</string>
-    <string name="tutorial_c1_v12">This is Harvest. 3 kg always stay inside: that reserve is the colony\'s food.</string>
-    <string name="tutorial_c1_v16">Without a warehouse there is no shipment, and the harvest goes toward it. Install it on your violet hex: tap the plot and choose warehouse. Honey is stored there and the truck leaves from there.</string>
-    <string name="tutorial_c1_v16_choice">Tap Install a warehouse.</string>
+    <string name="tutorial_c1_v12">This is Harvest. 3 kg always stay inside: that reserve is the colony\'s food.\nFeed cuts the bees\' own honey use by 50% while it lasts.\nTreat varroa holds the mite for 7 days. You buy the treatment in the shop.\nReplace queen swaps the current one: the brood depends on her.\nTranshumance takes the hive to another apiary by truck. The price depends on the distance.</string>
+    <string name="tutorial_c1_v16">Without a honey house there is no shipment, and the harvest goes toward it. Install it on your violet hex: tap the plot and choose honey house. Honey is stored there and the truck leaves from there.</string>
+    <string name="tutorial_c1_v16_choice">Tap Install a honey house.</string>
     <string name="tutorial_c1_v13">I\'ll advance one day so you see the cycle. In a normal game the day runs on its own.</string>
-    <string name="tutorial_c1_v14">On Home, tap Harvest. Honey goes to the warehouse; then tap Sell and choose the nearest market or whichever suits you.</string>
+    <string name="tutorial_c1_v14">On Home, tap Harvest. Honey goes to the honey house; then tap Sell and choose the nearest market or whichever suits you.</string>
     <string name="tutorial_c1_v15_open">Open the market for more detail. From Home you can also pick a market and sell.</string>
-    <string name="tutorial_c1_v15">Each type has its price and demand. The shipment leaves the warehouse for the provincial market once the truck has picked up the honey. Orders have specific deliveries. Contracts send hives to someone else\'s farm and you get paid for the service.</string>
-    <string name="tutorial_c1_v18">That\'s the craft: apiary, hive, day, harvest, warehouse and market. When you do something new, I\'ll be back. You can replay this chapter from the dashboard menu.</string>
+    <string name="tutorial_c1_v15">Each type has its price and demand. The shipment leaves the honey house for the provincial market once the truck has picked up the honey. Orders have specific deliveries. Contracts send hives to someone else\'s farm and you get paid for the service.</string>
+    <string name="tutorial_c1_v18">That\'s the craft: apiary, hive, day, harvest, honey house and market. When you do something new, I\'ll be back. You can replay this chapter from the dashboard menu.</string>
     <string name="tutorial_c2_v01">Feeding covers one day or seven. On those days the colony consumes less honey.</string>
     <string name="tutorial_c2_v02">Antivarroa treatment lasts 7 days. If you let it rise, the colony collapses.</string>
     <string name="tutorial_c2_v03">A new queen changes brood quality. The 3 kg reserve is not touched when harvesting.</string>
@@ -1287,7 +1341,7 @@
     <string name="tutorial_c3_v02">A crop is planted, waits, and gives another honey type.</string>
     <string name="tutorial_c4_v01">Hives travel by road. While they are on the way they do not produce at the destination.</string>
     <string name="tutorial_c4_v02">It is used to follow a bloom or to fulfill a pollination contract.</string>
-    <string name="tutorial_c5_v01">An order is filled with warehouse honey and a truck to the customer.</string>
+    <string name="tutorial_c5_v01">An order is filled with honey house honey and a truck to the customer.</string>
     <string name="tutorial_c5_v02">A contract is filled by taking hives to that farm\'s apiary. You get paid for the service, not for the honey.</string>
     <string name="tutorial_c5_v03">Open the Market menu.</string>
     <string name="tutorial_c5_v04">Tap Contracts.</string>
@@ -1299,11 +1353,11 @@
     <string name="tutorial_c5_v10">Travel is what it costs to move each hive. The return is not charged.</string>
     <string name="tutorial_c5_v11">The reward is the pay if you meet the minimum. Any honey they collect is still yours.</string>
     <string name="tutorial_c5_v12">Move hives chooses which go to the farm. You do not need to do it now.</string>
-    <string name="tutorial_c6_v01">The truck carries honey and, depending on its level, hives. Slots come from the warehouse level.</string>
+    <string name="tutorial_c6_v01">The truck carries honey and, depending on its level, hives. Slots come from the honey house level.</string>
     <string name="tutorial_c6_v02">Before leaving you see origin, destination, pay, travel cost and net. The route is drawn on the map.</string>
     <string name="tutorial_c7_v01">The %1$s climate is now open. On the map, those hexes go from red to green.</string>
     <string name="tutorial_c8_v01">From level 30 you can use the port. The fee is 10,000 B. There you moor a ship. The berth is yours and costs 2,500 B.</string>
-    <string name="tutorial_c8_v02">The ship moves honey between regions. It does not move hives. The truck takes the load from warehouse to port, and the ship continues by sea.</string>
+    <string name="tutorial_c8_v02">The ship moves honey between regions. It does not move hives. The truck takes the load from honey house to port, and the ship continues by sea.</string>
     <string name="tutorial_c8_v03">The ship\'s route shows on the map, just like the truck on the road.</string>
     <string name="tutorial_c8_v04">At level 35 you pay 15,000 B for each international market. You sell where honey is worth more, minus the trip.</string>
     <string name="profile_language">Language</string>
@@ -1349,12 +1403,12 @@
     <string name="hive_alerts_none">No alerts</string>
     <string name="hive_honey_in_hive">In hive: %1$s kg</string>
     <string name="fleet_name_length">Enter a name of 2 to 32 letters.</string>
-    <string name="fleet_need_warehouse">Build a warehouse first.</string>
+    <string name="fleet_need_warehouse">Build a honey house first.</string>
     <string name="fleet_home_slots">%1$s · %2$d slots</string>
-    <string name="fleet_unnamed_warehouse">Warehouse</string>
+    <string name="fleet_unnamed_warehouse">Honey house</string>
     <string name="fleet_need_berth">Pay a port fee and leave a free berth before buying the ship.</string>
-    <string name="fleet_warehouse_no_honey">This warehouse has no honey.</string>
-    <string name="fleet_no_dest_warehouse">There is no other destination warehouse.</string>
+    <string name="fleet_warehouse_no_honey">This honey house has no honey.</string>
+    <string name="fleet_no_dest_warehouse">There is no other destination honey house.</string>
     <string name="transhumance_no_free">No free hives to move.</string>
     <string name="hive_unnamed">Hive</string>
     <string name="rank_apprentice">Apprentice</string>
@@ -1409,7 +1463,112 @@
     <string name="hive_health_band_critical">Critical</string>
     <string name="hive_health_band_collapse">Imminent collapse</string>
     <string name="honey_reserves_title">Honey reserves</string>
-    <string name="honey_reserves_total" formatted="false">Total in warehouses: %1$.1f kg</string>
+    <string name="honey_reserves_total" formatted="false">Total in honey houses: %1$.2f kg</string>
     <string name="honey_reserves_empty">No honey in reserve currently.</string>
     <string name="tutorial_c5_v13" formatted="false">To start with contracts, remember that there must be blooming crops of the season unlocked for your level. Check both Madagascar and Iberia depending on the meteorological season of each territory.</string>
+    <string name="apiary_3d_open">View in 3D</string>
+    <string name="apiary_3d_use_hive_card">Do this from the hive card.</string>
+    <string name="crop_tick_tree_due">The %1$s on %2$s need pruning and fertilizing: open the apiary in 3D and talk to the farmer.</string>
+    <string name="apiary_yard_maint_banner">Your fruit trees need maintenance. Open 3D and talk to the farmer.</string>
+    <string name="apiary_3d_stung_locked">You got stung too many times: you can\'t visit this apiary in 3D again until tomorrow.</string>
+    <string name="workshop_name">Honey house</string>
+    <string name="workshop_format_bulk">drum</string>
+    <string name="workshop_format_jar_1000">1 kg jar</string>
+    <string name="workshop_format_jar_500">500 g jar</string>
+    <string name="workshop_format_jar_250">250 g jar</string>
+    <string name="market_order_ask_jars">%1$d × %2$s of %3$s</string>
+    <string name="market_order_ask_drum">%1$.2f kg of %2$s in drums</string>
+    <string name="workshop_mix_part">%1$d × %2$s</string>
+    <string name="market_order_ask_mix">%1$s of %2$s</string>
+    <string name="market_order_fail_jars">Not enough jars. Jars leave from the honey house where they were packed.</string>
+    <string name="harvest_need_workshop">You need a honey house to extract the honey.</string>
+    <string name="workshop_subtitle">Supers go through reception, uncapping, extraction, maturing and packing. It all keeps running with the app closed.</string>
+    <string name="workshop_build_title">Build your honey house</string>
+    <string name="workshop_build_intro">Each honey house stores honey and processes it. It comes with the reception room; the other machines are bought separately.</string>
+    <string name="workshop_build_here">Build at %1$s (%2$d B)</string>
+    <string name="workshop_build_no_warehouse">You need a honey house first. Set one up from the map.</string>
+    <string name="workshop_go_map">Go to map</string>
+    <string name="workshop_built_at">Honey house %1$s</string>
+    <string name="workshop_change_obrador">switch honey house</string>
+    <string name="workshop_machines">Machinery</string>
+    <string name="workshop_machine_reception">Reception room</string>
+    <string name="workshop_machine_uncapper">Uncapper</string>
+    <string name="workshop_machine_extractor">Extractor</string>
+    <string name="workshop_machine_maturer">Maturing tank</string>
+    <string name="workshop_machine_packer">Packing machine</string>
+    <string name="workshop_machine_missing">Not bought</string>
+    <string name="workshop_machine_level">Level %1$d of %2$d</string>
+    <string name="workshop_machine_info_reception">Rests for %1$s. No batch limit.</string>
+    <string name="workshop_machine_info_time">%1$s per %2$d kg</string>
+    <string name="workshop_machine_info_packer">%1$d kg per batch at base time</string>
+    <string name="workshop_machine_info_maturer">Tanks: %1$d · rests for %2$s</string>
+    <string name="workshop_machine_buy">Buy (%1$d B)</string>
+    <string name="workshop_machine_upgrade">Upgrade to level %1$d (%2$d B)</string>
+    <string name="workshop_machine_max">Max level</string>
+    <string name="workshop_machine_bought">Machine ready.</string>
+    <string name="workshop_batches">Batches</string>
+    <string name="workshop_batches_empty">No batches. The supers you collect will arrive here.</string>
+    <string name="workshop_batch_title">%1$s · %2$s kg</string>
+    <string name="workshop_batch_from">From %1$s</string>
+    <string name="workshop_batch_running">%1$s · %2$s left</string>
+    <string name="workshop_batch_queued">Queued for %1$s</string>
+    <string name="workshop_batch_no_machine">Stopped: %1$s missing</string>
+    <string name="workshop_batch_need_format">Choose the container to pack it</string>
+    <string name="workshop_batch_format">Container: %1$s</string>
+    <string name="workshop_batch_choose">Choose container</string>
+    <string name="workshop_batch_change">Change container</string>
+    <string name="workshop_format_title">How do you pack %1$s kg of %2$s?</string>
+    <string name="workshop_format_option_bulk">%1$s · goes to the honey house · price ×%2$.2f</string>
+    <string name="workshop_format_option_jars">%1$s · %2$d jars · price ×%3$.2f</string>
+    <string name="workshop_stock">Packed</string>
+    <string name="workshop_stock_empty">No jars yet. Drums go straight to the honey house.</string>
+    <string name="workshop_stock_row">%1$d × %2$s of %3$s</string>
+    <string name="workshop_sell_jars">Sell</string>
+    <string name="workshop_sell_title">Sell %1$s of %2$s</string>
+    <string name="workshop_sell_amount">%1$d of %2$d jars</string>
+    <string name="workshop_sell_hint">A truck from this honey house takes them to the nearest market that wants that honey.</string>
+    <string name="workshop_sell_confirm">Send to market</string>
+    <string name="workshop_sell_started">The truck leaves for the market with %1$d jars.</string>
+    <string name="workshop_sell_instant">Sold %1$d jars.</string>
+    <string name="workshop_sell_no_demand">No market wants that honey right now.</string>
+    <string name="workshop_sell_no_cash">You don\'t have BeeCoins for the transport.</string>
+    <string name="workshop_sell_no_truck">There is no free truck at this honey house.</string>
+    <string name="workshop_sell_failed">Could not sell.</string>
+    <string name="workshop_wax">Wax</string>
+    <string name="workshop_wax_kg">%1$.2f kg · pays %2$.0f B/kg</string>
+    <string name="workshop_sell_wax">Sell wax</string>
+    <string name="workshop_wax_sold">Wax sold.</string>
+    <string name="workshop_built_ok">Honey house built.</string>
+    <string name="workshop_need_title">You need a honey house</string>
+    <string name="workshop_need_message">Honey is extracted in a honey house. Buy one on the map to be able to harvest.</string>
+    <string name="workshop_need_go">Go to honey house</string>
+    <string name="workshop_dash_build">Build your honey house to be able to harvest.</string>
+    <string name="workshop_dash_format">Batches waiting for a container: %1$d</string>
+    <string name="workshop_dash_machine">%1$s is missing and batches are waiting.</string>
+    <string name="workshop_dash_running">Batches in progress: %1$d</string>
+    <string name="workshop_dash_stock">Ready to sell: %1$d jars</string>
+    <string name="workshop_dash_wax">Wax to sell: %1$.2f kg</string>
+    <string name="workshop_warehouse_open">Open honey house</string>
+    <string name="workshop_warehouse_build">Build the honey house here</string>
+    <string name="workshop_err_pick_parcel">Pick one of your plots.</string>
+    <string name="workshop_err_already">You already have a honey house.</string>
+    <string name="workshop_err_need_warehouse">You need a honey house.</string>
+    <string name="workshop_err_login">Sign in to use the honey house.</string>
+    <string name="workshop_err_build_first">Build the honey house first.</string>
+    <string name="workshop_err_max">This machine is already maxed out.</string>
+    <string name="workshop_err_not_upgradable">The reception room can\'t be upgraded.</string>
+    <string name="workshop_err_none">You don\'t have a honey house.</string>
+    <string name="workshop_err_packing">This batch is already being packed.</string>
+    <string name="workshop_err_no_wax">You have no wax to sell.</string>
+    <!-- Tutorial chapters 9 and 10: honey house. -->
+    <string name="tutorial_c9_v01">From now on, the honey you harvest goes to the honey house. That\'s where it is extracted and packed. Without a honey house you can\'t harvest.</string>
+    <string name="tutorial_c9_v02">Tap Honey house on Home.</string>
+    <string name="tutorial_c9_v03">Each honey house stores honey and processes it. It comes with the reception room, and whatever you pack stays right here.</string>
+    <string name="tutorial_c9_v04">Buy the uncapper, the extractor, the maturing tank and the packing machine. That\'s 10,500 B. If one is missing, batches stop there.</string>
+    <string name="tutorial_c9_v05">Each batch goes through reception, uncapping, extraction, maturing and packing. Each machine works one batch at a time and the rest wait in line. Time keeps running even with the app closed.</string>
+    <string name="tutorial_c9_v06">Now you can harvest. The truck takes the supers to the honey house. When the first batch arrives, I\'ll show you how to pack it.</string>
+    <string name="tutorial_c10_v01">Your first batch is here. You can see which machine it\'s in and how long it has left.</string>
+    <string name="tutorial_c10_v02">Tap Choose container. The drum goes to the honey house and sells in bulk. Jars pay much better, and the smaller the jar, the more per kilo, but they take longer to pack.</string>
+    <string name="tutorial_c10_v03">Jars stay in the honey house. Sell them at the market or take them to orders that ask for jars. Wax comes from uncapping and sells at 9 B/kg.</string>
+    <string name="tutorial_c10_v04">Each machine level shortens its time and fits more honey per batch. The maturing tank adds one tank per level.</string>
 </resources>
