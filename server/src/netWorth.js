@@ -7,7 +7,7 @@ function hivePrice() {
 function warehouseInvested(level) {
   const lvl = Math.max(0, Number(level) || 0);
   if (lvl <= 0) return 0;
-  let sum = 300;
+  let sum = 1500;
   for (let from = 1; from < lvl; from++) sum += 250 * Math.max(1, from);
   return sum;
 }

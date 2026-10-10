@@ -413,6 +413,20 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Tutorial: adelantar la primera recogida o la primera venta del jugador (una vez por grupo).
+    if (req.method === "POST" && urlPath === "/tutorial/fast-trip") {
+      const body = await readBody(req);
+      const tripId = body && body.id ? String(body.id) : "";
+      const group = body && body.group ? String(body.group) : "";
+      if (!tripId || tripId.length > 240) {
+        send(res, 400, { ok: false, error: "TRIP_REQUIRED" });
+        return;
+      }
+      const result = await tripClock.tutorialFinish(pool, req.authUid, tripId, group);
+      send(res, result.ok ? 200 : (result.status || 409), result);
+      return;
+    }
+
     if (req.method === "POST" && urlPath === "/trip-clock/run") {
       await tripClock.tick(pool);
       send(res, 200, { ok: true });

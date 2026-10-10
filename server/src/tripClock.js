@@ -954,6 +954,42 @@ async function finishEarly(pool, tripId) {
   }
 }
 
+// Tutorial: la primera recogida y la primera venta llegan al momento, mientras se explican.
+// Solo viajes propios y una vez por grupo ("collect" o "sale") y jugador; se apunta en
+// player_stores (<owner>:tutorial-fast).
+const FAST_GROUPS = { collect: ["collect"], sale: ["wholesale", "order"] };
+
+async function tutorialFinish(pool, ownerId, tripId, group) {
+  if (!ownerId) return { ok: false, status: 401, error: "AUTH" };
+  const kinds = FAST_GROUPS[group];
+  if (!kinds) return { ok: false, status: 400, error: "GROUP" };
+  const trip = await pool.query("SELECT owner_id, kind FROM cargo_trips WHERE id = $1", [tripId]);
+  if (trip.rowCount === 0) return { ok: false, status: 404, error: "NOT_FOUND" };
+  const row = trip.rows[0];
+  if (String(row.owner_id) !== String(ownerId)) return { ok: false, status: 403, error: "NOT_OWNER" };
+  if (!kinds.includes(row.kind)) return { ok: false, status: 409, error: "WRONG_KIND" };
+  const storeId = `${ownerId}:tutorial-fast`;
+  const found = await pool.query("SELECT body FROM player_stores WHERE id = $1", [storeId]);
+  let body = found.rowCount > 0 ? found.rows[0].body : {};
+  if (typeof body === "string") {
+    try { body = JSON.parse(body); } catch (err) { body = {}; }
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) body = {};
+  if (body[group]) return { ok: false, status: 409, error: "USED" };
+  // Primero llega al destino (cobro o descarga); si vuelve al obrador, también la vuelta.
+  let result = await finishEarly(pool, tripId);
+  if (result.ok && result.returning) result = await finishEarly(pool, tripId);
+  if (!result.ok) return result;
+  body[group] = true;
+  await pool.query(
+    `INSERT INTO player_stores (id, owner_id, kind, body, updated_at)
+     VALUES ($1, $2, 'tutorial-fast', $3::jsonb, now())
+     ON CONFLICT (id) DO UPDATE SET body = EXCLUDED.body, updated_at = now()`,
+    [storeId, ownerId, JSON.stringify(body)]
+  );
+  return result;
+}
+
 function start(pool) {
   const run = () => {
     tick(pool).catch((err) => {
@@ -975,4 +1011,5 @@ module.exports = {
   requireAdmin,
   listLive,
   finishEarly,
+  tutorialFinish,
 };
