@@ -495,14 +495,55 @@ public final class WorkshopStore {
         return s;
     }
 
+    /** Almacenes de cada jugador, leídos de Room fuera del hilo principal. */
+    private static final Map<String, List<String>> HEXES = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.ExecutorService LOADER =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
+
+    /**
+     * Terrenos con almacén (cada uno es un obrador). Room no se puede leer en el hilo principal: allí
+     * se usa la última lista leída o, la primera vez, los obradores que ya hay en el documento, y se
+     * pide la lista buena en segundo plano.
+     */
     @NonNull
     private static List<String> warehouseHexes(@NonNull Context context, @Nullable String ownerId) {
-        List<String> out = new ArrayList<>();
         if (ownerId == null || ownerId.isEmpty()) {
+            return new ArrayList<>();
+        }
+        if (android.os.Looper.getMainLooper().isCurrentThread()) {
+            List<String> cached = HEXES.get(ownerId);
+            if (cached != null) {
+                return new ArrayList<>(cached);
+            }
+            Context app = context.getApplicationContext();
+            LOADER.execute(() -> loadWarehouseHexes(app, ownerId));
+            List<String> known = new ArrayList<>();
+            for (String hex : read(context, ownerId).keySet()) {
+                if (!hex.isEmpty()) {
+                    known.add(hex);
+                }
+            }
+            return known;
+        }
+        return loadWarehouseHexes(context, ownerId);
+    }
+
+    /** Fuera del hilo principal, al cargar la partida: deja leída la lista de almacenes. */
+    public static void preload(@NonNull Context context, @Nullable String ownerId) {
+        if (ownerId != null && !ownerId.isEmpty() && !android.os.Looper.getMainLooper().isCurrentThread()) {
+            loadWarehouseHexes(context, ownerId);
+        }
+    }
+
+    @NonNull
+    private static List<String> loadWarehouseHexes(@NonNull Context context, @NonNull String ownerId) {
+        List<String> out = new ArrayList<>();
+        List<HexParcelOwnershipEntity> rows;
+        try {
+            rows = AppDatabase.getInstance(context).hexParcelOwnershipDao().getWarehousesForOwnerSync(ownerId);
+        } catch (RuntimeException e) {
             return out;
         }
-        List<HexParcelOwnershipEntity> rows =
-                AppDatabase.getInstance(context).hexParcelOwnershipDao().getWarehousesForOwnerSync(ownerId);
         if (rows == null) {
             return out;
         }
@@ -511,6 +552,7 @@ public final class WorkshopStore {
                 out.add(row.hexId);
             }
         }
+        HEXES.put(ownerId, new ArrayList<>(out));
         return out;
     }
 

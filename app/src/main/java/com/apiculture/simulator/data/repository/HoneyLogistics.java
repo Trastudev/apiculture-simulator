@@ -3376,7 +3376,13 @@ public final class HoneyLogistics {
     public static boolean hasStockForOrder(@NonNull Context context, @Nullable String ownerId,
             @NonNull EconomyRepository economy, @NonNull HoneyOrder order) {
         if (order.wantsJars()) {
-            return obradorWithMix(context, ownerId, order) != null;
+            // Sin Room: se llama desde el hilo principal al pintar las comandas.
+            for (com.apiculture.simulator.domain.workshop.WorkshopState s : WorkshopStore.all(context, ownerId)) {
+                if (s.hexId != null && WorkshopStore.hasMix(context, ownerId, s.hexId, order.floraKey, order.mix)) {
+                    return true;
+                }
+            }
+            return false;
         }
         return economy.getHoneyStockForFlora(order.floraKey) + 1e-9 >= order.kg;
     }
