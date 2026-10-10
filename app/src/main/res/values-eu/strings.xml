@@ -28,7 +28,6 @@
     <string name="obradores_machines">Makinak</string>
     <string name="obradores_honey">Gordetako eztia</string>
     <string name="obradores_level_capacity">%1$d. maila · %2$s kg-ko edukiera</string>
-    <string name="obradores_photo_credit">%1$s · Wikipedia</string>
     <string name="obradores_machine_missing">Erosi gabe</string>
     <string name="obradores_machine_ready">Prest</string>
     <string name="obradores_machine_level">%1$d. m.</string>
@@ -1384,7 +1383,7 @@
     <string name="profile_brand_emblem">Enpresaren ikurra</string>
     <string name="profile_brand_logo_pick">Nire irudia erabili</string>
     <string name="profile_brand_logo_clear">Irudia kendu</string>
-    <string name="profile_brand_hint">Aukeratu marrazki bat eta kolore bat, edo igo zure logotipoa. Fatxadan eta zure kamioietan margotzen da.</string>
+    <string name="profile_brand_hint">Aukeratu marrazki bat eta kolore bat, edo igo zure irudia: zirkulu osoa betetzen du. Fatxadan eta zure kamioietan margotzen da.</string>
     <string name="profile_language">Hizkuntza</string>
     <string name="profile_language_system">Telefonoarena</string>
     <string name="mail_title">Postontzia</string>

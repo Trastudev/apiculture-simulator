@@ -28,7 +28,6 @@
     <string name="obradores_machines">Màquines</string>
     <string name="obradores_honey">Mel emmagatzemada</string>
     <string name="obradores_level_capacity">nivell %1$d · %2$s kg de capacitat</string>
-    <string name="obradores_photo_credit">%1$s · Viquipèdia</string>
     <string name="obradores_machine_missing">Sense comprar</string>
     <string name="obradores_machine_ready">Llesta</string>
     <string name="obradores_machine_level">Nv. %1$d</string>
@@ -96,7 +95,7 @@
     <string name="profile_brand_emblem">Emblema de l\'empresa</string>
     <string name="profile_brand_logo_pick">Fer servir la meva imatge</string>
     <string name="profile_brand_logo_clear">Treure la imatge</string>
-    <string name="profile_brand_hint">Tria un dibuix i un color, o puja el teu logotip. Es pinta a la façana i als teus camions.</string>
+    <string name="profile_brand_hint">Tria un dibuix i un color, o puja la teva imatge: omple tot el cercle. Es pinta a la façana i als teus camions.</string>
     <string name="profile_language">Idioma</string>
     <string name="profile_language_system">El del telèfon</string>
     <string name="hex_purchase_cancel">Cancel·la</string>

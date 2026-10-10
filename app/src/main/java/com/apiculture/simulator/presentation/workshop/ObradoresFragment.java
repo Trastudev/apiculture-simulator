@@ -1,7 +1,6 @@
 package com.apiculture.simulator.presentation.workshop;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,14 +20,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.apiculture.simulator.R;
 import com.apiculture.simulator.data.local.AppDatabase;
 import com.apiculture.simulator.data.local.entity.HexParcelOwnershipEntity;
-import com.apiculture.simulator.data.remote.LandmarkPhoto;
 import com.apiculture.simulator.data.repository.IberiaHexOverlayStore;
 import com.apiculture.simulator.data.repository.WarehouseHoneyStore;
 import com.apiculture.simulator.data.repository.WorkshopStore;
 import com.apiculture.simulator.data.session.PlayerAuth;
 import com.apiculture.simulator.databinding.FragmentObradoresBinding;
 import com.apiculture.simulator.databinding.ItemObradorCardBinding;
-import com.apiculture.simulator.domain.map.PlayableMapRegion;
 import com.apiculture.simulator.domain.parcel.HexParcel;
 import com.apiculture.simulator.domain.parcel.WarehouseRules;
 import com.apiculture.simulator.domain.workshop.WorkshopRules;
@@ -42,7 +39,6 @@ import com.apiculture.simulator.unity.UnityBridge;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +47,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Pestaña Obradores: una tarjeta por obrador, con la foto de un lugar conocido de la zona de fondo,
+ * Pestaña Obradores: una tarjeta por obrador, con el paisaje de su clima de fondo (como Apiarios),
  * sus máquinas con el nivel, la miel que guarda y el botón para entrar en el 3D.
  */
 public class ObradoresFragment extends Fragment {
@@ -62,20 +58,14 @@ public class ObradoresFragment extends Fragment {
         String place;
         int level;
         double capacityKg;
-        double lat;
-        double lon;
         YardClimate climate;
         WorkshopState state;
         Map<String, Double> bulk;
-        String[] langs;
     }
 
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
-    private static final ExecutorService PHOTOS = Executors.newFixedThreadPool(2);
 
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final Map<String, LandmarkPhoto.Result> photos = new HashMap<>();
-    private final Set<String> asked = new HashSet<>();
     private FragmentObradoresBinding binding;
     private final Adapter adapter = new Adapter();
 
@@ -136,15 +126,9 @@ public class ObradoresFragment extends Fragment {
             c.capacityKg = WarehouseRules.capacityKg(c.level);
             HexParcel parcel = IberiaHexOverlayStore.findById(app, row.hexId);
             c.place = parcel != null && parcel.placeName != null ? parcel.placeName : "";
-            c.lat = parcel != null ? parcel.centroidLat : Double.NaN;
-            c.lon = parcel != null ? parcel.centroidLon : Double.NaN;
             c.climate = YardClimate.resolve(app, row.hexId, null);
             c.state = WorkshopStore.get(app, owner, row.hexId);
             c.bulk = WarehouseHoneyStore.at(app, owner, row.hexId);
-            PlayableMapRegion region = PlayableMapRegion.fromHexId(row.hexId);
-            c.langs = region == PlayableMapRegion.MADAGASCAR ? new String[]{"fr", "en"}
-                    : region == PlayableMapRegion.SOUTH_AFRICA ? new String[]{"en"}
-                    : new String[]{"es", "ca", "en"};
             out.add(c);
         }
         return out;
@@ -162,25 +146,6 @@ public class ObradoresFragment extends Fragment {
         }
         UnityBridge.prepareWorkshop(requireContext(), owner, c.name, c.hexId);
         Apiary3DActivity.open(requireContext());
-    }
-
-    private void askPhoto(@NonNull Card c) {
-        if (Double.isNaN(c.lat) || !asked.add(c.hexId)) {
-            return;
-        }
-        Context app = requireContext().getApplicationContext();
-        PHOTOS.execute(() -> {
-            LandmarkPhoto.Result r = LandmarkPhoto.get(app, c.hexId, c.lat, c.lon, c.langs);
-            if (r == null) {
-                return;
-            }
-            main.post(() -> {
-                photos.put(c.hexId, r);
-                if (binding != null) {
-                    adapter.notifyDataSetChanged();
-                }
-            });
-        });
     }
 
     // ---------- Tarjeta ----------
@@ -226,18 +191,6 @@ public class ObradoresFragment extends Fragment {
                     kg(c.capacityKg)));
             b.obradorYard.setPreviewMode(true);
             b.obradorYard.setClimate(c.climate);
-            LandmarkPhoto.Result photo = photos.get(c.hexId);
-            if (photo != null) {
-                Bitmap bmp = photo.bitmap;
-                b.ivObradorPhoto.setImageBitmap(bmp);
-                b.ivObradorPhoto.setVisibility(View.VISIBLE);
-                b.tvObradorPhotoCredit.setText(ctx.getString(R.string.obradores_photo_credit, photo.title));
-                b.tvObradorPhotoCredit.setVisibility(View.VISIBLE);
-            } else {
-                b.ivObradorPhoto.setVisibility(View.GONE);
-                b.tvObradorPhotoCredit.setVisibility(View.GONE);
-                askPhoto(c);
-            }
             bindMachines(ctx, c.state);
             bindHoney(ctx, c);
             b.btnObradorEnter.setOnClickListener(v -> enter(c));

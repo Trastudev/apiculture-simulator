@@ -30,38 +30,6 @@
                 android:importantForAccessibility="no" />
 
             <ImageView
-                android:id="@+id/iv_obrador_photo"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:contentDescription="@null"
-                android:scaleType="centerCrop"
-                android:visibility="gone" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_gravity="bottom"
-                android:background="@drawable/bg_obrador_scrim" />
-
-            <TextView
-                android:id="@+id/tv_obrador_photo_credit"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="start|bottom"
-                android:layout_marginStart="12dp"
-                android:layout_marginEnd="100dp"
-                android:layout_marginBottom="8dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:shadowColor="#99000000"
-                android:shadowRadius="3"
-                android:textColor="#FFFFFFFF"
-                android:textSize="11sp"
-                android:visibility="gone"
-                tools:text="Seo Vieja (Lérida) · Wikipedia"
-                tools:visibility="visible" />
-
-            <ImageView
                 android:layout_width="84dp"
                 android:layout_height="84dp"
                 android:layout_gravity="end|bottom"

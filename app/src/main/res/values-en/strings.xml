@@ -28,7 +28,6 @@
     <string name="obradores_machines">Machines</string>
     <string name="obradores_honey">Stored honey</string>
     <string name="obradores_level_capacity">level %1$d · %2$s kg capacity</string>
-    <string name="obradores_photo_credit">%1$s · Wikipedia</string>
     <string name="obradores_machine_missing">Not bought</string>
     <string name="obradores_machine_ready">Ready</string>
     <string name="obradores_machine_level">Lv. %1$d</string>
@@ -1384,7 +1383,7 @@
     <string name="profile_brand_emblem">Company emblem</string>
     <string name="profile_brand_logo_pick">Use my image</string>
     <string name="profile_brand_logo_clear">Remove image</string>
-    <string name="profile_brand_hint">Pick a symbol and a colour, or upload your own logo. It is painted on the facade and your trucks.</string>
+    <string name="profile_brand_hint">Pick a symbol and a colour, or upload your own image: it fills the circle. It is painted on the facade and your trucks.</string>
     <string name="profile_language">Language</string>
     <string name="profile_language_system">Phone language</string>
     <string name="mail_title">Mailbox</string>

@@ -111,19 +111,22 @@ public final class BrandStore {
     }
 
     /**
-     * Imagen elegida por el jugador encajada entera en un cuadrado transparente (un logo apaisado no
-     * se recorta), en PNG base64.
+     * Imagen del jugador tal cual, recortada en cuadrado por el centro y en círculo: llena todo el
+     * medallón, dentro del aro dorado. PNG base64 (fuera del círculo, transparente).
      */
     @Nullable
     public static String encodeLogo(@Nullable Bitmap src) {
         if (src == null || src.getWidth() <= 0 || src.getHeight() <= 0) {
             return null;
         }
+        int side = Math.min(src.getWidth(), src.getHeight());
+        int sx = (src.getWidth() - side) / 2, sy = (src.getHeight() - side) / 2;
         Bitmap out = Bitmap.createBitmap(LOGO_SIZE, LOGO_SIZE, Bitmap.Config.ARGB_8888);
-        float scale = Math.min(LOGO_SIZE / (float) src.getWidth(), LOGO_SIZE / (float) src.getHeight());
-        int w = Math.round(src.getWidth() * scale), h = Math.round(src.getHeight() * scale);
-        int x = (LOGO_SIZE - w) / 2, y = (LOGO_SIZE - h) / 2;
-        new Canvas(out).drawBitmap(src, null, new Rect(x, y, x + w, y + h), new Paint(Paint.FILTER_BITMAP_FLAG));
+        Canvas canvas = new Canvas(out);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        canvas.drawCircle(LOGO_SIZE / 2f, LOGO_SIZE / 2f, LOGO_SIZE / 2f, paint);
+        paint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN));
+        canvas.drawBitmap(src, new Rect(sx, sy, sx + side, sy + side), new Rect(0, 0, LOGO_SIZE, LOGO_SIZE), paint);
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         if (!out.compress(Bitmap.CompressFormat.PNG, 100, bytes)) {
             return null;

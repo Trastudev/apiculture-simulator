@@ -27,7 +27,6 @@
     <string name="obradores_machines">Máquinas</string>
     <string name="obradores_honey">Miel almacenada</string>
     <string name="obradores_level_capacity">nivel %1$d · %2$s kg de capacidad</string>
-    <string name="obradores_photo_credit">%1$s · Wikipedia</string>
     <string name="obradores_machine_missing">Sin comprar</string>
     <string name="obradores_machine_ready">Lista</string>
     <string name="obradores_machine_level">Nv. %1$d</string>
@@ -1405,7 +1404,7 @@
     <string name="profile_brand_emblem">Emblema de la empresa</string>
     <string name="profile_brand_logo_pick">Usar mi imagen</string>
     <string name="profile_brand_logo_clear">Quitar imagen</string>
-    <string name="profile_brand_hint">Elige un dibujo y un color, o sube tu propio logo. Se pinta en la fachada y en tus camiones.</string>
+    <string name="profile_brand_hint">Elige un dibujo y un color, o sube tu propia imagen: sale entera dentro del círculo. Se pinta en la fachada y en tus camiones.</string>
     <string name="profile_language">Idioma</string>
     <string name="profile_language_system">El del teléfono</string>
     <string name="mail_title">Buzón</string>

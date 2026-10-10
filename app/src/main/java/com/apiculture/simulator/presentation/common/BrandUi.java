@@ -37,15 +37,16 @@ public final class BrandUi {
         float r = sizePx / 2f;
         paint.setColor(RING);
         canvas.drawCircle(r, r, r, paint);
-        paint.setColor(Color.parseColor(brand.color));
-        canvas.drawCircle(r, r, r * 0.88f, paint);
         Bitmap logo = brand.logoBitmap();
         if (logo != null) {
-            int inset = Math.round(sizePx * 0.18f);
+            // La imagen del jugador, ya recortada en círculo, llena todo el interior del aro.
+            int inset = Math.round(sizePx * 0.06f);
             canvas.drawBitmap(logo, null, new android.graphics.Rect(inset, inset, sizePx - inset, sizePx - inset),
-                    new Paint(Paint.FILTER_BITMAP_FLAG));
+                    new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG));
             return bmp;
         }
+        paint.setColor(Color.parseColor(brand.color));
+        canvas.drawCircle(r, r, r * 0.88f, paint);
         Drawable glyph = ContextCompat.getDrawable(context, EMBLEMS[brand.emblem]);
         if (glyph != null) {
             int inset = Math.round(sizePx * 0.2f);
