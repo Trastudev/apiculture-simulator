@@ -1382,7 +1382,9 @@
     <string name="tutorial_c8_v03">The ship\'s route shows on the map, just like the truck on the road.</string>
     <string name="tutorial_c8_v04">At level 35 you pay 15,000 B for each international market. You sell where honey is worth more, minus the trip.</string>
     <string name="profile_brand_emblem">Company emblem</string>
-    <string name="profile_brand_hint">Painted on your honey house vans.</string>
+    <string name="profile_brand_logo_pick">Use my image</string>
+    <string name="profile_brand_logo_clear">Remove image</string>
+    <string name="profile_brand_hint">Pick a symbol and a colour, or upload your own logo. It is painted on the facade and your trucks.</string>
     <string name="profile_language">Language</string>
     <string name="profile_language_system">Phone language</string>
     <string name="mail_title">Mailbox</string>

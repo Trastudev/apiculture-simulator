@@ -38,6 +38,8 @@ final class UnityYard {
         BrandStore.Brand brand = BrandStore.get(app, ownerId);
         yard.put("emblem", brand.emblem);
         yard.put("color", brand.color);
+        String logo = BrandStore.logoFile(app, ownerId);
+        yard.put("logoPath", logo != null ? logo : "");
         yard.put("brandName", honeyBrand(app, ownerId));
         yard.put("buyCost", FleetRules.purchaseCostB(FleetRules.Kind.TRUCK));
         yard.put("maxLevel", FleetRules.maxLevel(FleetRules.Kind.TRUCK));

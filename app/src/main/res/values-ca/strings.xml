@@ -94,7 +94,9 @@
     <string name="profile_edit_ok">Perfil actualitzat.</string>
     <string name="profile_edit_photo_fail">No s\'ha pogut llegir aquesta imatge.</string>
     <string name="profile_brand_emblem">Emblema de l\'empresa</string>
-    <string name="profile_brand_hint">Es pinta a les teves furgonetes de l\'obrador.</string>
+    <string name="profile_brand_logo_pick">Fer servir la meva imatge</string>
+    <string name="profile_brand_logo_clear">Treure la imatge</string>
+    <string name="profile_brand_hint">Tria un dibuix i un color, o puja el teu logotip. Es pinta a la façana i als teus camions.</string>
     <string name="profile_language">Idioma</string>
     <string name="profile_language_system">El del telèfon</string>
     <string name="hex_purchase_cancel">Cancel·la</string>

@@ -1403,7 +1403,9 @@
     <string name="tutorial_c8_v03">La ruta del barco se ve en el mapa, igual que el camión en la carretera.</string>
     <string name="tutorial_c8_v04">Al nivel 35 pagas 15.000 B por cada mercado internacional. Vendes donde la miel vale más, descontando el viaje.</string>
     <string name="profile_brand_emblem">Emblema de la empresa</string>
-    <string name="profile_brand_hint">Se pinta en tus camionetas del obrador.</string>
+    <string name="profile_brand_logo_pick">Usar mi imagen</string>
+    <string name="profile_brand_logo_clear">Quitar imagen</string>
+    <string name="profile_brand_hint">Elige un dibujo y un color, o sube tu propio logo. Se pinta en la fachada y en tus camiones.</string>
     <string name="profile_language">Idioma</string>
     <string name="profile_language_system">El del teléfono</string>
     <string name="mail_title">Buzón</string>

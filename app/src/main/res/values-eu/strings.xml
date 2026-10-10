@@ -1382,7 +1382,9 @@
     <string name="tutorial_c8_v03">Itsasontziaren ibilbidea mapan ikusten da, kamioia errepidean bezala.</string>
     <string name="tutorial_c8_v04">35. mailan 15.000 B ordaintzen dituzu nazioarteko merkatu bakoitzeko. Eztia gehiago balio duen tokian saltzen duzu, bidaia kenduta.</string>
     <string name="profile_brand_emblem">Enpresaren ikurra</string>
-    <string name="profile_brand_hint">Lantegiko furgonetetan margotzen da.</string>
+    <string name="profile_brand_logo_pick">Nire irudia erabili</string>
+    <string name="profile_brand_logo_clear">Irudia kendu</string>
+    <string name="profile_brand_hint">Aukeratu marrazki bat eta kolore bat, edo igo zure logotipoa. Fatxadan eta zure kamioietan margotzen da.</string>
     <string name="profile_language">Hizkuntza</string>
     <string name="profile_language_system">Telefonoarena</string>
     <string name="mail_title">Postontzia</string>

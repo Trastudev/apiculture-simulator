@@ -39,6 +39,13 @@ public final class BrandUi {
         canvas.drawCircle(r, r, r, paint);
         paint.setColor(Color.parseColor(brand.color));
         canvas.drawCircle(r, r, r * 0.88f, paint);
+        Bitmap logo = brand.logoBitmap();
+        if (logo != null) {
+            int inset = Math.round(sizePx * 0.18f);
+            canvas.drawBitmap(logo, null, new android.graphics.Rect(inset, inset, sizePx - inset, sizePx - inset),
+                    new Paint(Paint.FILTER_BITMAP_FLAG));
+            return bmp;
+        }
         Drawable glyph = ContextCompat.getDrawable(context, EMBLEMS[brand.emblem]);
         if (glyph != null) {
             int inset = Math.round(sizePx * 0.2f);
@@ -60,7 +67,7 @@ public final class BrandUi {
         refresh[0] = () -> {
             preview.setImageBitmap(badge(context, current[0], Math.round(64 * density)));
             for (int i = 0; i < emblems.getChildCount(); i++) {
-                emblems.getChildAt(i).setAlpha(i == current[0].emblem ? 1f : 0.45f);
+                emblems.getChildAt(i).setAlpha(current[0].logo == null && i == current[0].emblem ? 1f : 0.45f);
             }
             for (int i = 0; i < colors.getChildCount(); i++) {
                 colors.getChildAt(i).setAlpha(BrandStore.COLORS[i].equalsIgnoreCase(current[0].color) ? 1f : 0.45f);
@@ -75,7 +82,7 @@ public final class BrandUi {
             v.setLayoutParams(lp);
             v.setImageBitmap(badge(context, new BrandStore.Brand(emblem, "#5A4632"), tile));
             v.setOnClickListener(x -> {
-                current[0] = new BrandStore.Brand(emblem, current[0].color);
+                current[0] = new BrandStore.Brand(emblem, current[0].color, null);
                 refresh[0].run();
                 onChange.accept(current[0]);
             });
@@ -96,7 +103,7 @@ public final class BrandUi {
             new Canvas(b).drawCircle(dot / 2f, dot / 2f, dot * 0.42f, p);
             v.setImageBitmap(b);
             v.setOnClickListener(x -> {
-                current[0] = new BrandStore.Brand(current[0].emblem, color);
+                current[0] = new BrandStore.Brand(current[0].emblem, color, current[0].logo);
                 refresh[0].run();
                 onChange.accept(current[0]);
             });

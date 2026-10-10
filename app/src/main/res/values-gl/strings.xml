@@ -1392,7 +1392,9 @@
     <string name="tutorial_c8_v03">A ruta do barco vese no mapa, igual que o camión na estrada.</string>
     <string name="tutorial_c8_v04">Ao nivel 35 pagas 15.000 B por cada mercado internacional. Vendes onde o mel vale máis, descontando a viaxe.</string>
     <string name="profile_brand_emblem">Emblema da empresa</string>
-    <string name="profile_brand_hint">Píntase nas túas furgonetas do obradoiro.</string>
+    <string name="profile_brand_logo_pick">Usar a miña imaxe</string>
+    <string name="profile_brand_logo_clear">Quitar a imaxe</string>
+    <string name="profile_brand_hint">Escolle un debuxo e unha cor, ou sube o teu logotipo. Píntase na fachada e nos teus camións.</string>
     <string name="profile_language">Idioma</string>
     <string name="profile_language_system">O do teléfono</string>
     <string name="mail_title">Buzón</string>

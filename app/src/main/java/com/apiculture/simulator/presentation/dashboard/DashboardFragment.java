@@ -103,6 +103,12 @@ public class DashboardFragment extends Fragment {
     private final ActivityResultLauncher<String> pickProfilePhoto =
             registerForActivityResult(new ActivityResultContracts.GetContent(), this::onProfilePhotoPicked);
 
+    /** Emblema que se está editando en el perfil (dibujo, color o logo propio). */
+    private com.apiculture.simulator.data.repository.BrandStore.Brand editBrand;
+
+    private final ActivityResultLauncher<String> pickBrandLogo =
+            registerForActivityResult(new ActivityResultContracts.GetContent(), this::onBrandLogoPicked);
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -1687,6 +1693,40 @@ public class DashboardFragment extends Fragment {
         nav.navigate(R.id.mapFragment, args);
     }
 
+    /** Logo propio de la empresa: se encaja entero en un cuadrado y sustituye al dibujo. */
+    private void onBrandLogoPicked(@Nullable Uri uri) {
+        if (uri == null || !isAdded() || editProfileForm == null || editBrand == null) {
+            return;
+        }
+        Bitmap src = null;
+        try (java.io.InputStream in = requireContext().getContentResolver().openInputStream(uri)) {
+            if (in != null) {
+                src = android.graphics.BitmapFactory.decodeStream(in);
+            }
+        } catch (Exception ignored) {
+        }
+        String logo = com.apiculture.simulator.data.repository.BrandStore.encodeLogo(src);
+        if (logo == null) {
+            GameNotice.show(requireContext(), R.string.profile_edit_photo_fail);
+            return;
+        }
+        editBrand = editBrand.withLogo(logo);
+        bindBrandPicker();
+    }
+
+    private void bindBrandPicker() {
+        if (editProfileForm == null || editBrand == null) {
+            return;
+        }
+        com.apiculture.simulator.presentation.common.BrandUi.bindPicker(requireContext(),
+                editProfileForm.ivProfileBrand, editProfileForm.llProfileBrandEmblems,
+                editProfileForm.llProfileBrandColors, editBrand, b -> {
+                    editBrand = b;
+                    editProfileForm.btnProfileBrandLogoClear.setVisibility(b.logo != null ? View.VISIBLE : View.GONE);
+                });
+        editProfileForm.btnProfileBrandLogoClear.setVisibility(editBrand.logo != null ? View.VISIBLE : View.GONE);
+    }
+
     private void onProfilePhotoPicked(@Nullable Uri uri) {
         if (uri == null || !isAdded() || editProfileForm == null) {
             return;
@@ -1718,11 +1758,13 @@ public class DashboardFragment extends Fragment {
         } else {
             editProfileForm.ivProfileEditPhoto.setImageResource(R.drawable.ic_apicultor);
         }
-        final com.apiculture.simulator.data.repository.BrandStore.Brand[] brand = {
-                com.apiculture.simulator.data.repository.BrandStore.get(requireContext(), u.getUid())};
-        com.apiculture.simulator.presentation.common.BrandUi.bindPicker(requireContext(),
-                editProfileForm.ivProfileBrand, editProfileForm.llProfileBrandEmblems,
-                editProfileForm.llProfileBrandColors, brand[0], b -> brand[0] = b);
+        editBrand = com.apiculture.simulator.data.repository.BrandStore.get(requireContext(), u.getUid());
+        bindBrandPicker();
+        editProfileForm.btnProfileBrandLogo.setOnClickListener(v -> pickBrandLogo.launch("image/*"));
+        editProfileForm.btnProfileBrandLogoClear.setOnClickListener(v -> {
+            editBrand = editBrand.withLogo(null);
+            bindBrandPicker();
+        });
         String lang = GameLocale.saved(requireContext());
         if ("ca".equals(lang)) {
             editProfileForm.rbLangCa.setChecked(true);
@@ -1790,7 +1832,7 @@ public class DashboardFragment extends Fragment {
                 GameNotice.show(requireContext(), R.string.profile_setup_fill_all);
                 return;
             }
-            com.apiculture.simulator.data.repository.BrandStore.save(requireContext(), u.getUid(), brand[0]);
+            com.apiculture.simulator.data.repository.BrandStore.save(requireContext(), u.getUid(), editBrand);
             editProfileForm.btnProfileSave.setEnabled(false);
             ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
             app.getProfileRepository().updatePlayerName(u.getUid(), name, () -> {
