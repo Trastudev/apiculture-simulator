@@ -773,6 +773,10 @@ public final class TutorialController implements TutorialBus.Listener {
         if (step.screen == Screen.WORKSHOP && !screenMatches(Screen.WORKSHOP)) {
             return destId == R.id.dashboardFragment ? Anchor.DASH_WORKSHOP : Anchor.TAB_DASH;
         }
+        // Capítulos 9 y 10. Los obradores están en su pestaña de abajo.
+        if (step.screen == Screen.OBRADORES && !screenMatches(Screen.OBRADORES)) {
+            return Anchor.TAB_OBRADORES;
+        }
         if (step.advance == Advance.NAV || step.screen == Screen.ANY || screenMatches(step.screen)) {
             return step.anchor;
         }
@@ -1073,6 +1077,8 @@ public final class TutorialController implements TutorialBus.Listener {
                 return destId == R.id.shopFragment;
             case WORKSHOP:
                 return destId == R.id.workshopFragment;
+            case OBRADORES:
+                return destId == R.id.obradoresFragment;
             case ANY:
             default:
                 return true;

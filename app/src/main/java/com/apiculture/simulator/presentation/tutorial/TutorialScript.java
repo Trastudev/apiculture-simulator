@@ -17,7 +17,7 @@ import java.util.Map;
 public final class TutorialScript {
 
     public enum Screen {
-        ANY, DASHBOARD, MAP, YARD, HIVE, MARKET, SHOP, WORKSHOP
+        ANY, DASHBOARD, MAP, YARD, HIVE, MARKET, SHOP, WORKSHOP, OBRADORES
     }
 
     public enum Advance {
@@ -40,6 +40,7 @@ public final class TutorialScript {
         TAB_MAP(true, R.id.mapFragment),
         TAB_MARKET(true, R.id.marketFragment),
         TAB_HIVES(true, R.id.hivesFragment),
+        TAB_OBRADORES(true, R.id.obradoresFragment),
         CLIMATE_LEGEND(false, R.id.card_climate_legend),
         MAP(false, R.id.map_container),
         YARD_BUY(false, R.id.btn_yard_buy_hive),
@@ -63,7 +64,9 @@ public final class TutorialScript {
         WORKSHOP_BUILD(false, R.id.ll_workshop_build),
         WORKSHOP_MACHINES(false, R.id.ll_workshop_machines),
         WORKSHOP_BATCHES(false, R.id.ll_workshop_batches),
-        WORKSHOP_STOCK(false, R.id.ll_workshop_stock, R.id.ll_workshop_wax);
+        WORKSHOP_STOCK(false, R.id.ll_workshop_stock, R.id.ll_workshop_wax),
+        OBRADOR_CARD(false, R.id.rv_obradores),
+        OBRADOR_ENTER(false, R.id.btn_obrador_enter);
 
         public final boolean onActivity;
         public final int[] viewIds;
@@ -74,7 +77,7 @@ public final class TutorialScript {
         }
 
         public boolean cardOnTop() {
-            return this == BOTTOM_NAV || this == TAB_DASH || this == TAB_MAP
+            return this == BOTTOM_NAV || this == TAB_DASH || this == TAB_MAP || this == TAB_OBRADORES
                     || this == TAB_MARKET || this == TAB_HIVES || this == CLIMATE_LEGEND
                     || this == MAP || this == YARD_BUY || this == HARVEST
                     || this == SHOP_TRUCK
@@ -243,33 +246,33 @@ public final class TutorialScript {
         STEPS.put(TutorialChapter.WORKSHOP, new Step[] {
                 // Capítulo 9, viñeta 1. La miel nueva pasa por el obrador.
                 step(TutorialChapter.WORKSHOP, 1, R.string.tutorial_c9_v01),
-                // Capítulo 9, viñeta 2. Abrir el obrador desde Inicio.
+                // Capítulo 9, viñeta 2. La pestaña Obradores.
                 step(TutorialChapter.WORKSHOP, 2, R.string.tutorial_c9_v02,
-                        Screen.WORKSHOP, Anchor.DASH_WORKSHOP, Advance.NAV, null),
-                // Capítulo 9, viñeta 3. Construirlo junto a un almacén.
+                        Screen.OBRADORES, Anchor.TAB_OBRADORES, Advance.NAV, null),
+                // Capítulo 9, viñeta 3. La tarjeta: máquinas y miel guardada.
                 step(TutorialChapter.WORKSHOP, 3, R.string.tutorial_c9_v03,
-                        Screen.WORKSHOP, Anchor.WORKSHOP_BUILD, Advance.EVENT, TutorialEvent.WORKSHOP_BUILT),
-                // Capítulo 9, viñeta 4. Comprar las cuatro máquinas que faltan.
+                        Screen.OBRADORES, Anchor.OBRADOR_CARD, Advance.NEXT, null),
+                // Capítulo 9, viñeta 4. Entrar y comprarle a Toni las máquinas (o en la pantalla del obrador).
                 step(TutorialChapter.WORKSHOP, 4, R.string.tutorial_c9_v04,
-                        Screen.WORKSHOP, Anchor.WORKSHOP_MACHINES, Advance.EVENT, TutorialEvent.WORKSHOP_READY),
+                        Screen.OBRADORES, Anchor.OBRADOR_ENTER, Advance.EVENT, TutorialEvent.WORKSHOP_READY),
                 // Capítulo 9, viñeta 5. El recorrido de una tanda.
                 step(TutorialChapter.WORKSHOP, 5, R.string.tutorial_c9_v05,
-                        Screen.WORKSHOP, Anchor.NONE, Advance.NEXT, null),
+                        Screen.ANY, Anchor.NONE, Advance.NEXT, null),
                 // Capítulo 9, viñeta 6. Cosechar: el camión vuelve al obrador.
                 step(TutorialChapter.WORKSHOP, 6, R.string.tutorial_c9_v06),
         });
 
         // Capítulo 10. Primera tanda. Sale cuando entra la primera tanda en el obrador.
         STEPS.put(TutorialChapter.WORKSHOP_PACKING, new Step[] {
-                // Capítulo 10, viñeta 1. Máquinas, cola y tiempo con la app cerrada.
+                // Capítulo 10, viñeta 1. El punto rojo de Obradores: Toni te necesita.
                 step(TutorialChapter.WORKSHOP_PACKING, 1, R.string.tutorial_c10_v01,
-                        Screen.WORKSHOP, Anchor.WORKSHOP_BATCHES, Advance.NEXT, null),
-                // Capítulo 10, viñeta 2. Elegir envase.
+                        Screen.ANY, Anchor.TAB_OBRADORES, Advance.NEXT, null),
+                // Capítulo 10, viñeta 2. Entrar y repartir la tanda con Toni.
                 step(TutorialChapter.WORKSHOP_PACKING, 2, R.string.tutorial_c10_v02,
-                        Screen.WORKSHOP, Anchor.WORKSHOP_BATCHES, Advance.EVENT, TutorialEvent.WORKSHOP_FORMAT),
+                        Screen.OBRADORES, Anchor.OBRADOR_ENTER, Advance.EVENT, TutorialEvent.WORKSHOP_FORMAT),
                 // Capítulo 10, viñeta 3. Tarros y cera.
                 step(TutorialChapter.WORKSHOP_PACKING, 3, R.string.tutorial_c10_v03,
-                        Screen.WORKSHOP, Anchor.WORKSHOP_STOCK, Advance.NEXT, null),
+                        Screen.ANY, Anchor.NONE, Advance.NEXT, null),
                 // Capítulo 10, viñeta 4. Mejoras.
                 step(TutorialChapter.WORKSHOP_PACKING, 4, R.string.tutorial_c10_v04),
         });

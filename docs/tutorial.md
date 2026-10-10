@@ -95,20 +95,20 @@ Lo ven también quienes ya jugaban antes de esta versión.
 | # | Pantalla | Qué dice Ramón | Cómo se avanza |
 |---|---|---|---|
 | 1 | Cualquiera | La miel cosechada va al obrador, donde se extrae y se envasa. Sin obrador no se cosecha. | Siguiente |
-| 2 | Inicio, casilla Obrador | Pulsa Obrador en Inicio. | Abrir el obrador |
-| 3 | Obrador | Cada almacén es un obrador: guarda la miel y la procesa, y trae de serie la sala de recepción. | Siguiente (ya está construido) |
-| 4 | Obrador, máquinas | Desoperculadora, extractor, madurador y envasadora: 10.500 B. | Las cinco máquinas compradas |
-| 5 | Obrador | Recorrido de la tanda, cola por máquina y tiempo con la app cerrada. | Siguiente |
+| 2 | Barra de abajo, pestaña Obradores | Pulsa Obradores. | Abrir la pestaña |
+| 3 | Obradores, tarjeta | Cada tarjeta es un obrador: sus máquinas con nivel y la miel que guarda; trae de serie la sala de recepción. | Siguiente |
+| 4 | Obradores, botón Entrar al obrador | Entra y cómprale a Toni la desoperculadora, el extractor, el madurador y la envasadora (10.500 B). Dentro del 3D no hay viñetas: avanza al completar el obrador (también vale comprarlas en la pantalla 2D del obrador). | Obrador completo |
+| 5 | Cualquiera | Recorrido de la tanda, cola por máquina y tiempo con la app cerrada. | Siguiente |
 | 6 | Cualquiera | Ya puedes cosechar. El camión lleva las alzas al obrador. | Siguiente |
 
-**Capítulo 10. Primera tanda.** Sale cuando hay alguna tanda en el obrador (desde Inicio o desde el obrador).
+**Capítulo 10. Primera tanda.** Sale cuando hay alguna tanda en el obrador.
 
 | # | Pantalla | Qué dice Ramón | Cómo se avanza |
 |---|---|---|---|
-| 1 | Obrador, tandas | En qué máquina está la tanda y cuánto le falta. | Siguiente |
-| 2 | Obrador, tandas | Elegir envase: el bidón va al almacén y se vende a granel; los tarros pagan bastante más, y más por kilo cuanto más pequeños, pero tardan más. | Envase elegido |
-| 3 | Obrador, tarros y cera | Los tarros se venden en el mercado o en las comandas que los piden. Cera a 9 B/kg. | Siguiente |
-| 4 | Cualquiera | Cada nivel acorta el tiempo y sube los kilos por tanda; el madurador suma depósitos. | Siguiente |
+| 1 | Barra de abajo, pestaña Obradores | Cuando Toni te necesita sale un punto rojo en Obradores y en la tarjeta del obrador. | Siguiente |
+| 2 | Obradores, botón Entrar al obrador | Hablar con Toni y repartir la tanda: tarros de 1 kg, 500 g y 250 g, y el resto a granel. Los tarros pagan más, y más por kilo cuanto más pequeños, pero tardan más. | Reparto elegido |
+| 3 | Cualquiera | Los tarros se venden en el mercado o en las comandas que los piden. Cera a 9 B/kg. | Siguiente |
+| 4 | Cualquiera | Toni también mejora las máquinas: cada nivel acorta el tiempo y sube los kilos por tanda; el madurador suma depósitos. | Siguiente |
 
 Los 45.000 B iniciales cubren el capítulo 1 y los 16.500 B del obrador básico.
 

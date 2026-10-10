@@ -1588,13 +1588,13 @@
     <string name="workshop_err_no_wax">Ez duzu argizaririk saltzeko.</string>
     <!-- Tutorialaren 9. eta 10. kapituluak: lantegia. -->
     <string name="tutorial_c9_v01">Hemendik aurrera, biltzen duzun eztia lantegira doa. Han erauzi eta ontziratzen da. Lantegirik gabe ezin da bildu.</string>
-    <string name="tutorial_c9_v02">Sakatu Lantegia Hasieran.</string>
-    <string name="tutorial_c9_v03">Lantegi bakoitzak eztia gorde eta lantzen du. Harrera-gela dakar, eta ontziratzen duzuna hementxe geratzen da.</string>
-    <string name="tutorial_c9_v04">Erosi desoperkulagailua, erauzgailua, heltzeko depositua eta ontziratzeko makina. 10.500 B dira. Bat falta bada, sortak hor gelditzen dira.</string>
+    <string name="tutorial_c9_v02">Sakatu Lantegiak, beheko barran.</string>
+    <string name="tutorial_c9_v03">Txartel bakoitza lantegi bat da: bere makinak mailarekin eta gordetzen duen eztia ikusten dituzu. Harrera-gela berez dakar.</string>
+    <string name="tutorial_c9_v04">Sakatu Lantegian sartu eta hitz egin Tonirekin, operadorearekin. Erosi iezaiozu desoperkulagailua, erauzgailua, heldugailua eta ontziratzeko makina (10.500 B). Bat falta bada, tandak bertan gelditzen dira.</string>
     <string name="tutorial_c9_v05">Sorta bakoitza harreratik, desoperkulaziotik, erauzketatik, heltzetik eta ontziratzetik pasatzen da. Makina bakoitzak sorta bat lantzen du aldi berean, eta besteak ilaran zain daude. Denborak aurrera egiten du aplikazioa itxita egon arren.</string>
     <string name="tutorial_c9_v06">Orain bil dezakezu. Kamioiak gorakinak lantegira eramaten ditu. Lehen sorta iristen denean, nola ontziratu erakutsiko dizut.</string>
-    <string name="tutorial_c10_v01">Zure lehen sorta iritsi da. Hemen ikusten duzu zein makinatan dagoen eta zenbat falta zaion.</string>
-    <string name="tutorial_c10_v02">Sakatu Aukeratu ontzia. Bidoia lantegira doa eta solte saltzen da. Poteak askoz hobeto ordaintzen dira, eta zenbat eta txikiagoa, orduan eta gehiago kiloko, baina gehiago behar dute ontziratzeko.</string>
+    <string name="tutorial_c10_v01">Zure lehen tanda iritsi da. Tonik behar zaituenean, puntu gorri bat ikusiko duzu Lantegiak fitxan eta lantegiaren txartelean.</string>
+    <string name="tutorial_c10_v02">Sartu lantegian eta hitz egin Tonirekin. Banatu tanda: 1 kg-ko, 500 g-ko eta 250 g-ko zenbat pote; soberakoa soltean doa. Poteak hobeto ordaintzen dira, eta zenbat eta txikiagoak, orduan eta gehiago kiloko, baina gehiago behar dute ontziratzeko.</string>
     <string name="tutorial_c10_v03">Poteak lantegian geratzen dira. Saldu merkatuan edo eraman poteak eskatzen dituzten eskaeretara. Argizaria desoperkulatzean ateratzen da eta 9 B/kg-an saltzen da.</string>
-    <string name="tutorial_c10_v04">Makina baten maila bakoitzak denbora laburtzen du eta sorta bakoitzean ezti gehiago sartzen da. Heltzeko depositu bat gehitzen da maila bakoitzean.</string>
+    <string name="tutorial_c10_v04">Tonik makinak ere hobetzen dizkizu: maila bakoitzak denbora laburtzen du eta tandako ezti gehiago sartzen da. Heldugailuak biltegi bat gehitzen du maila bakoitzeko.</string>
 </resources>

@@ -1588,13 +1588,13 @@
     <string name="workshop_err_no_wax">You have no wax to sell.</string>
     <!-- Tutorial chapters 9 and 10: honey house. -->
     <string name="tutorial_c9_v01">From now on, the honey you harvest goes to the honey house. That\'s where it is extracted and packed. Without a honey house you can\'t harvest.</string>
-    <string name="tutorial_c9_v02">Tap Honey house on Home.</string>
-    <string name="tutorial_c9_v03">Each honey house stores honey and processes it. It comes with the reception room, and whatever you pack stays right here.</string>
-    <string name="tutorial_c9_v04">Buy the uncapper, the extractor, the maturing tank and the packing machine. That\'s 10,500 B. If one is missing, batches stop there.</string>
+    <string name="tutorial_c9_v02">Tap Honey houses in the bottom bar.</string>
+    <string name="tutorial_c9_v03">Each card is a honey house: you see its machines with their level and the honey it stores. It comes with the reception room.</string>
+    <string name="tutorial_c9_v04">Tap Enter the honey house and talk to Toni, the operator. Buy the uncapper, the extractor, the maturer and the packer from him (10,500 B). If one is missing, batches stop there.</string>
     <string name="tutorial_c9_v05">Each batch goes through reception, uncapping, extraction, maturing and packing. Each machine works one batch at a time and the rest wait in line. Time keeps running even with the app closed.</string>
     <string name="tutorial_c9_v06">Now you can harvest. The truck takes the supers to the honey house. When the first batch arrives, I\'ll show you how to pack it.</string>
-    <string name="tutorial_c10_v01">Your first batch is here. You can see which machine it\'s in and how long it has left.</string>
-    <string name="tutorial_c10_v02">Tap Choose container. The drum goes to the honey house and sells in bulk. Jars pay much better, and the smaller the jar, the more per kilo, but they take longer to pack.</string>
+    <string name="tutorial_c10_v01">Your first batch has arrived. When Toni needs you, you will see a red dot on Honey houses and on the honey house card.</string>
+    <string name="tutorial_c10_v02">Enter the honey house and talk to Toni. Split the batch: how many 1 kg, 500 g and 250 g jars; the rest goes in bulk. Jars pay better, and the smaller the jar the more per kilo, but they take longer to pack.</string>
     <string name="tutorial_c10_v03">Jars stay in the honey house. Sell them at the market or take them to orders that ask for jars. Wax comes from uncapping and sells at 9 B/kg.</string>
-    <string name="tutorial_c10_v04">Each machine level shortens its time and fits more honey per batch. The maturing tank adds one tank per level.</string>
+    <string name="tutorial_c10_v04">Toni also upgrades your machines: each level shortens their time and fits more honey per batch. The maturer adds a tank per level.</string>
 </resources>

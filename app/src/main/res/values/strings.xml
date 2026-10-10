@@ -1609,13 +1609,13 @@
     <string name="workshop_err_no_wax">No tienes cera para vender.</string>
     <!-- Capítulos 9 y 10 del tutorial: obrador. -->
     <string name="tutorial_c9_v01">Desde ahora, la miel que cosechas va al obrador. Allí se extrae y se envasa. Sin obrador no se puede cosechar.</string>
-    <string name="tutorial_c9_v02">Pulsa Obrador en Inicio.</string>
-    <string name="tutorial_c9_v03">Cada obrador guarda la miel y la procesa. Trae de serie la sala de recepción, y lo que envases se queda aquí mismo.</string>
-    <string name="tutorial_c9_v04">Compra la desoperculadora, el extractor, el madurador y la envasadora. Son 10.500 B. Si falta una, las tandas se paran en ella.</string>
+    <string name="tutorial_c9_v02">Pulsa Obradores, en la barra de abajo.</string>
+    <string name="tutorial_c9_v03">Cada tarjeta es un obrador: ves sus máquinas con su nivel y la miel que guarda. Trae de serie la sala de recepción.</string>
+    <string name="tutorial_c9_v04">Pulsa Entrar al obrador y habla con Toni, el operario. Cómprale la desoperculadora, el extractor, el madurador y la envasadora (10.500 B). Si falta una, las tandas se paran en ella.</string>
     <string name="tutorial_c9_v05">Cada tanda pasa por recepción, desoperculado, extracción, maduración y envasado. Cada máquina trabaja una tanda a la vez y las demás esperan en cola. El tiempo corre aunque cierres la app.</string>
     <string name="tutorial_c9_v06">Ya puedes cosechar. El camión lleva las alzas al obrador. Cuando llegue la primera tanda, te enseño a envasarla.</string>
-    <string name="tutorial_c10_v01">Ha llegado tu primera tanda. Aquí ves en qué máquina está y cuánto le falta.</string>
-    <string name="tutorial_c10_v02">Pulsa Elegir envase. El bidón va al obrador y se vende a granel. Los tarros se pagan bastante mejor, y cuanto más pequeño el tarro, más por kilo, pero tardan más en envasarse.</string>
+    <string name="tutorial_c10_v01">Ha llegado tu primera tanda. Cuando Toni te necesite, verás un punto rojo en Obradores y en la tarjeta del obrador.</string>
+    <string name="tutorial_c10_v02">Entra al obrador y habla con Toni. Reparte la tanda: cuántos tarros de 1 kg, 500 g y 250 g; lo que sobre va a granel. Los tarros se pagan mejor, y cuanto más pequeños, más por kilo, pero tardan más en envasarse.</string>
     <string name="tutorial_c10_v03">Los tarros se quedan en el obrador. Véndelos en el mercado o llévalos a las comandas que piden tarros. La cera sale al desopercular y se vende a 9 B/kg.</string>
-    <string name="tutorial_c10_v04">Cada nivel de una máquina acorta su tiempo y le cabe más miel por tanda. El madurador suma un depósito por nivel.</string>
+    <string name="tutorial_c10_v04">Toni también te mejora las máquinas: cada nivel acorta su tiempo y le cabe más miel por tanda. El madurador suma un depósito por nivel.</string>
 </resources>

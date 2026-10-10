@@ -1598,13 +1598,13 @@
     <string name="workshop_err_no_wax">Non tes cera para vender.</string>
     <!-- Capítulos 9 e 10 do titorial: obradoiro. -->
     <string name="tutorial_c9_v01">Desde agora, o mel que colles vai ao obradoiro. Alí extráese e envásase. Sen obradoiro non se pode coller.</string>
-    <string name="tutorial_c9_v02">Preme Obradoiro en Inicio.</string>
-    <string name="tutorial_c9_v03">Cada obradoiro garda o mel e procésao. Trae de serie a sala de recepción, e o que envases queda aquí mesmo.</string>
-    <string name="tutorial_c9_v04">Compra a desoperculadora, o extractor, o madurador e a envasadora. Son 10.500 B. Se falta unha, as tandas páranse nela.</string>
+    <string name="tutorial_c9_v02">Preme Obradoiros, na barra de abaixo.</string>
+    <string name="tutorial_c9_v03">Cada tarxeta é un obradoiro: ves as súas máquinas co seu nivel e o mel que garda. Trae de serie a sala de recepción.</string>
+    <string name="tutorial_c9_v04">Preme Entrar no obradoiro e fala con Toni, o operario. Mércalle a desoperculadora, o extractor, o madurador e a envasadora (10.500 B). Se falta unha, as tandas páranse nela.</string>
     <string name="tutorial_c9_v05">Cada tanda pasa por recepción, desoperculado, extracción, maduración e envasado. Cada máquina traballa unha tanda á vez e as demais agardan na cola. O tempo corre aínda que peches a app.</string>
     <string name="tutorial_c9_v06">Xa podes coller. O camión leva as alzas ao obradoiro. Cando chegue a primeira tanda, ensínoche a envasala.</string>
-    <string name="tutorial_c10_v01">Chegou a túa primeira tanda. Aquí ves en que máquina está e canto lle falta.</string>
-    <string name="tutorial_c10_v02">Preme Escoller envase. O bidón vai ao obradoiro e véndese a granel. Os tarros páganse bastante mellor, e canto máis pequeno o tarro, máis por quilo, pero tardan máis en envasarse.</string>
+    <string name="tutorial_c10_v01">Chegou a túa primeira tanda. Cando Toni te necesite, verás un punto vermello en Obradoiros e na tarxeta do obradoiro.</string>
+    <string name="tutorial_c10_v02">Entra no obradoiro e fala con Toni. Reparte a tanda: cantos tarros de 1 kg, 500 g e 250 g; o que sobre vai a granel. Os tarros páganse mellor, e canto máis pequenos, máis por quilo, pero tardan máis en envasarse.</string>
     <string name="tutorial_c10_v03">Os tarros quedan no obradoiro. Véndeos no mercado ou lévaos ás comandas que piden tarros. A cera sae ao desopercular e véndese a 9 B/kg.</string>
-    <string name="tutorial_c10_v04">Cada nivel dunha máquina acurta o seu tempo e cabe máis mel por tanda. O madurador suma un depósito por nivel.</string>
+    <string name="tutorial_c10_v04">Toni tamén che mellora as máquinas: cada nivel acurta o seu tempo e cabe máis mel por tanda. O madurador suma un depósito por nivel.</string>
 </resources>

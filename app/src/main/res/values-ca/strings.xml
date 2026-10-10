@@ -1026,13 +1026,13 @@
     <string name="workshop_err_no_wax">No tens cera per vendre.</string>
     <!-- Capítols 9 i 10 del tutorial: obrador. -->
     <string name="tutorial_c9_v01">A partir d\'ara, la mel que culls va a l\'obrador. Allà s\'extreu i s\'envasa. Sense obrador no es pot collir.</string>
-    <string name="tutorial_c9_v02">Prem Obrador a Inici.</string>
-    <string name="tutorial_c9_v03">Cada obrador guarda la mel i la processa. Porta de sèrie la sala de recepció, i el que envasis es queda aquí mateix.</string>
-    <string name="tutorial_c9_v04">Compra la desoperculadora, l\'extractor, el madurador i l\'envasadora. Són 10.500 B. Si en falta una, les tandes s\'aturen allà.</string>
+    <string name="tutorial_c9_v02">Prem Obradors, a la barra de baix.</string>
+    <string name="tutorial_c9_v03">Cada targeta és un obrador: hi veus les màquines amb el seu nivell i la mel que guarda. Porta de sèrie la sala de recepció.</string>
+    <string name="tutorial_c9_v04">Prem Entrar a l\'obrador i parla amb en Toni, l\'operari. Compra-li la desoperculadora, l\'extractor, el madurador i l\'envasadora (10.500 B). Si en falta una, les tandes s\'aturen en aquella.</string>
     <string name="tutorial_c9_v05">Cada tanda passa per recepció, desoperculat, extracció, maduració i envasat. Cada màquina treballa una tanda alhora i les altres esperen a la cua. El temps corre encara que tanquis l\'app.</string>
     <string name="tutorial_c9_v06">Ja pots collir. El camió porta les alces a l\'obrador. Quan arribi la primera tanda, t\'ensenyo a envasar-la.</string>
-    <string name="tutorial_c10_v01">Ha arribat la teva primera tanda. Aquí veus a quina màquina és i quant li falta.</string>
-    <string name="tutorial_c10_v02">Prem Triar envàs. El bidó va a l\'obrador i es ven a granel. Els pots es paguen força millor, i com més petit el pot, més per quilo, però triguen més a envasar-se.</string>
+    <string name="tutorial_c10_v01">Ha arribat la teva primera tanda. Quan en Toni et necessiti, veuràs un punt vermell a Obradors i a la targeta de l\'obrador.</string>
+    <string name="tutorial_c10_v02">Entra a l\'obrador i parla amb en Toni. Reparteix la tanda: quants pots d\'1 kg, 500 g i 250 g; el que sobri va a granel. Els pots es paguen millor, i com més petits, més per quilo, però triguen més a envasar-se.</string>
     <string name="tutorial_c10_v03">Els pots es queden a l\'obrador. Ven-los al mercat o porta\'ls a les comandes que demanen pots. La cera surt en desopercular i es ven a 9 B/kg.</string>
-    <string name="tutorial_c10_v04">Cada nivell d\'una màquina n\'escurça el temps i hi cap més mel per tanda. El madurador suma un dipòsit per nivell.</string>
+    <string name="tutorial_c10_v04">En Toni també et millora les màquines: cada nivell n\'escurça el temps i hi cap més mel per tanda. El madurador suma un dipòsit per nivell.</string>
 </resources>
