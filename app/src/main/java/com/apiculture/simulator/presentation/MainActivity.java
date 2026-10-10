@@ -258,8 +258,10 @@ public class MainActivity extends AppCompatActivity {
                 applySystemBarInsets();
                 if (onLogin || onProfileSetup) {
                     binding.navHivesAlertDot.setVisibility(View.GONE);
+                    binding.navObradoresAlertDot.setVisibility(View.GONE);
                 } else {
                     positionHivesAlertDot();
+                    refreshObradoresAlert();
                 }
 
                 // Sincronizar pestaña inferior (el listener custom no lo hace solo)
@@ -347,8 +349,46 @@ public class MainActivity extends AppCompatActivity {
         if (binding == null) {
             return;
         }
-        View item = binding.bottomNav.findViewById(R.id.hivesFragment);
-        View dot = binding.navHivesAlertDot;
+        positionNavDot(binding.navHivesAlertDot, R.id.hivesFragment);
+        positionNavDot(binding.navObradoresAlertDot, R.id.obradoresFragment);
+    }
+
+    // ---------- Punto rojo de Obradores: Toni tiene la exclamación en el 3D ----------
+
+    private static final long OBRADOR_ALERT_EVERY_MS = 20_000L;
+    private final android.os.Handler obradorAlertHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final java.util.concurrent.ExecutorService obradorAlertIo =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
+    private final Runnable obradorAlertTick = new Runnable() {
+        @Override
+        public void run() {
+            refreshObradoresAlert();
+            obradorAlertHandler.postDelayed(this, OBRADOR_ALERT_EVERY_MS);
+        }
+    };
+
+    /** Las tandas avanzan con el reloj: se mira cada poco y al cambiar de pantalla. */
+    private void refreshObradoresAlert() {
+        String uid = PlayerAuth.getInstance().getUid();
+        android.content.Context app = getApplicationContext();
+        obradorAlertIo.execute(() -> {
+            boolean show = uid != null && !uid.isEmpty()
+                    && com.apiculture.simulator.data.repository.WorkshopStore.anyNeedsAttention(app, uid);
+            runOnUiThread(() -> {
+                if (binding == null || isFinishing()) {
+                    return;
+                }
+                boolean visible = show && binding.bottomNav.getVisibility() == View.VISIBLE;
+                binding.navObradoresAlertDot.setAlertVisible(visible);
+                if (visible) {
+                    binding.getRoot().post(this::positionHivesAlertDot);
+                }
+            });
+        });
+    }
+
+    private void positionNavDot(@NonNull View dot, int itemId) {
+        View item = binding.bottomNav.findViewById(itemId);
         if (item == null || dot.getVisibility() != View.VISIBLE) {
             return;
         }
@@ -379,6 +419,8 @@ public class MainActivity extends AppCompatActivity {
         showPendingHarvestReceipts();
         OrderReceipts.setListener(this::showPendingOrderReceipts);
         showPendingOrderReceipts();
+        obradorAlertHandler.removeCallbacks(obradorAlertTick);
+        obradorAlertHandler.post(obradorAlertTick);
     }
 
     private boolean harvestReceiptShowing;
@@ -615,6 +657,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         activityResumed = false;
+        obradorAlertHandler.removeCallbacks(obradorAlertTick);
         HarvestReceipts.setListener(null);
         OrderReceipts.setListener(null);
         CalculatingDailyDialog.dismiss();

@@ -1502,6 +1502,7 @@
     <string name="workshop_format_jar_250">250 g-ko potea</string>
     <string name="market_order_ask_jars">%1$d × %2$s (%3$s)</string>
     <string name="market_order_ask_drum">%1$.2f kg %2$s bidoietan</string>
+    <string name="workshop_mix_bulk">%1$s kg soltean</string>
     <string name="workshop_mix_part">%1$d × %2$s</string>
     <string name="market_order_ask_mix">%2$s: %1$s</string>
     <string name="market_order_fail_jars">Ez dago pote nahikorik. Poteak ontziratu ziren lantegitik ateratzen dira.</string>
@@ -1582,6 +1583,7 @@
     <string name="workshop_err_max">Makina hau gehienezko mailan dago.</string>
     <string name="workshop_err_not_upgradable">Harrera-gela ezin da hobetu.</string>
     <string name="workshop_err_none">Ez duzu lantegirik.</string>
+    <string name="workshop_err_mix_too_much">Ez dira hainbeste pote sartzen: tandak ez du hainbeste ezti.</string>
     <string name="workshop_err_packing">Sorta hau ontziratzen ari dira dagoeneko.</string>
     <string name="workshop_err_no_wax">Ez duzu argizaririk saltzeko.</string>
     <!-- Tutorialaren 9. eta 10. kapituluak: lantegia. -->

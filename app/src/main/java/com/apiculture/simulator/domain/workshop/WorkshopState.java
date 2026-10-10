@@ -30,6 +30,9 @@ public final class WorkshopState {
         public long endAt;
         @Nullable
         public Format format;
+        /** Reparto elegido: tarros de cada tamaño; lo que sobra va a granel. Null: todo en {@link #format}. */
+        @Nullable
+        public JarMix mix;
         public double waxKg;
 
         public boolean waitingFormat() {
@@ -63,6 +66,19 @@ public final class WorkshopState {
             }
         }
         return true;
+    }
+
+    /**
+     * Toni necesita al jugador (en el 3D lleva la exclamación): una tanda espera envase o está parada
+     * porque falta comprar su máquina. Igual que WorkshopSnapshot.NeedsAttention en Unity.
+     */
+    public boolean needsAttention() {
+        for (Batch b : batches) {
+            if (b.waitingFormat() || (!b.inMachine && level(b.stage) <= 0)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public int level(@NonNull Machine m) {

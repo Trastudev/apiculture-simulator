@@ -57,6 +57,14 @@ final class UnityWorkshopJson {
             o.put("level", level);
             o.put("maxLevel", WorkshopRules.upgradable(m) ? WorkshopRules.MAX_LEVEL : 1);
             o.put("slots", m == Machine.RECEPTION ? 0 : WorkshopRules.slots(m, level));
+            // Tienda de Toni: precio del siguiente paso (comprar o mejorar) y qué cambia.
+            int max = WorkshopRules.upgradable(m) ? WorkshopRules.MAX_LEVEL : 1;
+            int price = level >= max ? 0 : level == 0 ? WorkshopRules.buyCostB(m) : WorkshopRules.upgradeCostB(m, level);
+            o.put("price", price);
+            o.put("info", level > 0
+                    ? com.apiculture.simulator.presentation.workshop.WorkshopFragment.machineInfo(text, m, level) : "");
+            o.put("nextInfo", level < max
+                    ? com.apiculture.simulator.presentation.workshop.WorkshopFragment.machineInfo(text, m, level + 1) : "");
             machines.put(o);
         }
         root.put("machines", machines);
@@ -78,7 +86,13 @@ final class UnityWorkshopJson {
             o.put("waitingFormat", b.waitingFormat());
             o.put("blocked", !b.inMachine && !b.waitingFormat() && s.level(b.stage) <= 0);
             o.put("format", b.format == null ? "" : b.format.name());
-            o.put("formatLabel", b.format == null ? "" : WorkshopFormatUi.label(text, b.format));
+            o.put("formatLabel", b.format == null ? ""
+                    : b.mix != null ? WorkshopFormatUi.splitLabel(text, b.mix, b.kg)
+                    : WorkshopFormatUi.label(text, b.format));
+            // Reparto elegido (0/0/0 si todo va a un solo envase): el selector de Toni parte de aquí.
+            o.put("mixKilo", b.mix != null ? b.mix.kilo : 0);
+            o.put("mixHalf", b.mix != null ? b.mix.half : 0);
+            o.put("mixQuarter", b.mix != null ? b.mix.quarter : 0);
             o.put("canChoose", !(b.stage == Machine.PACKER && b.inMachine));
             JSONArray options = new JSONArray();
             for (Format f : Format.values()) {

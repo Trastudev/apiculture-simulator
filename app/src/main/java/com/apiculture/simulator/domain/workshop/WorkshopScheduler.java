@@ -44,11 +44,47 @@ public final class WorkshopScheduler {
             return false;
         }
         b.format = format;
+        b.mix = null;
         if (b.stage == Machine.PACKER) {
             b.waitingSince = Math.max(b.waitingSince, nowMs);
         }
         advance(s, nowMs);
         return true;
+    }
+
+    /**
+     * Reparto de una tanda: tantos tarros de cada tamaño y el resto a granel. Los tarros no pueden
+     * llevarse más miel de la que tiene la tanda.
+     */
+    public static boolean chooseMix(@NonNull WorkshopState s, @NonNull String batchId,
+            @NonNull JarMix mix, long nowMs) {
+        advance(s, nowMs);
+        Batch b = s.batch(batchId);
+        if (b == null || (b.stage == Machine.PACKER && b.inMachine) || mix.kg() > b.kg + 1e-6) {
+            return false;
+        }
+        b.mix = mix.total() > 0 ? mix : null;
+        b.format = dominant(mix);
+        if (b.stage == Machine.PACKER) {
+            b.waitingSince = Math.max(b.waitingSince, nowMs);
+        }
+        advance(s, nowMs);
+        return true;
+    }
+
+    /** El envase que más miel se lleva del reparto (el bidón si no hay tarros). */
+    @NonNull
+    private static Format dominant(@NonNull JarMix mix) {
+        Format best = Format.BULK;
+        double bestKg = 0;
+        for (Format f : Format.values()) {
+            double kg = f == Format.BULK ? 0 : mix.count(f) * f.jarKg;
+            if (kg > bestKg) {
+                bestKg = kg;
+                best = f;
+            }
+        }
+        return best;
     }
 
     /** Tras comprar o mejorar: lo que esperaba a esa máquina cuenta desde ahora. */
@@ -102,7 +138,7 @@ public final class WorkshopScheduler {
                 Machine m = start.stage;
                 start.inMachine = true;
                 start.startAt = startAt;
-                start.endAt = startAt + WorkshopRules.durationMs(m, s.level(m), start.kg, start.format);
+                start.endAt = startAt + WorkshopRules.durationMs(m, s.level(m), start.kg, start.format, start.mix);
             } else {
                 return changed;
             }
@@ -146,6 +182,23 @@ public final class WorkshopScheduler {
         Machine next = WorkshopRules.next(done);
         if (next != null) {
             b.stage = next;
+            return;
+        }
+        if (b.mix != null) {
+            // Cada tamaño de tarro a la estantería; lo que no se envasó, a granel.
+            double jarKg = 0;
+            for (Format jar : Format.values()) {
+                int n = jar == Format.BULK ? 0 : b.mix.count(jar);
+                if (n > 0) {
+                    s.addPacked(b.flora, jar, n * jar.jarKg, n);
+                    jarKg += n * jar.jarKg;
+                }
+            }
+            double bulk = Math.max(0.0, b.kg - jarKg);
+            if (bulk > 1e-6) {
+                s.addPacked(b.flora, Format.BULK, bulk, 0);
+            }
+            s.batches.remove(b);
             return;
         }
         Format f = b.format != null ? b.format : Format.BULK;

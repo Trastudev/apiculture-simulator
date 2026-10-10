@@ -191,6 +191,8 @@ public class ObradoresFragment extends Fragment {
                     kg(c.capacityKg)));
             b.obradorYard.setPreviewMode(true);
             b.obradorYard.setClimate(c.climate);
+            // Toni tiene la exclamación en el 3D: una tanda espera envase o le falta una máquina.
+            b.obradorAlertDot.setAlertVisible(c.state.needsAttention());
             bindMachines(ctx, c.state);
             bindHoney(ctx, c);
             b.btnObradorEnter.setOnClickListener(v -> enter(c));

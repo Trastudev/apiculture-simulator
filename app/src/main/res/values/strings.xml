@@ -1523,6 +1523,7 @@
     <string name="workshop_format_jar_250">tarro de 250 g</string>
     <string name="market_order_ask_jars">%1$d × %2$s de %3$s</string>
     <string name="market_order_ask_drum">%1$.2f kg de %2$s en bidón</string>
+    <string name="workshop_mix_bulk">%1$s kg a granel</string>
     <string name="workshop_mix_part">%1$d × %2$s</string>
     <string name="market_order_ask_mix">%1$s de %2$s</string>
     <string name="market_order_fail_jars">No hay tarros suficientes. Los tarros salen del obrador donde se envasaron.</string>
@@ -1603,6 +1604,7 @@
     <string name="workshop_err_max">Esta máquina ya está al máximo.</string>
     <string name="workshop_err_not_upgradable">La sala de recepción no se mejora.</string>
     <string name="workshop_err_none">No tienes obrador.</string>
+    <string name="workshop_err_mix_too_much">No caben tantos tarros: la tanda no tiene tanta miel.</string>
     <string name="workshop_err_packing">Esta tanda ya se está envasando.</string>
     <string name="workshop_err_no_wax">No tienes cera para vender.</string>
     <!-- Capítulos 9 y 10 del tutorial: obrador. -->

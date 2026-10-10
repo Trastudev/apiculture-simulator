@@ -1502,6 +1502,7 @@
     <string name="workshop_format_jar_250">250 g jar</string>
     <string name="market_order_ask_jars">%1$d × %2$s of %3$s</string>
     <string name="market_order_ask_drum">%1$.2f kg of %2$s in drums</string>
+    <string name="workshop_mix_bulk">%1$s kg in bulk</string>
     <string name="workshop_mix_part">%1$d × %2$s</string>
     <string name="market_order_ask_mix">%1$s of %2$s</string>
     <string name="market_order_fail_jars">Not enough jars. Jars leave from the honey house where they were packed.</string>
@@ -1582,6 +1583,7 @@
     <string name="workshop_err_max">This machine is already maxed out.</string>
     <string name="workshop_err_not_upgradable">The reception room can\'t be upgraded.</string>
     <string name="workshop_err_none">You don\'t have a honey house.</string>
+    <string name="workshop_err_mix_too_much">Too many jars: the batch does not have that much honey.</string>
     <string name="workshop_err_packing">This batch is already being packed.</string>
     <string name="workshop_err_no_wax">You have no wax to sell.</string>
     <!-- Tutorial chapters 9 and 10: honey house. -->

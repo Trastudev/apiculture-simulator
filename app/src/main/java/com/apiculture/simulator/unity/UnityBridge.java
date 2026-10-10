@@ -21,6 +21,7 @@ import com.apiculture.simulator.data.repository.HiveRepository;
 import com.apiculture.simulator.data.repository.IberiaHexOverlayStore;
 import com.apiculture.simulator.data.repository.WorkshopStore;
 import com.apiculture.simulator.domain.workshop.WorkshopRules;
+import com.apiculture.simulator.domain.workshop.JarMix;
 import com.apiculture.simulator.data.repository.HoneyLogistics;
 import com.apiculture.simulator.data.repository.TruckLiveTrips;
 import com.apiculture.simulator.data.repository.FleetDispatch;
@@ -203,6 +204,55 @@ public final class UnityBridge {
             }
             sendWorkshop();
             send("WorkshopResult", "Format|" + batchId + "|" + (error == null ? "ok" : error));
+        });
+    }
+
+    /** El jugador reparte con Toni una tanda: "kilo/medio/cuarto" tarros; el resto va a granel. */
+    @SuppressWarnings("unused")
+    public static void onWorkshopMix(String batchId, String counts) {
+        IO.execute(() -> {
+            Context ctx = appContext;
+            if (ctx == null || counts == null) {
+                return;
+            }
+            String[] p = counts.split("/");
+            String error;
+            try {
+                JarMix mix = new JarMix(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2]));
+                error = WorkshopStore.chooseMix(ctx, ownerId, batchId, mix);
+            } catch (RuntimeException e) {
+                error = ctx.getString(R.string.workshop_err_packing);
+            }
+            if (error == null) {
+                // Capítulo 10, viñeta 2. También vale elegir el envase en el 3D.
+                TutorialBus.emit(TutorialEvent.WORKSHOP_FORMAT);
+            }
+            sendWorkshop();
+            send("WorkshopResult", "Format|" + batchId + "|" + (error == null ? "ok" : error));
+        });
+    }
+
+    /** Toni vende o mejora una máquina de este obrador. */
+    @SuppressWarnings("unused")
+    public static void onWorkshopBuy(String machineKey) {
+        IO.execute(() -> {
+            Context ctx = appContext;
+            if (ctx == null) {
+                return;
+            }
+            String error;
+            try {
+                WorkshopRules.Machine m = WorkshopRules.Machine.valueOf(machineKey);
+                error = WorkshopStore.buyOrUpgrade(ctx, ((ApicultureApp) ctx).getEconomyRepository(), ownerId, workshopHex, m);
+                if (error == null && WorkshopStore.get(ctx, ownerId, workshopHex).complete()) {
+                    // Capítulo 9. Con todas las máquinas, el obrador está listo (también desde el 3D).
+                    TutorialBus.emit(TutorialEvent.WORKSHOP_READY);
+                }
+            } catch (IllegalArgumentException e) {
+                error = ctx.getString(R.string.workshop_err_packing);
+            }
+            sendWorkshop();
+            send("WorkshopResult", "Buy|" + machineKey + "|" + (error == null ? "ok" : error));
         });
     }
 

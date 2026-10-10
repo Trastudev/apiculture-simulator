@@ -414,7 +414,7 @@ public class WorkshopFragment extends Fragment {
             boolean packing = b.stage == Machine.PACKER && b.inMachine;
             if (b.format != null) {
                 body.addView(text(getString(R.string.workshop_batch_format,
-                        WorkshopFormatUi.label(requireContext(), b.format)), 13, false, R.color.event_ink));
+                        b.mix != null ? WorkshopFormatUi.splitLabel(requireContext(), b.mix, b.kg) : WorkshopFormatUi.label(requireContext(), b.format)), 13, false, R.color.event_ink));
             }
             if (!packing) {
                 MaterialButton choose = button(getString(b.format == null
@@ -477,7 +477,7 @@ public class WorkshopFragment extends Fragment {
                     : getString(R.string.workshop_machine_level, level,
                     WorkshopRules.upgradable(m) ? WorkshopRules.MAX_LEVEL : 1),
                     13, level > 0, level > 0 ? R.color.event_gold_dark : R.color.dash_warning));
-            body.addView(text(machineInfo(m, Math.max(1, level)), 13, false, R.color.event_ink_muted));
+            body.addView(text(machineInfo(requireContext(), m, Math.max(1, level)), 13, false, R.color.event_ink_muted));
             if (level <= 0) {
                 MaterialButton buy = button(getString(R.string.workshop_machine_buy, WorkshopRules.buyCostB(m)), true);
                 buy.setOnClickListener(v -> runAction((app, owner, economy) ->
@@ -503,20 +503,20 @@ public class WorkshopFragment extends Fragment {
     }
 
     @NonNull
-    private String machineInfo(@NonNull Machine m, int level) {
+    public static String machineInfo(@NonNull android.content.Context c, @NonNull Machine m, int level) {
         switch (m) {
             case RECEPTION:
-                return getString(R.string.workshop_machine_info_reception,
+                return c.getString(R.string.workshop_machine_info_reception,
                         duration(WorkshopRules.durationMs(m, level, 0, null)));
             case MATURER:
-                return getString(R.string.workshop_machine_info_maturer, WorkshopRules.slots(m, level),
+                return c.getString(R.string.workshop_machine_info_maturer, WorkshopRules.slots(m, level),
                         duration(WorkshopRules.durationMs(m, level, 0, null)));
             case PACKER:
-                return getString(R.string.workshop_machine_info_packer,
+                return c.getString(R.string.workshop_machine_info_packer,
                         (int) Math.round(WorkshopRules.capacityKg(m, level)));
             default:
                 double cap = WorkshopRules.capacityKg(m, level);
-                return getString(R.string.workshop_machine_info_time,
+                return c.getString(R.string.workshop_machine_info_time,
                         duration(WorkshopRules.durationMs(m, level, cap, null)), (int) Math.round(cap));
         }
     }

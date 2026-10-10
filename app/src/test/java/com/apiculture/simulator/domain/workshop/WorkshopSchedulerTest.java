@@ -46,6 +46,30 @@ public class WorkshopSchedulerTest {
     }
 
     @Test
+    public void mixPacksEachJarSizeAndLeavesTheRestInBulk() {
+        WorkshopState s = basic();
+        Batch b = WorkshopScheduler.receive(s, "Romero", 10, "", 0);
+        long atPacker = (120 + 30 + 45 + 240) * MIN;
+        WorkshopScheduler.advance(s, atPacker);
+        Assert.assertTrue(b.waitingFormat());
+        Assert.assertTrue(WorkshopScheduler.chooseMix(s, b.id, new JarMix(3, 4, 6), atPacker));
+        WorkshopScheduler.advance(s, atPacker + 1000 * MIN);
+        Assert.assertTrue(s.batches.isEmpty());
+        Assert.assertEquals(3, s.packed("Romero", Format.JAR_1000).jars);
+        Assert.assertEquals(4, s.packed("Romero", Format.JAR_500).jars);
+        Assert.assertEquals(6, s.packed("Romero", Format.JAR_250).jars);
+        Assert.assertEquals(3.5, s.packed("Romero", Format.BULK).kg, 1e-9);
+    }
+
+    @Test
+    public void mixCannotTakeMoreHoneyThanTheBatch() {
+        WorkshopState s = basic();
+        Batch b = WorkshopScheduler.receive(s, "Romero", 2, "", 0);
+        Assert.assertFalse(WorkshopScheduler.chooseMix(s, b.id, new JarMix(2, 1, 0), 0));
+        Assert.assertNull(b.mix);
+    }
+
+    @Test
     public void packerWaitsForFormat() {
         WorkshopState s = basic();
         Batch b = WorkshopScheduler.receive(s, "Romero", 40, "", 0);

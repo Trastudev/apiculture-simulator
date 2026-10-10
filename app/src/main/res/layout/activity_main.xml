@@ -51,6 +51,14 @@
         android:layout_marginBottom="42dp"
         android:visibility="gone" />
 
+    <com.apiculture.simulator.presentation.common.AlertPulseDot
+        android:id="@+id/nav_obradores_alert_dot"
+        android:layout_width="12dp"
+        android:layout_height="12dp"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="42dp"
+        android:visibility="gone" />
+
     <include
         android:id="@+id/tutorial_overlay"
         layout="@layout/view_tutorial_overlay" />

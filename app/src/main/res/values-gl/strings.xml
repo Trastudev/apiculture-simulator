@@ -1512,6 +1512,7 @@
     <string name="workshop_format_jar_250">bote de 250 g</string>
     <string name="market_order_ask_jars">%1$d × %2$s de %3$s</string>
     <string name="market_order_ask_drum">%1$.2f kg de %2$s en bidón</string>
+    <string name="workshop_mix_bulk">%1$s kg a granel</string>
     <string name="workshop_mix_part">%1$d × %2$s</string>
     <string name="market_order_ask_mix">%1$s de %2$s</string>
     <string name="market_order_fail_jars">Non hai tarros abondo. Os tarros saen do obradoiro onde se envasaron.</string>
@@ -1592,6 +1593,7 @@
     <string name="workshop_err_max">Esta máquina xa está ao máximo.</string>
     <string name="workshop_err_not_upgradable">A sala de recepción non se mellora.</string>
     <string name="workshop_err_none">Non tes obradoiro.</string>
+    <string name="workshop_err_mix_too_much">Non caben tantos tarros: a tanda non ten tanto mel.</string>
     <string name="workshop_err_packing">Esta quenda xa se está envasando.</string>
     <string name="workshop_err_no_wax">Non tes cera para vender.</string>
     <!-- Capítulos 9 e 10 do titorial: obradoiro. -->

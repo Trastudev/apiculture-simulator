@@ -139,23 +139,50 @@ public final class WorkshopRules {
         }
     }
 
-    private static int baseMinutes(@NonNull Machine m, @Nullable Format format) {
+    private static double baseMinutes(@NonNull Machine m, double kg, @Nullable Format format, @Nullable JarMix mix) {
         switch (m) {
             case RECEPTION: return 120;
             case UNCAPPER: return 30;
             case EXTRACTOR: return 45;
             case MATURER: return 240;
-            case PACKER: return (format != null ? format : Format.BULK).packMinutes;
+            case PACKER: return packMinutes(kg, format, mix);
             default: return 0;
         }
     }
 
+    /**
+     * Minutos de envasado de una tanda llena a nivel 1. Con reparto, cada envase cuenta según los kilos
+     * que se lleva: los tarros pequeños tardan más que el bidón.
+     */
+    public static double packMinutes(double kg, @Nullable Format format, @Nullable JarMix mix) {
+        if (mix == null || kg <= 1e-9) {
+            return (format != null ? format : Format.BULK).packMinutes;
+        }
+        double minutes = 0;
+        double jarKg = 0;
+        for (Format f : Format.values()) {
+            if (f == Format.BULK) {
+                continue;
+            }
+            double part = mix.count(f) * f.jarKg;
+            jarKg += part;
+            minutes += part / kg * f.packMinutes;
+        }
+        minutes += Math.max(0.0, kg - jarKg) / kg * Format.BULK.packMinutes;
+        return minutes;
+    }
+
     /** Tiempo de una tanda de {@code kg} en la máquina. */
     public static long durationMs(@NonNull Machine m, int level, double kg, @Nullable Format format) {
+        return durationMs(m, level, kg, format, null);
+    }
+
+    public static long durationMs(@NonNull Machine m, int level, double kg, @Nullable Format format,
+            @Nullable JarMix mix) {
         int l = Math.max(1, level);
         double load = Math.max(1.0, kg / capacityKg(m, l));
         double speed = m == Machine.RECEPTION || m == Machine.MATURER ? 1.0 : Math.pow(SPEED_PER_LEVEL, l - 1);
-        return Math.round(baseMinutes(m, format) * MINUTE_MS * load * speed);
+        return Math.round(baseMinutes(m, kg, format, mix) * MINUTE_MS * load * speed);
     }
 
     public static double waxKg(double honeyKg) {

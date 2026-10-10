@@ -30,6 +30,19 @@ public final class WorkshopFormatUi {
         return sb.toString();
     }
 
+    /** Reparto de una tanda: "2 × tarro de 1 kg + 3 × tarro de 250 g + 1,5 kg a granel". */
+    @NonNull
+    public static String splitLabel(@NonNull Context c, @NonNull JarMix mix, double batchKg) {
+        String jars = mixLabel(c, mix);
+        double bulk = Math.max(0.0, batchKg - mix.kg());
+        if (bulk < 0.05) {
+            return jars;
+        }
+        String rest = c.getString(R.string.workshop_mix_bulk,
+                String.format(java.util.Locale.getDefault(), bulk >= 10 ? "%.0f" : "%.1f", bulk));
+        return jars.isEmpty() ? rest : jars + " + " + rest;
+    }
+
     @NonNull
     public static String label(@NonNull Context c, @NonNull Format format) {
         switch (format) {

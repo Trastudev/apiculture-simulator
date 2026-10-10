@@ -54,6 +54,19 @@ public final class WorkshopStore {
         }
     }
 
+    /** Algún obrador necesita al jugador: punto rojo en la pestaña Obradores. */
+    public static boolean anyNeedsAttention(@NonNull Context context, @Nullable String ownerId) {
+        if (ownerId == null || ownerId.isEmpty()) {
+            return false;
+        }
+        for (WorkshopState s : all(context, ownerId)) {
+            if (s.needsAttention()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Todos los obradores (uno por almacén del jugador), en el orden de los almacenes. */
     @NonNull
     public static List<WorkshopState> all(@NonNull Context context, @Nullable String ownerId) {
@@ -227,6 +240,32 @@ public final class WorkshopStore {
                     continue;
                 }
                 if (!WorkshopScheduler.chooseFormat(s, batchId, format, System.currentTimeMillis())) {
+                    return context.getString(R.string.workshop_err_packing);
+                }
+                return write(context, ownerId, doc) ? null : EconomyRepository.OFFLINE_ACTION;
+            }
+            return context.getString(R.string.workshop_err_packing);
+        }
+    }
+
+    /** Reparto de una tanda en tarros de cada tamaño; el resto, a granel. */
+    @Nullable
+    public static String chooseMix(@NonNull Context context, @Nullable String ownerId,
+            @NonNull String batchId, @NonNull JarMix mix) {
+        if (ownerId == null || ownerId.isEmpty()) {
+            return context.getString(R.string.workshop_err_none);
+        }
+        synchronized (LOCK) {
+            Map<String, WorkshopState> doc = fresh(context, ownerId);
+            for (WorkshopState s : doc.values()) {
+                WorkshopState.Batch b = s.batch(batchId);
+                if (b == null) {
+                    continue;
+                }
+                if (mix.kg() > b.kg + 1e-6) {
+                    return context.getString(R.string.workshop_err_mix_too_much);
+                }
+                if (!WorkshopScheduler.chooseMix(s, batchId, mix, System.currentTimeMillis())) {
                     return context.getString(R.string.workshop_err_packing);
                 }
                 return write(context, ownerId, doc) ? null : EconomyRepository.OFFLINE_ACTION;
@@ -642,6 +681,7 @@ public final class WorkshopStore {
             j.put("startAt", b.startAt);
             j.put("endAt", b.endAt);
             j.put("format", b.format == null ? "" : b.format.name());
+            j.put("mix", b.mix == null ? "" : b.mix.encode());
             j.put("waxKg", b.waxKg);
             batches.put(j);
         }
@@ -716,6 +756,7 @@ public final class WorkshopStore {
             b.startAt = j.optLong("startAt", 0);
             b.endAt = j.optLong("endAt", 0);
             b.format = Format.parse(j.optString("format", ""));
+            b.mix = JarMix.parse(j.optString("mix", ""));
             b.waxKg = Math.max(0, j.optDouble("waxKg", 0));
             s.batches.add(b);
         }
