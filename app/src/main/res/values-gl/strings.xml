@@ -23,6 +23,23 @@
     <string name="menu_hives">Apiarios</string>
     <string name="menu_map">Mapa</string>
     <string name="menu_market">Mercado</string>
+    <string name="menu_obradores">Obradoiros</string>
+    <string name="obradores_subtitle">Os teus obradoiros: máquinas e mel gardado</string>
+    <string name="obradores_machines">Máquinas</string>
+    <string name="obradores_honey">Mel almacenado</string>
+    <string name="obradores_level_capacity">nivel %1$d · %2$s kg de capacidade</string>
+    <string name="obradores_photo_credit">%1$s · Wikipedia</string>
+    <string name="obradores_machine_missing">Sen mercar</string>
+    <string name="obradores_machine_ready">Lista</string>
+    <string name="obradores_machine_level">Nv. %1$d</string>
+    <string name="obradores_honey_bulk">%1$s kg en bidón</string>
+    <string name="obradores_honey_jars">%1$d × %2$s</string>
+    <string name="obradores_honey_empty">Non hai mel gardado</string>
+    <string name="obradores_honey_total">Total</string>
+    <string name="obradores_honey_total_value">%1$s de %2$s kg</string>
+    <string name="obradores_empty_title">Aínda non tes obradoiros</string>
+    <string name="obradores_empty_hint">Instala un dende o mapa: toca un sitio libre e escolle Instalar un obradoiro.</string>
+
     <string name="menu_ranking">Clasificación</string>
     <string name="menu_events">Eventos</string>
     <string name="menu_logout">Pechar sesión</string>
@@ -61,7 +78,10 @@
     <string name="dashboard_view_map">Ver mapa</string>
     <string name="dashboard_harvest">Recoller</string>
     <string name="dashboard_sell">Vender</string>
-    <string name="map_buy_warehouse">Comprar obradoiro (300,00 B)</string>
+    <string name="map_obrador_enter_title">Entrar no obradoiro de mel «%1$s»?</string>
+    <string name="map_obrador_enter">Entrar no obradoiro</string>
+    <string name="map_obrador_details">Ver detalles</string>
+    <string name="map_buy_warehouse">Comprar obradoiro (1.500,00 B)</string>
     <string name="map_buy_warehouse_title">Comprar obradoiro</string>
     <string name="map_buy_warehouse_info">Obradoiro de nivel 1: 50 kg. Garda os meles do teu nivel de xogador. O camión parte de aquí.</string>
     <string name="map_buy_warehouse_ok">Obradoiro comprado.</string>
@@ -522,6 +542,7 @@
     <string name="orders_sort_label">Ordenar encomendas</string>
     <string name="orders_sort_distance">Por distancia</string>
     <string name="orders_sort_flora_distance">Por flora e distancia</string>
+    <string name="receipt_3d_ok">Entendido</string>
     <string name="order_delivery_title">Encomenda entregada</string>
     <string name="order_delivery_thanks">Grazas!</string>
     <string name="order_delivery_npc_speech">«Moitas grazas pola entrega!»</string>
@@ -983,7 +1004,7 @@
     <string name="flora_display_sisal">Sisal</string>
     <string name="hex_purchase_confirm">Instalar</string>
     <string name="hex_purchase_ok">Apiario instalado.</string>
-    <string name="hex_purchase_also_warehouse">Comprar tamén obradoiro (300,00 B)</string>
+    <string name="hex_purchase_also_warehouse">Comprar tamén obradoiro (1.500,00 B)</string>
     <string name="hex_purchase_ok_with_warehouse">Apiario e obradoiro instalados.</string>
     <string name="hex_open_apiary_yard">Abrir apiario</string>
     <string name="dashboard_flora_plantings_section">Sementeiras de flora en curso</string>
@@ -1370,6 +1391,8 @@
     <string name="tutorial_c8_v02">O barco move mel entre rexións. Non move colmeas. O camión leva a carga do obradoiro ao porto, e o barco segue por mar.</string>
     <string name="tutorial_c8_v03">A ruta do barco vese no mapa, igual que o camión na estrada.</string>
     <string name="tutorial_c8_v04">Ao nivel 35 pagas 15.000 B por cada mercado internacional. Vendes onde o mel vale máis, descontando a viaxe.</string>
+    <string name="profile_brand_emblem">Emblema da empresa</string>
+    <string name="profile_brand_hint">Píntase nas túas furgonetas do obradoiro.</string>
     <string name="profile_language">Idioma</string>
     <string name="profile_language_system">O do teléfono</string>
     <string name="mail_title">Buzón</string>

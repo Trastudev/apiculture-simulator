@@ -73,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
             R.id.hivesFragment,
             R.id.mapFragment,
             R.id.marketFragment,
-            R.id.rankingFragment,
+            R.id.obradoresFragment,
     };
 
     private ActivityMainBinding binding;
@@ -179,7 +179,7 @@ public class MainActivity extends AppCompatActivity {
                     R.id.hiveDetailFragment,
                     R.id.mapFragment,
                     R.id.marketFragment,
-                    R.id.rankingFragment,
+                    R.id.obradoresFragment,
                     R.id.eventsFragment
             ).build();
             NavigationUI.setupWithNavController(binding.toolbar, navController, appBarConfiguration);
@@ -243,7 +243,8 @@ public class MainActivity extends AppCompatActivity {
                 boolean onAdminEvents = destination.getId() == R.id.adminEventsFragment;
                 boolean onAdminGrants = destination.getId() == R.id.adminGrantsFragment;
                 boolean onShop = destination.getId() == R.id.shopFragment;
-                boolean onWorkshop = destination.getId() == R.id.workshopFragment;
+                boolean onWorkshop = destination.getId() == R.id.workshopFragment
+                        || destination.getId() == R.id.obradoresFragment;
                 if (tutorial != null) {
                     tutorial.onDestination(destination.getId());
                 }

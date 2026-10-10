@@ -7,6 +7,9 @@
         android:id="@+id/action_tutorial"
         android:title="@string/tutorial_menu" />
     <item
+        android:id="@+id/action_ranking"
+        android:title="@string/menu_ranking" />
+    <item
         android:id="@+id/action_shop"
         android:title="@string/dashboard_menu_shop" />
     <item

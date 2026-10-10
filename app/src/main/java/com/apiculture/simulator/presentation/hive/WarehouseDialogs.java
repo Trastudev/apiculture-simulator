@@ -349,6 +349,47 @@ public final class WarehouseDialogs {
         dialog.show();
     }
 
+    /** Toque en el obrador del mapa: pregunta si se entra a la escena 3D o se ven los detalles. */
+    public static void showEnter(@NonNull Fragment fragment, @NonNull HiveViewModel viewModel,
+            @Nullable List<HexParcelOwnershipEntity> ownerships,
+            @Nullable String ownerId, @NonNull String hexId, @Nullable String siteId) {
+        if (!fragment.isAdded() || fragment.getContext() == null) {
+            return;
+        }
+        String name = null;
+        if (ownerships != null) {
+            for (HexParcelOwnershipEntity o : ownerships) {
+                if (o != null && hexId.equals(o.hexId) && o.hasWarehouse
+                        && (ownerId == null || ownerId.equals(o.ownerId))
+                        && o.parcelName != null && !o.parcelName.trim().isEmpty()) {
+                    name = o.parcelName.trim();
+                    break;
+                }
+            }
+        }
+        String shown = name != null ? name : fragment.getString(R.string.workshop_name);
+        DialogMapBuildChoiceBinding d = DialogMapBuildChoiceBinding.inflate(fragment.getLayoutInflater());
+        Dialog dialog = creamDialog(fragment, d.getRoot());
+        d.tvMapBuildChoiceTitle.setText(fragment.getString(R.string.map_obrador_enter_title, shown));
+        d.btnChoiceHive.setText(R.string.map_obrador_enter);
+        d.btnChoiceWarehouse.setText(R.string.map_obrador_details);
+        d.btnChoiceHive.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (ownerId == null || ownerId.isEmpty()) {
+                return;
+            }
+            com.apiculture.simulator.unity.UnityBridge.prepareWorkshop(fragment.requireContext(),
+                    ownerId, shown, hexId);
+            com.apiculture.simulator.unity.Apiary3DActivity.open(fragment.requireContext());
+        });
+        d.btnChoiceWarehouse.setOnClickListener(v -> {
+            dialog.dismiss();
+            showStatus(fragment, viewModel, ownerships, ownerId, hexId, siteId);
+        });
+        d.btnChoiceCancel.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
     @NonNull
     private static Dialog creamDialog(@NonNull Fragment fragment, @NonNull android.view.View root) {
         Dialog dialog = new Dialog(fragment.requireContext());

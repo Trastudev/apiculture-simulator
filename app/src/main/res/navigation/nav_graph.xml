@@ -130,6 +130,11 @@
         android:label="@string/shop_title" />
 
     <fragment
+        android:id="@+id/obradoresFragment"
+        android:name="com.apiculture.simulator.presentation.workshop.ObradoresFragment"
+        android:label="@string/menu_obradores" />
+
+    <fragment
         android:id="@+id/workshopFragment"
         android:name="com.apiculture.simulator.presentation.workshop.WorkshopFragment"
         android:label="@string/workshop_name" />

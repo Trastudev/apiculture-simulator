@@ -17,7 +17,7 @@
         android:icon="@drawable/nav_market"
         android:title="@string/menu_market" />
     <item
-        android:id="@+id/rankingFragment"
-        android:icon="@drawable/nav_ranking"
-        android:title="@string/menu_ranking" />
+        android:id="@+id/obradoresFragment"
+        android:icon="@drawable/nav_obrador"
+        android:title="@string/menu_obradores" />
 </menu>

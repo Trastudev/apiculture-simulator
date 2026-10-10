@@ -16,9 +16,9 @@ public class WarehouseRulesTest {
 
     @Test
     public void warehouseSellRefund_includesUpgrades() {
-        Assert.assertEquals(150, WarehouseRules.warehouseSellRefundB(1));
-        Assert.assertEquals(275, WarehouseRules.warehouseSellRefundB(2));
-        Assert.assertEquals(525, WarehouseRules.warehouseSellRefundB(3));
+        Assert.assertEquals(750, WarehouseRules.warehouseSellRefundB(1));
+        Assert.assertEquals(875, WarehouseRules.warehouseSellRefundB(2));
+        Assert.assertEquals(1125, WarehouseRules.warehouseSellRefundB(3));
     }
 
     @Test

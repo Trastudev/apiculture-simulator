@@ -23,6 +23,23 @@
     <string name="menu_hives">Apiaris</string>
     <string name="menu_map">Mapa</string>
     <string name="menu_market">Mercat</string>
+    <string name="menu_obradores">Obradors</string>
+    <string name="obradores_subtitle">Els teus obradors: màquines i mel guardada</string>
+    <string name="obradores_machines">Màquines</string>
+    <string name="obradores_honey">Mel emmagatzemada</string>
+    <string name="obradores_level_capacity">nivell %1$d · %2$s kg de capacitat</string>
+    <string name="obradores_photo_credit">%1$s · Viquipèdia</string>
+    <string name="obradores_machine_missing">Sense comprar</string>
+    <string name="obradores_machine_ready">Llesta</string>
+    <string name="obradores_machine_level">Nv. %1$d</string>
+    <string name="obradores_honey_bulk">%1$s kg en bidó</string>
+    <string name="obradores_honey_jars">%1$d × %2$s</string>
+    <string name="obradores_honey_empty">No hi ha mel guardada</string>
+    <string name="obradores_honey_total">Total</string>
+    <string name="obradores_honey_total_value">%1$s de %2$s kg</string>
+    <string name="obradores_empty_title">Encara no tens obradors</string>
+    <string name="obradores_empty_hint">Instal·la un obrador des del mapa: toca un lloc lliure i tria Instal·lar un obrador.</string>
+
     <string name="menu_ranking">Rànquing</string>
     <string name="menu_events">Esdeveniments</string>
     <string name="menu_logout">Tanca la sessió</string>
@@ -76,6 +93,8 @@
     <string name="profile_lang_accept">Acceptar els canvis</string>
     <string name="profile_edit_ok">Perfil actualitzat.</string>
     <string name="profile_edit_photo_fail">No s\'ha pogut llegir aquesta imatge.</string>
+    <string name="profile_brand_emblem">Emblema de l\'empresa</string>
+    <string name="profile_brand_hint">Es pinta a les teves furgonetes de l\'obrador.</string>
     <string name="profile_language">Idioma</string>
     <string name="profile_language_system">El del telèfon</string>
     <string name="hex_purchase_cancel">Cancel·la</string>
@@ -293,7 +312,7 @@
     <string name="hex_dialog_close">Tancar</string>
     <string name="hex_npc_open_this_contract">Veure el contracte d\'aquesta finca</string>
     <string name="hex_npc_parcel_kicker">Finca de contracte</string>
-    <string name="hex_purchase_also_warehouse">Comprar també l\'obrador (300,00 B)</string>
+    <string name="hex_purchase_also_warehouse">Comprar també l\'obrador (1.500,00 B)</string>
     <string name="hex_purchase_climate_label">Clima</string>
     <string name="hex_purchase_confirm_buy">Instal·lar apiari</string>
     <string name="hex_purchase_flora_label">Flora silvestre</string>
@@ -385,7 +404,10 @@
     <string name="level_up_title">Nivell %1$d!</string>
     <string name="map_build_choice_hive">Comprar arna</string>
     <string name="map_build_choice_title">Què vols construir?</string>
-    <string name="map_buy_warehouse">Comprar obrador (300,00 B)</string>
+    <string name="map_obrador_enter_title">Vols entrar a l\'obrador de mel «%1$s»?</string>
+    <string name="map_obrador_enter">Entrar a l\'obrador</string>
+    <string name="map_obrador_details">Veure detalls</string>
+    <string name="map_buy_warehouse">Comprar obrador (1.500,00 B)</string>
     <string name="map_buy_warehouse_info">Obrador de nivell 1: 50 kg. Guarda les mels del teu nivell de jugador. El camió surt d\'aquí.</string>
     <string name="map_buy_warehouse_ok">Obrador comprat.</string>
     <string name="map_buy_warehouse_title">Comprar obrador</string>
@@ -667,6 +689,7 @@
     <string name="orders_sort_label">Ordenar comandes</string>
     <string name="orders_sort_distance">Per distància</string>
     <string name="orders_sort_flora_distance">Per flora i distància</string>
+    <string name="receipt_3d_ok">Entesos</string>
     <string name="order_delivery_title">Comanda lliurada</string>
     <string name="order_delivery_thanks">Gràcies!</string>
     <string name="order_delivery_npc_speech">«Moltes gràcies pel lliurament!»</string>

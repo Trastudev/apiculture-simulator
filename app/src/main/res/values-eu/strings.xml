@@ -23,6 +23,23 @@
     <string name="menu_hives">Erlategiak</string>
     <string name="menu_map">Mapa</string>
     <string name="menu_market">Merkatua</string>
+    <string name="menu_obradores">Lantegiak</string>
+    <string name="obradores_subtitle">Zure lantegiak: makinak eta gordetako eztia</string>
+    <string name="obradores_machines">Makinak</string>
+    <string name="obradores_honey">Gordetako eztia</string>
+    <string name="obradores_level_capacity">%1$d. maila · %2$s kg-ko edukiera</string>
+    <string name="obradores_photo_credit">%1$s · Wikipedia</string>
+    <string name="obradores_machine_missing">Erosi gabe</string>
+    <string name="obradores_machine_ready">Prest</string>
+    <string name="obradores_machine_level">%1$d. m.</string>
+    <string name="obradores_honey_bulk">%1$s kg bidoian</string>
+    <string name="obradores_honey_jars">%1$d × %2$s</string>
+    <string name="obradores_honey_empty">Ez dago eztirik gordeta</string>
+    <string name="obradores_honey_total">Guztira</string>
+    <string name="obradores_honey_total_value">%1$s / %2$s kg</string>
+    <string name="obradores_empty_title">Oraindik ez duzu lantegirik</string>
+    <string name="obradores_empty_hint">Instalatu bat mapatik: ukitu leku libre bat eta aukeratu lantegi bat instalatzea.</string>
+
     <string name="menu_ranking">Rankinga</string>
     <string name="menu_events">Gertaerak</string>
     <string name="menu_logout">Itxi saioa</string>
@@ -61,7 +78,10 @@
     <string name="dashboard_view_map">Ikusi mapa</string>
     <string name="dashboard_harvest">Bildu</string>
     <string name="dashboard_sell">Saldu</string>
-    <string name="map_buy_warehouse">Lantegia erosi (300.00 B)</string>
+    <string name="map_obrador_enter_title">Sartu «%1$s» ezti-lantegian?</string>
+    <string name="map_obrador_enter">Lantegian sartu</string>
+    <string name="map_obrador_details">Xehetasunak ikusi</string>
+    <string name="map_buy_warehouse">Lantegia erosi (1.500,00 B)</string>
     <string name="map_buy_warehouse_title">Lantegia erosi</string>
     <string name="map_buy_warehouse_info">1. mailako lantegia: 50 kg. Gorde zure jokalari mailako eztia. Kamioia hemendik abiatzen da.</string>
     <string name="map_buy_warehouse_ok">Lantegia erosita.</string>
@@ -522,6 +542,7 @@
     <string name="orders_sort_label">Eskariak ordenatu</string>
     <string name="orders_sort_distance">Distantziaren arabera</string>
     <string name="orders_sort_flora_distance">Flora eta distantziaren arabera</string>
+    <string name="receipt_3d_ok">Ados</string>
     <string name="order_delivery_title">Agindua emanda</string>
     <string name="order_delivery_thanks">Eskerrik asko!</string>
     <string name="order_delivery_npc_speech">«Eskerrik asko bidalketagatik!»</string>
@@ -983,7 +1004,7 @@
     <string name="flora_display_sisal">Sisala</string>
     <string name="hex_purchase_confirm">Instalatu</string>
     <string name="hex_purchase_ok">Erlategia instalatuta.</string>
-    <string name="hex_purchase_also_warehouse">Lantegia ere erosi (300,00 B)</string>
+    <string name="hex_purchase_also_warehouse">Lantegia ere erosi (1.500,00 B)</string>
     <string name="hex_purchase_ok_with_warehouse">Erlategia eta lantegia instalatuta.</string>
     <string name="hex_open_apiary_yard">Erlategia ireki</string>
     <string name="dashboard_flora_plantings_section">Abian diren flora-ereintzak</string>
@@ -1360,6 +1381,8 @@
     <string name="tutorial_c8_v02">Itsasontziak eztia garraiatzen du eskualdeen artean. Ez du erlauntzarik garraiatzen. Kamioiak karga lantegitik portura eramaten du, eta itsasontziak itsasoz jarraitzen du.</string>
     <string name="tutorial_c8_v03">Itsasontziaren ibilbidea mapan ikusten da, kamioia errepidean bezala.</string>
     <string name="tutorial_c8_v04">35. mailan 15.000 B ordaintzen dituzu nazioarteko merkatu bakoitzeko. Eztia gehiago balio duen tokian saltzen duzu, bidaia kenduta.</string>
+    <string name="profile_brand_emblem">Enpresaren ikurra</string>
+    <string name="profile_brand_hint">Lantegiko furgonetetan margotzen da.</string>
     <string name="profile_language">Hizkuntza</string>
     <string name="profile_language_system">Telefonoarena</string>
     <string name="mail_title">Postontzia</string>

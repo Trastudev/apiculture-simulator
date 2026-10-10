@@ -126,6 +126,7 @@ final class UnityWorkshopJson {
         root.put("bulk", bulk);
         root.put("hex", hexId == null ? "" : hexId);
         root.put("region", hexId == null ? "" : com.apiculture.simulator.domain.map.PlayableMapRegion.fromHexId(hexId).prefsValue());
+        root.put("yard", UnityYard.build(app, ownerId, hexId));
         return root.toString();
     }
 }

@@ -97,6 +97,7 @@ public class UserGameStateRepository {
                     if (hq != null) {
                         HeadquartersStore.applyServer(app, uid, hq);
                     }
+                    BrandStore.applyServer(app, uid, GameServer.loadStore(uid, "brand"));
                     JSONObject fleet = GameServer.loadStore(uid, "fleet");
                     if (fleet != null && (fleet.has("vehicles") || fleet.has("ports"))) {
                         FleetStore.applyServer(app, uid, fleet);
@@ -104,11 +105,13 @@ public class UserGameStateRepository {
                         FleetStore.pushServer(app, uid);
                     }
                     JSONObject workshop = GameServer.loadStore(uid, "workshop");
-                    if (workshop != null && workshop.has("levels")) {
+                    // Formato nuevo (un obrador por almacén) o antiguo (uno solo en la raíz).
+                    if (workshop != null && (workshop.has("obradores") || workshop.has("levels"))) {
                         WorkshopStore.applyServer(app, uid, workshop);
                     } else {
                         WorkshopStore.pushServer(app, uid);
                     }
+                    WorkshopStore.preload(app, uid);
                     JSONObject warehouse = GameServer.loadStore(uid, "warehouse");
                     if (warehouse != null && warehouse.optJSONObject("stock") != null) {
                         WarehouseHoneyStore.applyServer(app, uid, warehouse.optJSONObject("stock"));

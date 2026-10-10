@@ -21,6 +21,10 @@ import com.apiculture.simulator.data.repository.HiveRepository;
 import com.apiculture.simulator.data.repository.IberiaHexOverlayStore;
 import com.apiculture.simulator.data.repository.WorkshopStore;
 import com.apiculture.simulator.domain.workshop.WorkshopRules;
+import com.apiculture.simulator.data.repository.HoneyLogistics;
+import com.apiculture.simulator.data.repository.TruckLiveTrips;
+import com.apiculture.simulator.data.repository.FleetDispatch;
+import com.apiculture.simulator.data.repository.FleetStore;
 import com.apiculture.simulator.presentation.tutorial.TutorialBus;
 import com.apiculture.simulator.presentation.tutorial.TutorialEvent;
 import com.apiculture.simulator.domain.game.ColonyGameRules;
@@ -169,7 +173,16 @@ public final class UnityBridge {
             if (ctx == null) {
                 return;
             }
-            WorkshopStore.refresh(ctx, ownerId, ((ApicultureApp) ctx).getEconomyRepository());
+            ApicultureApp game = (ApicultureApp) ctx;
+            // Con el 3D delante no corre el panel ni el mapa: aquí se cierran los viajes que ya han
+            // llegado, para que el camión vuelva al patio y salgan los avisos de miel y de comandas.
+            try {
+                TruckLiveTrips.completeDue(ctx);
+                HoneyLogistics.completeDue(ctx, game.getEconomyRepository(), game.getMarketRepository());
+            } catch (RuntimeException e) {
+                Log.w(TAG, "completeDue", e);
+            }
+            WorkshopStore.refresh(ctx, ownerId, game.getEconomyRepository());
             sendWorkshop();
         });
     }
@@ -204,6 +217,53 @@ public final class UnityBridge {
             String error = WorkshopStore.sellWax(ctx, ((ApicultureApp) ctx).getEconomyRepository(), ownerId, workshopHex);
             sendWorkshop();
             send("WorkshopResult", "Wax||" + (error == null ? "ok" : error));
+        });
+    }
+
+    /** Unity ha cargado una escena y puede pintar avisos: se vuelve a mandar el pendiente. */
+    @SuppressWarnings("unused")
+    public static void onReceiptsReady() {
+        IO.execute(UnityReceipts::ready);
+    }
+
+    /** El jugador ha cerrado en el 3D el aviso de llegada (cosecha o comanda). */
+    @SuppressWarnings("unused")
+    public static void onReceiptSeen(String kind, String id) {
+        IO.execute(() -> UnityReceipts.seen(kind, id));
+    }
+
+    /** El vendedor del patio: camión nuevo con base en este obrador. Llega desde la tienda más cercana. */
+    @SuppressWarnings("unused")
+    public static void onYardBuyTruck(String name) {
+        IO.execute(() -> {
+            Context ctx = appContext;
+            if (ctx == null || workshopHex == null) {
+                return;
+            }
+            String error = FleetStore.buyTruck(ctx, ((ApicultureApp) ctx).getEconomyRepository(),
+                    ownerId, workshopHex, name);
+            if (error == null) {
+                FleetDispatch.deliverNewTruck(ctx, ownerId, workshopHex, Double.NaN, Double.NaN);
+                // Capítulo 6. Camión comprado.
+                TutorialBus.emit(TutorialEvent.TRUCK_BOUGHT);
+            }
+            sendWorkshop();
+            send("WorkshopResult", "Buy||" + (error == null ? "ok" : error));
+        });
+    }
+
+    /** El vendedor del patio sube un nivel un camión. */
+    @SuppressWarnings("unused")
+    public static void onYardUpgrade(String vehicleId) {
+        IO.execute(() -> {
+            Context ctx = appContext;
+            if (ctx == null) {
+                return;
+            }
+            String error = FleetStore.upgradeVehicle(ctx, ((ApicultureApp) ctx).getEconomyRepository(),
+                    ownerId, vehicleId);
+            sendWorkshop();
+            send("WorkshopResult", "Upgrade|" + vehicleId + "|" + (error == null ? "ok" : error));
         });
     }
 

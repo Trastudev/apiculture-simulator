@@ -23,6 +23,23 @@
     <string name="menu_hives">Apiaries</string>
     <string name="menu_map">Map</string>
     <string name="menu_market">Market</string>
+    <string name="menu_obradores">Honey houses</string>
+    <string name="obradores_subtitle">Your honey houses: machines and stored honey</string>
+    <string name="obradores_machines">Machines</string>
+    <string name="obradores_honey">Stored honey</string>
+    <string name="obradores_level_capacity">level %1$d · %2$s kg capacity</string>
+    <string name="obradores_photo_credit">%1$s · Wikipedia</string>
+    <string name="obradores_machine_missing">Not bought</string>
+    <string name="obradores_machine_ready">Ready</string>
+    <string name="obradores_machine_level">Lv. %1$d</string>
+    <string name="obradores_honey_bulk">%1$s kg in drums</string>
+    <string name="obradores_honey_jars">%1$d × %2$s</string>
+    <string name="obradores_honey_empty">No honey stored</string>
+    <string name="obradores_honey_total">Total</string>
+    <string name="obradores_honey_total_value">%1$s of %2$s kg</string>
+    <string name="obradores_empty_title">No honey houses yet</string>
+    <string name="obradores_empty_hint">Install one from the map: tap a free spot and choose Install a honey house.</string>
+
     <string name="menu_ranking">Ranking</string>
     <string name="menu_events">Events</string>
     <string name="menu_logout">Sign out</string>
@@ -61,7 +78,10 @@
     <string name="dashboard_view_map">View map</string>
     <string name="dashboard_harvest">Harvest</string>
     <string name="dashboard_sell">Sell</string>
-    <string name="map_buy_warehouse">Buy honey house (300.00 B)</string>
+    <string name="map_obrador_enter_title">Enter the honey house «%1$s»?</string>
+    <string name="map_obrador_enter">Enter the honey house</string>
+    <string name="map_obrador_details">See details</string>
+    <string name="map_buy_warehouse">Buy honey house (1,500.00 B)</string>
     <string name="map_buy_warehouse_title">Buy honey house</string>
     <string name="map_buy_warehouse_info">Level 1 honey house: 50 kg. Stores honeys for your player level. The truck leaves from here.</string>
     <string name="map_buy_warehouse_ok">Honey house bought.</string>
@@ -522,6 +542,7 @@
     <string name="orders_sort_label">Sort orders</string>
     <string name="orders_sort_distance">By distance</string>
     <string name="orders_sort_flora_distance">By flora and distance</string>
+    <string name="receipt_3d_ok">Got it</string>
     <string name="order_delivery_title">Order Delivered</string>
     <string name="order_delivery_thanks">Thank you!</string>
     <string name="order_delivery_npc_speech">"Thank you very much for the delivery!"</string>
@@ -983,7 +1004,7 @@
     <string name="flora_display_sisal">Sisal</string>
     <string name="hex_purchase_confirm">Install</string>
     <string name="hex_purchase_ok">Apiary installed.</string>
-    <string name="hex_purchase_also_warehouse">Also buy honey house (300.00 B)</string>
+    <string name="hex_purchase_also_warehouse">Also buy honey house (1,500.00 B)</string>
     <string name="hex_purchase_ok_with_warehouse">Apiary and honey house installed.</string>
     <string name="hex_open_apiary_yard">Open apiary</string>
     <string name="dashboard_flora_plantings_section">Flora plantings in progress</string>
@@ -1360,6 +1381,8 @@
     <string name="tutorial_c8_v02">The ship moves honey between regions. It does not move hives. The truck takes the load from honey house to port, and the ship continues by sea.</string>
     <string name="tutorial_c8_v03">The ship\'s route shows on the map, just like the truck on the road.</string>
     <string name="tutorial_c8_v04">At level 35 you pay 15,000 B for each international market. You sell where honey is worth more, minus the trip.</string>
+    <string name="profile_brand_emblem">Company emblem</string>
+    <string name="profile_brand_hint">Painted on your honey house vans.</string>
     <string name="profile_language">Language</string>
     <string name="profile_language_system">Phone language</string>
     <string name="mail_title">Mailbox</string>

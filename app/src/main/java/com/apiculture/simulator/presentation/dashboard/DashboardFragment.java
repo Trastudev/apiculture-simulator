@@ -615,6 +615,10 @@ public class DashboardFragment extends Fragment {
                     com.apiculture.simulator.presentation.tutorial.TutorialBus.replayFirstChapter();
                     return true;
                 }
+                if (item.getItemId() == R.id.action_ranking) {
+                    nav.navigate(R.id.rankingFragment);
+                    return true;
+                }
                 if (item.getItemId() == R.id.action_shop) {
                     nav.navigate(R.id.shopFragment);
                     return true;
@@ -1714,6 +1718,11 @@ public class DashboardFragment extends Fragment {
         } else {
             editProfileForm.ivProfileEditPhoto.setImageResource(R.drawable.ic_apicultor);
         }
+        final com.apiculture.simulator.data.repository.BrandStore.Brand[] brand = {
+                com.apiculture.simulator.data.repository.BrandStore.get(requireContext(), u.getUid())};
+        com.apiculture.simulator.presentation.common.BrandUi.bindPicker(requireContext(),
+                editProfileForm.ivProfileBrand, editProfileForm.llProfileBrandEmblems,
+                editProfileForm.llProfileBrandColors, brand[0], b -> brand[0] = b);
         String lang = GameLocale.saved(requireContext());
         if ("ca".equals(lang)) {
             editProfileForm.rbLangCa.setChecked(true);
@@ -1781,6 +1790,7 @@ public class DashboardFragment extends Fragment {
                 GameNotice.show(requireContext(), R.string.profile_setup_fill_all);
                 return;
             }
+            com.apiculture.simulator.data.repository.BrandStore.save(requireContext(), u.getUid(), brand[0]);
             editProfileForm.btnProfileSave.setEnabled(false);
             ApicultureApp app = (ApicultureApp) requireActivity().getApplication();
             app.getProfileRepository().updatePlayerName(u.getUid(), name, () -> {

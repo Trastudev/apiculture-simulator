@@ -48,6 +48,8 @@ public class Apiary3DActivity extends UnityPlayerActivity {
             // Se cerró el mapa que estaba delante: el jugador sale de la app.
             moveTaskToBack(true);
             finish();
+        } else {
+            UnityReceipts.attach();
         }
     }
 

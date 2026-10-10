@@ -1506,7 +1506,7 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
         if (cached != null) {
             return cached;
         }
-        Drawable d = ContextCompat.getDrawable(requireContext(), R.drawable.ic_almacen_miel);
+        Drawable d = ContextCompat.getDrawable(requireContext(), R.drawable.ic_obrador);
         int size = Math.max(1, Math.round(dp * density()));
         int touch = Math.max(size, Math.round(48f * density()));
         Bitmap bmp = Bitmap.createBitmap(touch, touch, Bitmap.Config.ARGB_8888);
@@ -3992,7 +3992,7 @@ public class SharedMapFragment extends Fragment implements OnMapReadyCallback, O
             String[] parts = rest.split("\t", 2);
             String hexId = parts[0];
             String siteId = parts.length > 1 ? parts[1] : "default";
-            WarehouseDialogs.showStatus(this, hiveViewModel, lastOwnerships, currentUserId, hexId, siteId);
+            WarehouseDialogs.showEnter(this, hiveViewModel, lastOwnerships, currentUserId, hexId, siteId);
             return true;
         }
         if (tag instanceof String && "shop".equals(tag)) {

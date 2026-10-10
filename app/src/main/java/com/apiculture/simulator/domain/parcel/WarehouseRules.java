@@ -15,7 +15,7 @@ import java.util.List;
  * que el nivel de jugador ({@link HoneyMarketEngine#accessLevelForFlora}).
  */
 public final class WarehouseRules {
-    public static final int COST_B = 300;
+    public static final int COST_B = 1500;
     public static final int BASE_CAPACITY_KG = 50;
     public static final int CAPACITY_STEP_KG = 25;
     public static final int UPGRADE_COST_PER_LEVEL_B = 250;
