@@ -69,37 +69,58 @@ function basePrice(flora) {
   return (mean > 0 ? mean : 12) * catalog.orderScarcity(flora);
 }
 
-// Envases del obrador: kilos por tarro (0 = bidón a granel) y precio por kilo
-// respecto al bidón. Debe coincidir con WorkshopRules.Format de la app.
-const ORDER_FORMATS = {
-  BULK: { jarKg: 0, factor: 1.0 },
-  JAR_1000: { jarKg: 1, factor: 1.25 },
-  JAR_500: { jarKg: 0.5, factor: 1.4 },
-  JAR_250: { jarKg: 0.25, factor: 1.6 },
-};
+// Las comandas piden tarros de 1 kg, 500 g y 250 g. Los kilos se redondean hacia arriba al cuarto
+// de kilo y se reparten empezando por el tarro grande (2,45 kg → 2 de kilo y 1 de 500 g).
+// Se guarda en la columna format como "JARS:2/1/0". Debe coincidir con JarMix de la app.
+const MIX_PREFIX = "JARS:";
+// Precio por kilo del tarro de 500 g y de 250 g respecto al de kilo.
+const PREMIUM_500 = 1.2;
+const PREMIUM_250 = 1.45;
+// Comandas antiguas de un solo envase: kilos por tarro.
+const LEGACY_JAR_KG = { JAR_1000: 1, JAR_500: 0.5, JAR_250: 0.25 };
 
-function formatFactor(format) {
-  const f = ORDER_FORMATS[format];
-  return f ? f.factor : 1.0;
+function orderMix(kg) {
+  const quarters = Math.max(1, Math.ceil(num(kg) * 4 - 1e-6));
+  const kilo = Math.floor(quarters / 4);
+  const rest = quarters % 4;
+  return { kilo, half: Math.floor(rest / 2), quarter: rest % 2 };
 }
 
-// Las comandas pequeñas piden tarros pequeños; las grandes, tarro de kilo o bidón.
-function orderFormat(id, kg) {
-  const h = floorMod(hash32(`fmt:${id}`), 100);
-  if (kg < 3) return h < 50 ? "JAR_250" : "JAR_500";
-  if (kg < 12) return h < 35 ? "JAR_500" : h < 70 ? "JAR_1000" : "BULK";
-  return h < 40 ? "JAR_1000" : "BULK";
+function mixKg(mix) {
+  return mix.kilo + mix.half * 0.5 + mix.quarter * 0.25;
 }
 
-function orderKgForFormat(kg, format) {
-  const f = ORDER_FORMATS[format];
-  if (!f || f.jarKg <= 0) return kg;
-  const jars = Math.max(1, Math.round(kg / f.jarKg));
-  return Math.round(jars * f.jarKg * 100) / 100;
+function encodeMix(mix) {
+  return `${MIX_PREFIX}${mix.kilo}/${mix.half}/${mix.quarter}`;
 }
 
-function orderUnitPrice(flora, format) {
-  return Math.round(basePrice(flora) * PRICE_BONUS * formatFactor(format) * 100) / 100;
+function parseMix(format) {
+  if (typeof format !== "string" || !format.startsWith(MIX_PREFIX)) return null;
+  const parts = format.slice(MIX_PREFIX.length).split("/").map((p) => parseInt(p, 10));
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n) || n < 0)) return null;
+  const mix = { kilo: parts[0], half: parts[1], quarter: parts[2] };
+  return mix.kilo + mix.half + mix.quarter > 0 ? mix : null;
+}
+
+// Una comanda abierta de antes (kilos a granel o un solo tipo de tarro) pasada a tarros.
+function legacyMix(kg, format) {
+  const jarKg = LEGACY_JAR_KG[format];
+  if (!jarKg) return orderMix(kg);
+  const jars = Math.max(1, Math.round(num(kg) / jarKg));
+  if (format === "JAR_1000") return { kilo: jars, half: 0, quarter: 0 };
+  if (format === "JAR_500") return { kilo: 0, half: jars, quarter: 0 };
+  return { kilo: 0, half: 0, quarter: jars };
+}
+
+// El tarro de kilo paga lo que pagaba antes el kilo de comanda; el precio guardado es la media de
+// la mezcla, así el cobro sigue siendo kilos × precio.
+function orderUnitPrice(flora, mix) {
+  const kiloPrice = Math.round(basePrice(flora) * PRICE_BONUS * 100) / 100;
+  const m = mix || { kilo: 1, half: 0, quarter: 0 };
+  const kg = mixKg(m);
+  if (!(kg > 0)) return kiloPrice;
+  const pay = kiloPrice * (m.kilo + m.half * 0.5 * PREMIUM_500 + m.quarter * 0.25 * PREMIUM_250);
+  return Math.round((pay / kg) * 100) / 100;
 }
 
 function cropForParcel(parcel, band, nowMs, dayKey) {
@@ -189,16 +210,15 @@ function orderRow(region, band, parcel, dayKey, nowMs, seed, old, prices) {
   const flora = floraForParcel(parcel, band, seed, nowMs);
   const id = `srv-ho-${region}-${dayKey}-${band}-${hash32(`${parcel.id}:${seed}`).toString(16)}`;
   const pin = catalog.pointInParcel(parcel, `${id}:pin`);
-  const rawKg = kgForBand(band, seed);
-  const format = orderFormat(id, rawKg);
+  const mix = orderMix(kgForBand(band, seed));
   return {
     id,
     npc_name: catalog.npc(parcel),
     portrait_index: parcel.npcIndex,
     flora_key: flora,
-    kg: orderKgForFormat(rawKg, format),
-    unit_price: orderUnitPrice(flora, format),
-    format,
+    kg: mixKg(mix),
+    unit_price: orderUnitPrice(flora, mix),
+    format: encodeMix(mix),
     dest_hex_id: parcel.id,
     dest_lat: pin.lat,
     dest_lng: pin.lng,
@@ -304,16 +324,21 @@ async function insertOffers(client, rows) {
 
 async function repriceOpenOrders(client, region) {
   const rows = await client.query(
-    `SELECT id, flora_key, unit_price, format FROM honey_orders
+    `SELECT id, flora_key, unit_price, format, kg FROM honey_orders
       WHERE region=$1 AND taken=false`,
     [region]
   );
   for (const row of rows.rows) {
-    const want = orderUnitPrice(row.flora_key, row.format);
-    if (!(want > 0) || Math.abs(num(row.unit_price) - want) < 0.009) continue;
+    // Las comandas abiertas de antes pasan a tarros (kilos redondeados hacia arriba).
+    const parsed = parseMix(row.format);
+    const mix = parsed || legacyMix(row.kg, row.format);
+    const want = orderUnitPrice(row.flora_key, mix);
+    if (!(want > 0)) continue;
+    if (parsed && Math.abs(num(row.unit_price) - want) < 0.009) continue;
     await client.query(
-      `UPDATE honey_orders SET unit_price=$2, updated_at=now() WHERE id=$1 AND taken=false`,
-      [row.id, want]
+      `UPDATE honey_orders SET unit_price=$2, kg=$3, format=$4, updated_at=now()
+        WHERE id=$1 AND taken=false`,
+      [row.id, want, mixKg(mix), encodeMix(mix)]
     );
   }
 }
@@ -1010,6 +1035,9 @@ module.exports = {
   pickScattered,
   nearbyReplacement,
   orderUnitPrice,
+  orderMix,
+  parseMix,
+  legacyMix,
   orderCount,
   offerCount,
   utcDayKey,

@@ -120,3 +120,23 @@ test("order replacements stay near the previous destination", () => {
   assert.ok(hit.id === "near-a" || hit.id === "near-b");
   assert.equal(clock.ORDER_LIFE_MS, 8 * 60 * 60 * 1000);
 });
+
+test("las comandas piden tarros: kilos redondeados hacia arriba, del tarro grande al pequeño", () => {
+  const offerClock = require("../src/offerClock");
+  assert.deepEqual(offerClock.orderMix(2.45), { kilo: 2, half: 1, quarter: 0 });
+  assert.deepEqual(offerClock.orderMix(0.3), { kilo: 0, half: 1, quarter: 0 });
+  assert.deepEqual(offerClock.orderMix(1.7), { kilo: 1, half: 1, quarter: 1 });
+  assert.deepEqual(offerClock.parseMix("JARS:2/1/0"), { kilo: 2, half: 1, quarter: 0 });
+  assert.equal(offerClock.parseMix("JAR_500"), null);
+  assert.deepEqual(offerClock.legacyMix(3, "JAR_500"), { kilo: 0, half: 6, quarter: 0 });
+  assert.deepEqual(offerClock.legacyMix(2.45, "BULK"), { kilo: 2, half: 1, quarter: 0 });
+});
+
+test("el tarro pequeño paga más por kilo que el grande", () => {
+  const offerClock = require("../src/offerClock");
+  const kilo = offerClock.orderUnitPrice("Romero", { kilo: 1, half: 0, quarter: 0 });
+  const half = offerClock.orderUnitPrice("Romero", { kilo: 0, half: 1, quarter: 0 });
+  const quarter = offerClock.orderUnitPrice("Romero", { kilo: 0, half: 0, quarter: 1 });
+  assert.ok(Math.abs(half - kilo * 1.2) < 0.02);
+  assert.ok(Math.abs(quarter - kilo * 1.45) < 0.02);
+});
